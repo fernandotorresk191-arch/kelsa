@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FiPhone, FiMail, FiInstagram, FiTwitter, FiFacebook, FiYoutube } from 'react-icons/fi';
+import { FiPhone, FiMail } from 'react-icons/fi';
 
 const Footer = () => {
   return (
@@ -73,8 +73,8 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2 text-sm">
                 <FiMail size={16} className="text-primary" />
-                <a href="mailto:info@vorda.ru" className="hover:text-primary transition-colors">
-                  info@vorda.ru
+                <a href="mailto:info@lorsa.ru" className="hover:text-primary transition-colors">
+                  info@lorsa.ru
                 </a>
               </li>
             </ul>
@@ -87,7 +87,7 @@ const Footer = () => {
 
         {/* Copyright */}
         <div className="border-t mt-8 pt-6 text-xs text-muted-foreground">
-          <p>© 2025 Vorda. Все права защищены.</p>
+          <p>© 2025 lorsa. Все права защищены.</p>
         </div>
       </div>
     </footer>
