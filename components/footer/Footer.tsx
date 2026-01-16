@@ -99,8 +99,8 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2 text-sm">
                 <FiMail size={16} className="text-primary" />
-                <a href="mailto:info@samokat.ru" className="hover:text-primary transition-colors">
-                  info@samokat.ru
+                <a href="mailto:info@nevre.ru" className="hover:text-primary transition-colors">
+                  info@nevre.ru
                 </a>
               </li>
             </ul>
