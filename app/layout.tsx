@@ -4,8 +4,8 @@ import Header from "../components/header/Header";
 import Footer from "../components/footer/Footer";
 
 export const metadata: Metadata = {
-  title: "Nevre — Доставка продуктов и товаров",
-  description: "Nevre — онлайн-магазин с доставкой продуктов и товаров для дома от 15 минут. Заказывайте бесплатную экспресс-доставку продуктов, готовой еды и других товаров.",
+  title: "Vorda — Доставка продуктов и товаров",
+  description: "Vorda — онлайн-магазин с доставкой продуктов и товаров для дома от 15 минут. Заказывайте бесплатную экспресс-доставку продуктов, готовой еды и других товаров.",
 };
 
 export default function RootLayout({
