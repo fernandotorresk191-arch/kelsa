@@ -50,7 +50,7 @@ export default function Home() {
         <section className="mt-10 mb-6">
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white p-6 rounded-lg border">
-              <h3 className="text-lg font-semibold mb-3">Доставка за 15 минут</h3>
+              <h3 className="text-lg font-semibold mb-3">Доставка продуктов и товаров</h3>
               <p className="text-muted-foreground">
                 Быстрая доставка продуктов, готовой еды и товаров для дома.
                 Работаем каждый день с 8:00 до 23:00.

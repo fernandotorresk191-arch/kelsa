@@ -10,6 +10,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   themeColor: "#d14b57",
   icons: {
+    icon: "/icons/icon-192.png",
     apple: "/icons/icon-192.png",
   },
   appleWebApp: {

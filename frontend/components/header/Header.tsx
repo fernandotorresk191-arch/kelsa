@@ -30,10 +30,10 @@ const Header = () => {
 
           {/* Logo */}
           <Link href="/" className="flex items-center">
-            <div className="relative w-32 h-8">
+            <div className="relative w-24 h-8">
               <Image
-                src="/nevre-logo.svg"
-                alt="Nevre"
+                src="/kelsa-logo.svg"
+                alt="Kelsa"
                 fill
                 style={{ objectFit: 'contain' }}
                 priority
