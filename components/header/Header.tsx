@@ -15,7 +15,7 @@ const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b">
-      <div className="samokat-container">
+      <div className="kelsa-container">
         {/* Top header row */}
         <div className="flex items-center justify-between h-16">
           {/* Mobile menu button */}
@@ -78,7 +78,7 @@ const Header = () => {
 
       {/* Categories menu */}
       <div className="hidden border-t md:block">
-        <div className="samokat-container">
+        <div className="kelsa-container">
           <CategoryMenu />
         </div>
       </div>

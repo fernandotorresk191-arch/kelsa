@@ -20,7 +20,7 @@ const ProductPage = () => {
   // If product not found, show message
   if (!product) {
     return (
-      <div className="samokat-container py-10 text-center">
+      <div className="kelsa-container py-10 text-center">
         <h1 className="text-2xl font-semibold mb-4">Товар не найден</h1>
         <Button onClick={() => router.back()}>Вернуться назад</Button>
       </div>
@@ -28,7 +28,7 @@ const ProductPage = () => {
   }
 
   return (
-    <div className="samokat-container py-6">
+    <div className="kelsa-container py-6">
       {/* Breadcrumbs */}
       <div className="flex items-center mb-6">
         <Button

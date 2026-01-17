@@ -20,7 +20,7 @@ type MobileMenuProps = {
 const MobileMenu = ({ onClose }: MobileMenuProps) => {
   return (
     <div className="fixed inset-0 z-40 bg-white overflow-y-auto md:hidden">
-      <div className="samokat-container py-4 space-y-6">
+      <div className="kelsa-container py-4 space-y-6">
         <div className="flex items-center justify-between">
           <span className="text-lg font-semibold">Меню</span>
           <button

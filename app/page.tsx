@@ -15,13 +15,13 @@ export default function Home() {
     <div className="pb-10">
       {/* Promo section */}
       <section className="bg-accent/30 py-6">
-        <div className="samokat-container">
+        <div className="kelsa-container">
           <PromoCarousel />
         </div>
       </section>
 
       {/* Main content */}
-      <div className="samokat-container">
+      <div className="kelsa-container">
         {/* Categories section */}
         <CategoryButtons />
 

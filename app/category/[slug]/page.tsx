@@ -23,7 +23,7 @@ const CategoryPage = () => {
   }
 
   return (
-    <div className="samokat-container py-8">
+    <div className="kelsa-container py-8">
       <h1 className="text-2xl font-semibold mb-6">
         {category ? category.name : slug === 'sale' ? 'Выгодно сейчас' : 'Товары'}
       </h1>

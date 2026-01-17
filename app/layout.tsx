@@ -5,7 +5,7 @@ import Footer from "../components/footer/Footer";
 
 export const metadata: Metadata = {
   title: "kelsa — Доставка продуктов и товаров",
-  description: "kelsa — онлайн-магазин с доставкой продуктов и товаров для дома от 15 минут.",
+  description: "kelsa — онлайн-магазин с доставкой продуктов на дом",
   applicationName: "kelsa",
   manifest: "/manifest.webmanifest",
   themeColor: "#d14b57",
