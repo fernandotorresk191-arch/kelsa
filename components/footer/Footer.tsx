@@ -73,8 +73,8 @@ const Footer = () => {
               </li>
               <li className="flex items-center gap-2 text-sm">
                 <FiMail size={16} className="text-primary" />
-                <a href="mailto:info@lorsa.ru" className="hover:text-primary transition-colors">
-                  info@lorsa.ru
+                <a href="mailto:info@kelsa.ru" className="hover:text-primary transition-colors">
+                  info@kelsa.ru
                 </a>
               </li>
             </ul>
@@ -87,7 +87,7 @@ const Footer = () => {
 
         {/* Copyright */}
         <div className="border-t mt-8 pt-6 text-xs text-muted-foreground">
-          <p>© 2025 lorsa. Все права защищены.</p>
+          <p>© 2025 kelsa. Все права защищены.</p>
         </div>
       </div>
     </footer>
