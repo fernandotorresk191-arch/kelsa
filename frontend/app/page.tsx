@@ -11,8 +11,8 @@ export default async function Home() {
   const [categories, milkProducts, drinksProducts, discountProducts] =
     await Promise.all([
       catalogApi.categories(),
-      catalogApi.products({ categorySlug: "molochnoe-i-syr", limit: 6, offset: 0 }),
-      catalogApi.products({ categorySlug: "voda-i-napitki-1", limit: 6, offset: 0 }),
+      catalogApi.products({ categorySlug: "molochnoe-i-yaytsa-i-sir", limit: 6, offset: 0 }),
+      catalogApi.products({ categorySlug: "voda-i-napitki", limit: 6, offset: 0 }),
       // “Выгодно сейчас”: берём побольше и фильтруем по oldPrice > price
       catalogApi
         .products({ limit: 60, offset: 0 })
