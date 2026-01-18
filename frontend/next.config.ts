@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "ext.same-assets.com",
       },
+      {
+        protocol: "https",
+        hostname: "cm.samokat.ru",
+      },
     ],
   },
 };

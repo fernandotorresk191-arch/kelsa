@@ -1,32 +1,43 @@
-"use client";
+import { notFound } from "next/navigation";
+import { FiChevronDown, FiFilter } from "react-icons/fi";
 
-import React from 'react';
-import { useParams } from 'next/navigation';
-import { categories, products } from '../../../lib/data';
-import ProductCard from '../../../components/product/ProductCard';
-import { FiFilter, FiChevronDown } from 'react-icons/fi';
-import { Button } from '../../../components/ui/button';
+import ProductCard from "../../../components/product/ProductCard";
+import { Button } from "../../../components/ui/button";
+import { catalogApi } from "../../../features/catalog/api";
 
-const CategoryPage = () => {
-  const params = useParams();
-  const { slug } = params;
+export const dynamic = "force-dynamic";
 
-  // Find category by slug
-  const category = categories.find(c => c.slug === slug);
+export default async function CategoryPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
 
-  // Get products for this category
-  let categoryProducts = [];
-  if (slug === 'sale') {
-    categoryProducts = products.filter(p => p.discountPercent !== undefined);
-  } else {
-    categoryProducts = products.filter(p => p.category === slug);
+  const categories = await catalogApi.categories();
+  const category = categories.find((c) => c.slug === decodedSlug);
+
+  // Load products for the category; special-case "sale" to show discounted items across all categories.
+  const categoryProducts =
+    decodedSlug === "sale"
+      ? (await catalogApi.products({ limit: 200, offset: 0 })).filter(
+          (p) => (p.oldPrice ?? 0) > p.price,
+        )
+      : category
+      ? await catalogApi.products({ categorySlug: decodedSlug, limit: 200, offset: 0 })
+      : null;
+
+  if (!categoryProducts) {
+    notFound();
   }
+
+  const title = category ? category.name : "Выгодно сейчас";
 
   return (
     <div className="kelsa-container py-8">
-      <h1 className="text-2xl font-semibold mb-6">
-        {category ? category.name : slug === 'sale' ? 'Выгодно сейчас' : 'Товары'}
-      </h1>
+      <h1 className="text-2xl font-semibold mb-6">{title}</h1>
 
       {/* Filters */}
       <div className="flex items-center justify-between mb-6">
@@ -40,15 +51,13 @@ const CategoryPage = () => {
             <FiChevronDown size={16} />
           </Button>
         </div>
-        <div className="text-sm text-muted-foreground">
-          {categoryProducts.length} товаров
-        </div>
+        <div className="text-sm text-muted-foreground">{categoryProducts.length} товаров</div>
       </div>
 
       {/* Products grid */}
       {categoryProducts.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {categoryProducts.map(product => (
+          {categoryProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
@@ -62,6 +71,4 @@ const CategoryPage = () => {
       )}
     </div>
   );
-};
-
-export default CategoryPage;
+}

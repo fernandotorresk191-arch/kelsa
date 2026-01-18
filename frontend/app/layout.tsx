@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Header from "../components/header/Header";
 import Footer from "../components/footer/Footer";
@@ -8,7 +8,6 @@ export const metadata: Metadata = {
   description: "kelsa — онлайн-магазин с доставкой продуктов на дом",
   applicationName: "kelsa",
   manifest: "/manifest.webmanifest",
-  themeColor: "#d14b57",
   icons: {
     icon: "/icons/icon-192.png",
     apple: "/icons/icon-192.png",
@@ -21,6 +20,10 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#d14b57",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
