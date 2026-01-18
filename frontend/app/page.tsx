@@ -20,7 +20,6 @@ export default async function Home() {
     ]);
 
 
-  console.log(milkProducts);
   return (
     <div className="pb-10">
       {/* Promo section */}

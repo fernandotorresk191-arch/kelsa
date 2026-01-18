@@ -1,12 +1,37 @@
 "use client";
 
-import React from 'react';
-import Link from 'next/link';
-import { categories } from '../../lib/data';
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+
+import { catalogApi } from "../../features/catalog/api";
+import type { CategoryDto } from "../../features/catalog/types";
 
 const CategoryMenu = () => {
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    catalogApi
+      .categories()
+      .then((data) => {
+        if (mounted) {
+          setCategories(data);
+        }
+      })
+      .catch(() => {
+        if (mounted) setCategories([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!categories.length) return null;
+
   return (
-    <nav className="flex items-center py-3 overflow-x-auto hide-scrollbar gap-6">
+    <nav className="flex items-center py-3 overflow-x-auto hide-scrollbar gap-4 px-1">
       {categories.map((category) => (
         <Link
           key={category.id}
