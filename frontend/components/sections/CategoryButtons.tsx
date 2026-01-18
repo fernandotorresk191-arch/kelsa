@@ -30,20 +30,38 @@ const CategoryButtons = () => {
           <Link
             key={category.id}
             href={`/category/${category.slug}`}
-            className="group"
+            className="block"
           >
-            <div className="bg-white border rounded-lg p-3 flex flex-col items-center text-center h-full transition-shadow hover:shadow-md">
-              <div className="relative w-16 h-16 mb-2">
-                <Image
-                  src={categoryIcons[index] || categoryIcons[0]}
-                  alt={category.name}
-                  fill
-                  className="object-contain transition-transform duration-300 group-hover:scale-105"
-                />
+            <div
+              className="
+      relative
+      h-52
+      rounded-2xl
+      bg-gray-200
+      overflow-hidden
+      transition
+      hover:brightness-95
+    "
+            >
+              {/* Текст сверху */}
+              <div className="relative z-10 p-4">
+                <span className="text-sm font-semibold text-gray-900">
+                  {category.name}
+                </span>
               </div>
-              <span className="text-sm">{category.name}</span>
+
+              {/* Картинка на весь блок */}
+              <Image
+                src={categoryIcons[index] || categoryIcons[0]}
+                alt={category.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, 20vw"
+                priority={index < 2}
+              />
             </div>
           </Link>
+
         ))}
       </div>
     </div>
