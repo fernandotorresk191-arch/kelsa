@@ -4,20 +4,13 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { resolveMediaUrl } from "shared/api/media";
+import { CategoryDto } from "features/catalog/types";
 
+interface CategoryButtonsProps {
+  categories: CategoryDto[];
+}
 
-type CategoryVm = {
-  id: string;
-  name: string;
-  slug: string;
-  imageUrl?: string | null;
-};
-
-export default function CategoryButtons({
-  categories,
-}: {
-  categories: CategoryVm[];
-}) {
+const CategoryButtons: React.FC<CategoryButtonsProps> = ({ categories }) => {
   const categoriesToShow = categories.slice(0, 11);
 
   return (
@@ -48,7 +41,8 @@ export default function CategoryButtons({
                     src={img}
                     alt={category.name}
                     fill
-                    className="object-cover"
+                    // Исправленная строка:
+                    className="object-cover object-center"
                     sizes="(max-width: 768px) 50vw, 20vw"
                     priority
                   />
@@ -60,4 +54,6 @@ export default function CategoryButtons({
       </div>
     </div>
   );
-}
+};
+
+export default CategoryButtons;

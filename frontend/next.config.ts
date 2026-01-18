@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "cm.samokat.ru",
       },
+      {
+        protocol: "https",
+        hostname: "damcdn.samokat.ru",
+      },
     ],
   },
 };

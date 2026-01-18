@@ -19,6 +19,8 @@ export default async function Home() {
         .then((items) => items.filter((p) => (p.oldPrice ?? 0) > p.price).slice(0, 6)),
     ]);
 
+
+  console.log(milkProducts);
   return (
     <div className="pb-10">
       {/* Promo section */}
@@ -33,14 +35,7 @@ export default async function Home() {
       <div className="kelsa-container">
         {/* Categories section */}
         <CategoryButtons
-          categories={categories
-            .filter((c) => c.isActive)
-            .map((c) => ({
-              id: c.id,
-              name: c.name,
-              slug: c.slug,
-              imageUrl: c.imageUrl ?? null,
-            }))}
+          categories={categories}
         />
 
         {/* Products with discounts */}
