@@ -9,6 +9,7 @@ export class PrismaService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
+  [x: string]: any;
   constructor() {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
     const pool = new Pool({

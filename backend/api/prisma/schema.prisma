@@ -32,6 +32,8 @@ model Product {
 
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -56,4 +58,75 @@ model AdminUser {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  token     String     @unique
+  status    CartStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  productId String
+  qty       Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, productId])
+}
+
+enum CartStatus {
+  ACTIVE
+  CHECKED_OUT
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNumber  Int         @unique @default(autoincrement())
+  status       OrderStatus @default(NEW)
+
+  cartId       String?
+  cartToken    String?
+
+  customerName  String
+  phone         String
+  addressLine   String
+  comment       String?
+  totalAmount   Int
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  items        OrderItem[]
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  title     String
+  price     Int
+  qty       Int
+  amount    Int
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+}
+
+enum OrderStatus {
+  NEW
+  CONFIRMED
+  ASSEMBLING
+  ON_THE_WAY
+  DELIVERED
+  CANCELED
 }
