@@ -71,7 +71,7 @@ export function CartDialog() {
   };
 
   return (
-    <DialogContent className="max-w-3xl">
+    <DialogContent className="max-w-6xl">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <FiShoppingBag />

@@ -8,12 +8,24 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  const config = app.get(ConfigService);
+  const corsEnv = config.get<string>('CORS_ORIGINS');
+  const allowedOrigins: (string | RegExp)[] = corsEnv
+    ? corsEnv
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean)
+    : [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'https://gokelsa.ru',
+        // Разрешаем локальную сеть, чтобы PWA на телефоне могла ходить в API.
+        /http:\/\/192\.168\.\d+\.\d+:3000/,
+        /http:\/\/10\.\d+\.\d+\.\d+:3000/,
+      ];
+
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://gokelsa.ru',
-    ],
+    origin: allowedOrigins,
     credentials: true,
   });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
@@ -26,7 +38,6 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('docs', app, document);
 
-  const config = app.get(ConfigService);
   const port = config.get<number>('PORT') ?? 3001;
   await app.listen(port);
 }
