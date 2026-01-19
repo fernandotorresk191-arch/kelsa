@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { categories } from "../../lib/data";
+
 import {
   FiHeart,
   FiMapPin,
@@ -12,12 +12,39 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
+import { CategoryDto } from "features/catalog/types";
+import { useEffect, useState } from "react";
+import { catalogApi } from "features/catalog/api";
 
 type MobileMenuProps = {
   onClose: () => void;
 };
 
 const MobileMenu = ({ onClose }: MobileMenuProps) => {
+
+  const [categories, setCategories] = useState<CategoryDto[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    catalogApi
+      .categories()
+      .then((data) => {
+        if (mounted) {
+          setCategories(data);
+        }
+      })
+      .catch(() => {
+        if (mounted) setCategories([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (!categories.length) return null;
+
   return (
     <div className="fixed inset-0 z-40 bg-white overflow-y-auto md:hidden">
       <div className="kelsa-container py-4 space-y-6">
