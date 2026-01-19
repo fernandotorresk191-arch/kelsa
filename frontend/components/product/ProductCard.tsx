@@ -8,12 +8,16 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { resolveMediaUrl } from 'shared/api/media';
 import { ProductDto } from 'features/catalog/types';
+import { useCart } from '../cart/CartProvider';
 
 interface ProductCardProps {
   product: ProductDto;
 }
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
+  const { addItem, isCartLoading } = useCart();
+  const [isAdding, setIsAdding] = React.useState(false);
+
   const imageUrl = resolveMediaUrl(product.imageUrl);
   
   // Logic: Check if there is a discount (oldPrice exists and is greater than current price)
@@ -87,8 +91,19 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             variant="outline"
             size="icon"
             className="h-9 w-9 rounded-full border-primary/20 text-primary hover:bg-primary hover:text-white transition-colors"
+            disabled={isCartLoading || isAdding}
+            onClick={async () => {
+              setIsAdding(true);
+              try {
+                await addItem(product.id, 1);
+              } catch {
+                // Ошибку покажет компонент корзины
+              } finally {
+                setIsAdding(false);
+              }
+            }}
           >
-            <FiPlus size={18} />
+            <FiPlus size={18} className={isAdding ? "opacity-50" : undefined} />
           </Button>
         </div>
       </div>

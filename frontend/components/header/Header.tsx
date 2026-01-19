@@ -9,9 +9,14 @@ import { FiMapPin, FiHeart, FiShoppingBag, FiUser, FiSearch, FiMenu, FiX } from 
 import CategoryMenu from './CategoryMenu';
 import MobileMenu from './MobileMenu';
 import { useState } from 'react';
+import { Dialog, DialogTrigger } from '../ui/dialog';
+import { CartDialog } from '../cart/CartDialog';
+import { useCart } from '../cart/CartProvider';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [cartOpen, setCartOpen] = useState(false);
+  const { itemCount } = useCart();
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b">
@@ -65,9 +70,19 @@ const Header = () => {
             >
               <FiHeart size={22} />
             </button>
-            <button type="button" className="p-2" aria-label="Корзина">
-              <FiShoppingBag size={22} />
-            </button>
+            <Dialog open={cartOpen} onOpenChange={setCartOpen}>
+              <DialogTrigger asChild>
+                <button type="button" className="relative p-2" aria-label="Корзина">
+                  <FiShoppingBag size={22} />
+                  {itemCount > 0 && (
+                    <span className="absolute -right-1 -top-1 rounded-full bg-primary px-1.5 text-[10px] font-semibold text-white">
+                      {itemCount}
+                    </span>
+                  )}
+                </button>
+              </DialogTrigger>
+              <CartDialog />
+            </Dialog>
             <Button type="button" variant="outline" className="hidden md:flex">
               <FiUser className="mr-2" size={18} />
               <span>Войти</span>

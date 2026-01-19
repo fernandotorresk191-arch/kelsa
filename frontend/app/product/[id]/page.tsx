@@ -1,12 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FiArrowLeft, FiHeart, FiMinus, FiPlus } from "react-icons/fi";
+import { FiArrowLeft } from "react-icons/fi";
 
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
 import { catalogApi } from "../../../features/catalog/api";
 import { resolveMediaUrl } from "../../../shared/api/media";
+import { ProductActions } from "../../../components/product/ProductActions";
 
 export const dynamic = "force-dynamic";
 
@@ -103,22 +104,7 @@ export default async function ProductPage({
             )}
           </div>
 
-          <div className="flex gap-4 mb-8">
-            <div className="flex items-center border rounded-full">
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <FiMinus size={18} />
-              </Button>
-              <span className="mx-2 font-medium">1</span>
-              <Button variant="ghost" size="icon" className="rounded-full">
-                <FiPlus size={18} />
-              </Button>
-            </div>
-
-            <Button className="px-8">В корзину</Button>
-            <Button variant="outline" size="icon" className="rounded-full">
-              <FiHeart size={18} />
-            </Button>
-          </div>
+          <ProductActions product={product} />
 
           <div className="border-t pt-6">
             <h3 className="font-medium mb-2">Описание</h3>
