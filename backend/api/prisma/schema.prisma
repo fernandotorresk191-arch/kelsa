@@ -94,6 +94,9 @@ model Order {
   orderNumber  Int         @unique @default(autoincrement())
   status       OrderStatus @default(NEW)
 
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+
   cartId       String?
   cartToken    String?
 
@@ -129,4 +132,26 @@ enum OrderStatus {
   ON_THE_WAY
   DELIVERED
   CANCELED
+}
+
+
+enum Settlement {
+  KALINOVSKAYA
+  NOVOTERSKAYA
+  LEVOBEREZHNOE
+  YUBILEYNOE
+  NOVOE_SOLKUSHINO
+}
+
+model User {
+  id           String     @id @default(cuid())
+  login        String     @unique
+  passwordHash String
+  settlement   Settlement
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  email        String   @unique
+  phone         String
+  addressLine   String
+  orders       Order[]
 }
