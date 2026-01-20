@@ -13,43 +13,15 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'prisma/prisma.service';
+import { JwtGuard } from '../auth/jwt.guard';
 import { CreateOrderDto } from './dto';
-
-class JwtGuard {
-  constructor(private readonly jwt: JwtService) {}
-
-  canActivate(context: any) {
-    const req = context.switchToHttp().getRequest();
-    const auth = req.headers?.authorization as string | undefined;
-    const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null;
-    if (!token) throw new UnauthorizedException('No token');
-
-    try {
-      const payload = this.jwt.verify(token);
-      req.user = payload;
-      return true;
-    } catch {
-      throw new UnauthorizedException('Invalid token');
-    }
-  }
-}
 
 @Controller('v1/orders')
 export class OrdersController {
-  private readonly guard: JwtGuard;
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly jwt: JwtService,
-  ) {
-    this.guard = new JwtGuard(this.jwt);
-  }
-
-  @UseGuards(function (this: OrdersController) {
-    return this.guard;
-  } as any)
+  @UseGuards(JwtGuard)
   @Post()
   async create(@Req() req: any, @Body() dto: CreateOrderDto) {
     const userId = req.user?.sub as string | undefined;
