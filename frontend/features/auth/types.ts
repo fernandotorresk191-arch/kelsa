@@ -16,6 +16,8 @@ export type AuthUser = {
   id: string;
   login: string;
   name: string;
+  phone: string;
+  addressLine: string;
   settlement: SettlementCode;
   settlementTitle: string;
   createdAt: string;

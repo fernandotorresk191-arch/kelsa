@@ -114,7 +114,15 @@ export class AuthController {
         passwordHash,
         settlement: dto.settlement as any, // enum Prisma
       },
-      select: { id: true, login: true, name: true, settlement: true, createdAt: true },
+      select: {
+        id: true,
+        login: true,
+        name: true,
+        phone: true,
+        addressLine: true,
+        settlement: true,
+        createdAt: true,
+      },
     })
 
     const accessToken = this.jwt.sign({ sub: user.id })
@@ -144,6 +152,8 @@ export class AuthController {
         id: user.id,
         login: user.login,
         name: user.name,
+        phone: user.phone,
+        addressLine: user.addressLine,
         settlement: user.settlement,
         settlementTitle: SETTLEMENT_LABELS[user.settlement as unknown as Settlement],
       },
@@ -158,7 +168,15 @@ export class AuthController {
     if (!userId) throw new UnauthorizedException('Invalid token payload')
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, login: true, name: true, settlement: true, createdAt: true },
+      select: {
+        id: true,
+        login: true,
+        name: true,
+        phone: true,
+        addressLine: true,
+        settlement: true,
+        createdAt: true,
+      },
     })
     if (!user) throw new UnauthorizedException('User not found')
 

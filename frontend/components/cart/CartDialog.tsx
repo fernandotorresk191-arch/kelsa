@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FiMinus, FiPlus, FiShoppingBag, FiTrash2 } from "react-icons/fi";
 import { useCart } from "./CartProvider";
 import {
@@ -39,6 +39,7 @@ export function CartDialog() {
   const [submitting, setSubmitting] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
+  const lastUserIdRef = useRef<string | null>(null);
 
   const totalAmount = useMemo(
     () =>
@@ -50,6 +51,25 @@ export function CartDialog() {
   );
 
   const isEmpty = !cart?.items.length;
+
+  useEffect(() => {
+    if (!user) {
+      lastUserIdRef.current = null;
+      setCustomerName("");
+      setPhone("");
+      setAddressLine("");
+      return;
+    }
+
+    const isUserChanged = lastUserIdRef.current !== user.id;
+    lastUserIdRef.current = user.id;
+
+    setCustomerName((prev) => (isUserChanged || !prev ? user.name : prev));
+    setPhone((prev) => (isUserChanged || !prev ? user.phone : prev));
+    setAddressLine((prev) =>
+      isUserChanged || !prev ? user.addressLine : prev,
+    );
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,9 +89,15 @@ export function CartDialog() {
         comment: comment || undefined,
       });
 
-      setCustomerName("");
-      setPhone("");
-      setAddressLine("");
+      if (user) {
+        setCustomerName(user.name);
+        setPhone(user.phone);
+        setAddressLine(user.addressLine);
+      } else {
+        setCustomerName("");
+        setPhone("");
+        setAddressLine("");
+      }
       setComment("");
     } catch {
       // Сообщение об ошибке уже приходит из контекста
@@ -81,7 +107,7 @@ export function CartDialog() {
   };
 
   return (
-    <DialogContent className="max-w-6xl">
+    <DialogContent className="w-[calc(100%-1.5rem)] max-w-6xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
           <FiShoppingBag />
@@ -146,7 +172,7 @@ export function CartDialog() {
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-[1.1fr_0.9fr]">
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-3">
           <div className="rounded-lg border">
             {isEmpty ? (
@@ -158,7 +184,7 @@ export function CartDialog() {
                 {cart?.items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex flex-wrap items-center gap-3 px-4 py-3"
+                    className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium">
@@ -169,50 +195,69 @@ export function CartDialog() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between sm:justify-start sm:gap-2">
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 rounded-full"
+                          disabled={isCartLoading || item.qty <= 1}
+                          onClick={() =>
+                            updateItemQty(item.id, item.qty - 1).catch(() => {})
+                          }
+                        >
+                          <FiMinus />
+                        </Button>
+                        <span className="w-6 text-center text-sm font-semibold">
+                          {item.qty}
+                        </span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="outline"
+                          className="h-8 w-8 rounded-full"
+                          disabled={isCartLoading}
+                          onClick={() =>
+                            updateItemQty(item.id, item.qty + 1).catch(() => {})
+                          }
+                        >
+                          <FiPlus />
+                        </Button>
+                      </div>
+
+                      <div className="flex items-center gap-2 sm:hidden">
+                        <div className="text-sm font-semibold">
+                          {currency((item.product.price ?? 0) * item.qty)}
+                        </div>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-muted-foreground"
+                          disabled={isCartLoading}
+                          onClick={() => removeItem(item.id).catch(() => {})}
+                        >
+                          <FiTrash2 />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="hidden sm:flex items-center justify-end gap-2">
+                      <div className="text-right text-sm font-semibold">
+                        {currency((item.product.price ?? 0) * item.qty)}
+                      </div>
                       <Button
                         type="button"
                         size="icon"
-                        variant="outline"
-                        className="h-8 w-8 rounded-full"
-                        disabled={isCartLoading || item.qty <= 1}
-                        onClick={() =>
-                          updateItemQty(item.id, item.qty - 1).catch(() => {})
-                        }
-                      >
-                        <FiMinus />
-                      </Button>
-                      <span className="w-6 text-center text-sm font-semibold">
-                        {item.qty}
-                      </span>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="h-8 w-8 rounded-full"
+                        variant="ghost"
+                        className="h-8 w-8 text-muted-foreground"
                         disabled={isCartLoading}
-                        onClick={() =>
-                          updateItemQty(item.id, item.qty + 1).catch(() => {})
-                        }
+                        onClick={() => removeItem(item.id).catch(() => {})}
                       >
-                        <FiPlus />
+                        <FiTrash2 />
                       </Button>
                     </div>
-
-                    <div className="text-right text-sm font-semibold">
-                      {currency((item.product.price ?? 0) * item.qty)}
-                    </div>
-
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-muted-foreground"
-                      disabled={isCartLoading}
-                      onClick={() => removeItem(item.id).catch(() => {})}
-                    >
-                      <FiTrash2 />
-                    </Button>
                   </div>
                 ))}
               </div>
