@@ -15,6 +15,7 @@ import {
 import { CategoryDto } from "features/catalog/types";
 import { useEffect, useState } from "react";
 import { catalogApi } from "features/catalog/api";
+import { useRouter } from "next/navigation";
 import { useSettlement } from "../settlement/SettlementProvider";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthDialog } from "../auth/AuthDialog";
@@ -24,8 +25,10 @@ type MobileMenuProps = {
 };
 
 const MobileMenu = ({ onClose }: MobileMenuProps) => {
+  const router = useRouter();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [authOpen, setAuthOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState("");
   const { selectedSettlement, setDialogOpen } = useSettlement();
   const { user } = useAuth();
 
@@ -65,16 +68,32 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
           </button>
         </div>
 
-        <div className="relative">
+        <form
+          className="relative"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const query = searchValue.trim();
+            if (!query) return;
+            router.push(`/search?q=${encodeURIComponent(query)}`);
+            onClose();
+          }}
+        >
           <Input
             placeholder="Поиск товаров"
             className="pl-10 rounded-full bg-accent/50"
+            value={searchValue}
+            onChange={(event) => setSearchValue(event.target.value)}
+            aria-label="Поиск товаров"
           />
-          <FiSearch
-            className="absolute translate-y-1/2 left-3 bottom-1/2"
-            size={18}
-          />
-        </div>
+          <button
+            type="submit"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            aria-label="Найти"
+          >
+            <FiSearch size={18} />
+          </button>
+        </form>
 
         <button
           type="button"

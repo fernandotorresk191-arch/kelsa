@@ -23,6 +23,7 @@ const Header = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [searchValue, setSearchValue] = useState("");
   const { itemCount } = useCart();
   const { selectedSettlement, setDialogOpen } = useSettlement();
   const { user } = useAuth();
@@ -66,13 +67,31 @@ const Header = () => {
           </button>
 
           {/* Search */}
-          <div className="relative flex-grow hidden mx-6 md:block">
+          <form
+            className="relative flex-grow hidden mx-6 md:block"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const query = searchValue.trim();
+              if (!query) return;
+              router.push(`/search?q=${encodeURIComponent(query)}`);
+            }}
+          >
             <Input
               placeholder="Поиск товаров"
               className="pl-10 rounded-full bg-accent/50"
+              value={searchValue}
+              onChange={(event) => setSearchValue(event.target.value)}
+              aria-label="Поиск товаров"
             />
-            <FiSearch className="absolute translate-y-1/2 left-3 bottom-1/2" size={18} />
-          </div>
+            <button
+              type="submit"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              aria-label="Найти"
+            >
+              <FiSearch size={18} />
+            </button>
+          </form>
 
           {/* Navigation buttons */}
           <div className="flex items-center gap-2">
