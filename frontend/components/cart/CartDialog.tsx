@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FiMinus, FiPlus, FiShoppingBag, FiTrash2 } from "react-icons/fi";
+import { FiMinus, FiPlus, FiShoppingBag, FiX } from "react-icons/fi";
 import { useCart } from "./CartProvider";
 import {
   DialogContent,
@@ -15,6 +16,7 @@ import { cn } from "../../lib/utils";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthDialog } from "../auth/AuthDialog";
 import { formatRuPhone } from "../../shared/phone/format";
+import { resolveMediaUrl } from "../../shared/api/media";
 
 const currency = (value: number) => `${value} ₽`;
 
@@ -184,27 +186,51 @@ export function CartDialog() {
               </div>
             ) : (
               <div className="divide-y">
-                {cart?.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium">
-                        {item.product.title}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {currency(item.product.price ?? 0)} за шт.
-                      </div>
+                {cart?.items.map((item) => {
+                  const unitPrice = item.product.price ?? 0;
+                  const unitOldPrice = item.product.oldPrice ?? 0;
+                  const total = unitPrice * item.qty;
+                  const oldTotal =
+                    unitOldPrice > unitPrice ? unitOldPrice * item.qty : null;
+                  const imageUrl = resolveMediaUrl(item.product.imageUrl);
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-start gap-3 px-4 py-3 sm:items-center"
+                    >
+                    <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-accent/30 sm:h-20 sm:w-20">
+                      {imageUrl ? (
+                        <Image
+                          src={imageUrl}
+                          alt={item.product.title}
+                          fill
+                          className="object-contain p-2"
+                          sizes="(max-width: 640px) 64px, 80px"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                          Нет фото
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center justify-between sm:justify-start sm:gap-2">
-                      <div className="flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs font-medium line-clamp-3 sm:text-sm sm:line-clamp-2 lg:text-base">
+                        {item.product.title}
+                      </div>
+                      {item.product.weightGr && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          {item.product.weightGr} г
+                        </div>
+                      )}
+
+                      <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent/50 px-2 py-1">
                         <Button
                           type="button"
                           size="icon"
-                          variant="outline"
-                          className="h-8 w-8 rounded-full"
+                          variant="ghost"
+                          className="h-7 w-7 rounded-full"
                           disabled={isCartLoading || item.qty <= 1}
                           onClick={() =>
                             updateItemQty(item.id, item.qty - 1).catch(() => {})
@@ -218,8 +244,8 @@ export function CartDialog() {
                         <Button
                           type="button"
                           size="icon"
-                          variant="outline"
-                          className="h-8 w-8 rounded-full"
+                          variant="ghost"
+                          className="h-7 w-7 rounded-full"
                           disabled={isCartLoading}
                           onClick={() =>
                             updateItemQty(item.id, item.qty + 1).catch(() => {})
@@ -228,41 +254,33 @@ export function CartDialog() {
                           <FiPlus />
                         </Button>
                       </div>
-
-                      <div className="flex items-center gap-2 sm:hidden">
-                        <div className="text-sm font-semibold">
-                          {currency((item.product.price ?? 0) * item.qty)}
-                        </div>
-                        <Button
-                          type="button"
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-muted-foreground"
-                          disabled={isCartLoading}
-                          onClick={() => removeItem(item.id).catch(() => {})}
-                        >
-                          <FiTrash2 />
-                        </Button>
-                      </div>
                     </div>
 
-                    <div className="hidden sm:flex items-center justify-end gap-2">
-                      <div className="text-right text-sm font-semibold">
-                        {currency((item.product.price ?? 0) * item.qty)}
-                      </div>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
                       <Button
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 text-muted-foreground"
+                        className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground"
                         disabled={isCartLoading}
                         onClick={() => removeItem(item.id).catch(() => {})}
                       >
-                        <FiTrash2 />
+                        <FiX />
                       </Button>
+                      <div className="text-right">
+                        {oldTotal && (
+                          <div className="text-xs text-muted-foreground line-through">
+                            {currency(oldTotal)}
+                          </div>
+                        )}
+                        <div className="text-base font-semibold">
+                          {currency(total)}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -310,6 +328,9 @@ export function CartDialog() {
             <label className="text-sm font-medium" htmlFor="cart-phone">
               Телефон
             </label>
+            <p className="text-xs text-muted-foreground">
+              Номер для подтверждения заказа.
+            </p>
             <Input
               id="cart-phone"
               type="tel"

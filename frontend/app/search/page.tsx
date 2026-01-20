@@ -25,7 +25,7 @@ export default async function SearchPage({
       <h1 className="text-2xl font-semibold mb-2">Поиск</h1>
       {query ? (
         <div className="text-sm text-muted-foreground mb-6">
-          По запросу "{query}" найдено: {products.length}
+          По запросу &quot;{query}&quot; найдено: {products.length}
         </div>
       ) : (
         <div className="text-sm text-muted-foreground mb-6">
