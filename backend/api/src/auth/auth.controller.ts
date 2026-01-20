@@ -149,9 +149,6 @@ export class AuthController {
   @UseGuards(JwtGuard)
   @Get('me')
   async me(@Req() req: any) {
-    console.log('=== /me Endpoint Debug ===')
-    console.log('req.user:', JSON.stringify(req.user, null, 2))
-    console.log('req.user?.sub:', req.user?.sub)
     const userId = req.user?.sub as string
     if (!userId) throw new UnauthorizedException('Invalid token payload')
     const user = await this.prisma.user.findUnique({
