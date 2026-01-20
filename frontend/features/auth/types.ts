@@ -15,6 +15,7 @@ export type SettlementDto = {
 export type AuthUser = {
   id: string;
   login: string;
+  name: string;
   settlement: SettlementCode;
   settlementTitle: string;
   createdAt: string;
@@ -31,6 +32,7 @@ export type RegisterPayload = {
   settlement: SettlementCode;
   email: string;
   phone: string;
+  name: string;
   addressLine: string;
 };
 

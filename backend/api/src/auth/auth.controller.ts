@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
 import { PrismaService } from 'prisma/prisma.service';
+import { JwtGuard } from './jwt.guard';
 
 
 // 1) Список сёл (жёстко задан)
@@ -48,6 +49,9 @@ class RegisterDto {
   phone: string
 
   @IsString()
+  name: string
+
+  @IsString()
   addressLine: string
 }
 
@@ -59,36 +63,16 @@ class LoginDto {
   password: string
 }
 
-// 3) Guard (без passport, просто проверяем JWT)
-class JwtGuard {
-  constructor(private readonly jwt: JwtService) {}
+// 3) Guard is now in jwt.guard.ts file
 
-  canActivate(context: any) {
-    const req = context.switchToHttp().getRequest()
-    const auth = req.headers?.authorization as string | undefined
-    const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
-    if (!token) throw new UnauthorizedException('No token')
-
-    try {
-      const payload = this.jwt.verify(token)
-      req.user = payload
-      return true
-    } catch {
-      throw new UnauthorizedException('Invalid token')
-    }
-  }
-}
 
 @Controller('v1')
 export class AuthController {
-  private readonly guard: JwtGuard
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
-  ) {
-    this.guard = new JwtGuard(this.jwt)
-  }
+    private readonly guard: JwtGuard,
+  ) {}
 
   // Справочник сёл для фронта
   @Get('settlements')
@@ -119,12 +103,13 @@ export class AuthController {
       data: {
         login: dto.login,
         email: dto.email,
+        name: dto.name,
         phone: dto.phone,
         addressLine: dto.addressLine,
         passwordHash,
         settlement: dto.settlement as any, // enum Prisma
       },
-      select: { id: true, login: true, settlement: true, createdAt: true },
+      select: { id: true, login: true, name: true, settlement: true, createdAt: true },
     })
 
     const accessToken = this.jwt.sign({ sub: user.id })
@@ -153,6 +138,7 @@ export class AuthController {
       user: {
         id: user.id,
         login: user.login,
+        name: user.name,
         settlement: user.settlement,
         settlementTitle: SETTLEMENT_LABELS[user.settlement as unknown as Settlement],
       },
@@ -160,14 +146,17 @@ export class AuthController {
     }
   }
 
-  // Профиль
-  @UseGuards(function (this: AuthController) { return this.guard } as any)
+  @UseGuards(JwtGuard)
   @Get('me')
   async me(@Req() req: any) {
+    console.log('=== /me Endpoint Debug ===')
+    console.log('req.user:', JSON.stringify(req.user, null, 2))
+    console.log('req.user?.sub:', req.user?.sub)
     const userId = req.user?.sub as string
+    if (!userId) throw new UnauthorizedException('Invalid token payload')
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, login: true, settlement: true, createdAt: true },
+      select: { id: true, login: true, name: true, settlement: true, createdAt: true },
     })
     if (!user) throw new UnauthorizedException('User not found')
 
@@ -178,10 +167,11 @@ export class AuthController {
   }
 
   // Мои заказы + статусы (для личного кабинета)
-  @UseGuards(function (this: AuthController) { return this.guard } as any)
+  @UseGuards(JwtGuard)
   @Get('me/orders')
   async myOrders(@Req() req: any) {
     const userId = req.user?.sub as string
+    if (!userId) throw new UnauthorizedException('Invalid token payload')
 
     return this.prisma.order.findMany({
       where: { userId },

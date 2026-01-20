@@ -119,11 +119,19 @@ export function CartDialog() {
         </div>
       )}
 
+      {user && (
+        <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          Здравствуйте, <span className="font-semibold">{user.name}</span>! Мы готовы принять ваш заказ!
+        </div>
+      )}
+
       {lastOrder && (
         <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3">
-          <div className="text-sm text-green-800">
-            Заказ №{lastOrder.orderNumber} создан. Мы свяжемся с вами для
-            подтверждения.
+          <div className="text-sm text-green-800 font-semibold">
+            ✓ Заказ №{lastOrder.orderNumber} успешно оформлен!
+          </div>
+          <div className="mt-2 text-xs text-green-700">
+            Его статус вы можете отслеживать в личном кабинете. Мы свяжемся с вами для подтверждения.
           </div>
           <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
             <span>Сумма заказа: {currency(lastOrder.totalAmount)}</span>
@@ -265,7 +273,7 @@ export function CartDialog() {
 
           <Button
             type="submit"
-            className="w-full"
+            className={user ? "w-full bg-green-600 hover:bg-green-700 text-white" : "w-full"}
             disabled={
               isEmpty || isSubmittingOrder || submitting || isCartLoading
             }

@@ -148,6 +148,7 @@ model User {
   login        String     @unique
   passwordHash String
   settlement   Settlement
+  name         String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
   email        String   @unique

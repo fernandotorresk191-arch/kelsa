@@ -97,6 +97,7 @@ export function AuthDialog({
         settlement: settlementCode,
         email: registerForm.email.trim(),
         phone: registerForm.phone.trim(),
+        name: registerForm.name.trim(),
         addressLine: registerForm.addressLine.trim(),
       });
 
