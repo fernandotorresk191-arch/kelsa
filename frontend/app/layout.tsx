@@ -3,6 +3,9 @@ import "./globals.css";
 import Header from "../components/header/Header";
 import Footer from "../components/footer/Footer";
 import { CartProvider } from "../components/cart/CartProvider";
+import { SettlementProvider } from "../components/settlement/SettlementProvider";
+import { SettlementDialog } from "../components/settlement/SettlementDialog";
+import { AuthProvider } from "../components/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: "kelsa — Доставка продуктов и товаров",
@@ -31,13 +34,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru">
       <body className="font-sans">
-        <CartProvider>
-          <div className="flex flex-col min-h-screen">
-            <Header />
-            <main className="flex-grow">{children}</main>
-            <Footer />
-          </div>
-        </CartProvider>
+        <AuthProvider>
+          <SettlementProvider>
+            <CartProvider>
+              <div className="flex flex-col min-h-screen">
+                <Header />
+                <main className="flex-grow">{children}</main>
+                <Footer />
+              </div>
+              <SettlementDialog />
+            </CartProvider>
+          </SettlementProvider>
+        </AuthProvider>
       </body>
     </html>
   );

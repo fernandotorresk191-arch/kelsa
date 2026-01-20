@@ -12,6 +12,8 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { cn } from "../../lib/utils";
+import { useAuth } from "../auth/AuthProvider";
+import { AuthDialog } from "../auth/AuthDialog";
 
 const currency = (value: number) => `${value} ₽`;
 
@@ -28,12 +30,15 @@ export function CartDialog() {
     lastOrder,
     resetLastOrder,
   } = useCart();
+  const { user } = useAuth();
 
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressLine, setAddressLine] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("register");
 
   const totalAmount = useMemo(
     () =>
@@ -49,6 +54,11 @@ export function CartDialog() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isEmpty || submitting) return;
+    if (!user) {
+      setAuthMode("register");
+      setAuthDialogOpen(true);
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -83,13 +93,29 @@ export function CartDialog() {
           )}
         </DialogTitle>
         <DialogDescription>
-          Добавляйте товары и оформляйте заказ без регистрации.
+          Добавляйте товары и оформляйте заказ после регистрации.
         </DialogDescription>
       </DialogHeader>
 
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
+        </div>
+      )}
+
+      {!user && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex items-center justify-between gap-2">
+          <span>Чтобы оформить заказ, зарегистрируйтесь или войдите.</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setAuthMode("register");
+              setAuthDialogOpen(true);
+            }}
+          >
+            Зарегистрироваться
+          </Button>
         </div>
       )}
 
@@ -202,6 +228,12 @@ export function CartDialog() {
             </div>
           </div>
 
+          {user && (
+            <div className="rounded-md border border-border bg-accent/30 px-3 py-2 text-xs text-muted-foreground">
+              Вошли как <span className="font-semibold text-foreground">{user.login}</span>. Заказ будет привязан к вашему аккаунту.
+            </div>
+          )}
+
           <Input
             placeholder="Имя"
             value={customerName}
@@ -238,13 +270,30 @@ export function CartDialog() {
               isEmpty || isSubmittingOrder || submitting || isCartLoading
             }
           >
-            {isSubmittingOrder || submitting ? "Создаём заказ..." : "Оформить заказ"}
+            {isSubmittingOrder || submitting
+              ? "Создаём заказ..."
+              : user
+              ? "Оформить заказ"
+              : "Войти, чтобы оформить"}
           </Button>
           <div className="text-xs text-muted-foreground">
             Нажимая кнопку, вы подтверждаете согласие на обработку данных.
           </div>
         </form>
+
       </div>
+
+      <AuthDialog
+        open={authDialogOpen}
+        onOpenChange={setAuthDialogOpen}
+        initialMode={authMode}
+        onAuthenticated={() => setAuthDialogOpen(false)}
+        onRegisteredContacts={({ name, phone: registeredPhone, addressLine }) => {
+          if (name && !customerName) setCustomerName(name);
+          if (registeredPhone && !phone) setPhone(registeredPhone);
+          if (addressLine && !addressLine) setAddressLine(addressLine);
+        }}
+      />
     </DialogContent>
   );
 }

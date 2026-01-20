@@ -1,4 +1,5 @@
 import { API_URL } from "./config";
+import { getStoredAccessToken } from "../auth/token";
 
 export type ApiError = {
   status: number;
@@ -19,12 +20,23 @@ async function apiRequest<T>(
   path: string,
   init: RequestInit
 ): Promise<T> {
+  const headers = new Headers({
+    "Content-Type": "application/json",
+  });
+
+  const token = getStoredAccessToken();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (init.headers) {
+    const override = new Headers(init.headers as HeadersInit);
+    override.forEach((value, key) => headers.set(key, value));
+  }
+
   const res = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init.headers ?? {}),
-    },
+    headers,
   });
 
   if (!res.ok) throw await parseError(res);

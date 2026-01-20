@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { FiMapPin, FiHeart, FiShoppingBag, FiUser, FiSearch, FiMenu, FiX } from 'react-icons/fi';
@@ -12,11 +13,19 @@ import { useState } from 'react';
 import { Dialog, DialogTrigger } from '../ui/dialog';
 import { CartDialog } from '../cart/CartDialog';
 import { useCart } from '../cart/CartProvider';
+import { useSettlement } from '../settlement/SettlementProvider';
+import { AuthDialog } from '../auth/AuthDialog';
+import { useAuth } from '../auth/AuthProvider';
 
 const Header = () => {
+  const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const { itemCount } = useCart();
+  const { selectedSettlement, setDialogOpen } = useSettlement();
+  const { user } = useAuth();
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b">
@@ -47,9 +56,13 @@ const Header = () => {
           </Link>
 
           {/* Address selection */}
-          <button type="button" className="items-center hidden ml-6 text-sm md:flex">
+          <button
+            type="button"
+            className="items-center hidden ml-6 text-sm md:flex"
+            onClick={() => setDialogOpen(true)}
+          >
             <FiMapPin className="mr-1 text-primary" />
-            <span>Укажите адрес доставки</span>
+            <span>{selectedSettlement ? selectedSettlement.title : "Укажите адрес доставки"}</span>
           </button>
 
           {/* Search */}
@@ -83,10 +96,43 @@ const Header = () => {
               </DialogTrigger>
               <CartDialog />
             </Dialog>
-            <Button type="button" variant="outline" className="hidden md:flex">
-              <FiUser className="mr-2" size={18} />
-              <span>Войти</span>
-            </Button>
+            {user ? (
+              <Link
+                href="/account"
+                className="hidden md:inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent"
+              >
+                <FiUser className="mr-2" size={18} />
+                <span>Мои заказы</span>
+              </Link>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                className="hidden md:flex"
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthOpen(true);
+                }}
+              >
+                <FiUser className="mr-2" size={18} />
+                <span>Войти</span>
+              </Button>
+            )}
+            <button
+              type="button"
+              className="md:hidden p-2"
+              aria-label="Профиль"
+              onClick={() => {
+                if (user) {
+                  router.push("/account");
+                } else {
+                  setAuthMode("login");
+                  setAuthOpen(true);
+                }
+              }}
+            >
+              <FiUser size={22} />
+            </button>
           </div>
         </div>
       </div>
@@ -102,6 +148,13 @@ const Header = () => {
       {mobileMenuOpen && (
         <MobileMenu onClose={() => setMobileMenuOpen(false)} />
       )}
+
+      <AuthDialog
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        initialMode={authMode}
+        onAuthenticated={() => setAuthOpen(false)}
+      />
     </header>
   );
 };

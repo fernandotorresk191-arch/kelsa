@@ -18,9 +18,8 @@ import { AuthController } from './auth/auth.controller';
     CatalogModule,
     CartModule,
     OrdersModule,
-    AuthController,
-    ConfigModule.forRoot({ isGlobal: true }),
     JwtModule.registerAsync({
+      global: true,
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET') ?? 'dev_secret',
@@ -28,7 +27,7 @@ import { AuthController } from './auth/auth.controller';
       }),
     }),
   ],
-  controllers: [AppController],
+  controllers: [AppController, AuthController],
   providers: [AppService],
 })
 export class AppModule {}
