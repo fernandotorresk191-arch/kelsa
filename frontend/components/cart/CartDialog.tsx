@@ -30,8 +30,6 @@ export function CartDialog() {
     updateItemQty,
     removeItem,
     createOrder,
-    lastOrder,
-    resetLastOrder,
   } = useCart();
   const { user } = useAuth();
 
@@ -153,27 +151,6 @@ export function CartDialog() {
       {user && (
         <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
           Здравствуйте, <span className="font-semibold">{user.name}</span>! Мы готовы принять ваш заказ!
-        </div>
-      )}
-
-      {lastOrder && (
-        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3">
-          <div className="text-sm text-green-800 font-semibold">
-            ✓ Заказ №{lastOrder.orderNumber} успешно оформлен!
-          </div>
-          <div className="mt-2 text-xs text-green-700">
-            Его статус вы можете отслеживать в личном кабинете. Мы свяжемся с вами для подтверждения.
-          </div>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>Сумма заказа: {currency(lastOrder.totalAmount)}</span>
-            <button
-              type="button"
-              className="text-primary hover:underline"
-              onClick={resetLastOrder}
-            >
-              Продолжить покупки
-            </button>
-          </div>
         </div>
       )}
 

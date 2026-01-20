@@ -1,6 +1,5 @@
 "use client";
 
-import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -9,8 +8,15 @@ import { Button } from '../ui/button';
 import { FiMapPin, FiHeart, FiShoppingBag, FiUser, FiSearch, FiMenu, FiX } from 'react-icons/fi';
 import CategoryMenu from './CategoryMenu';
 import MobileMenu from './MobileMenu';
-import { useState } from 'react';
-import { Dialog, DialogTrigger } from '../ui/dialog';
+import { useEffect, useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../ui/dialog';
 import { CartDialog } from '../cart/CartDialog';
 import { useCart } from '../cart/CartProvider';
 import { useSettlement } from '../settlement/SettlementProvider';
@@ -24,9 +30,15 @@ const Header = () => {
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [searchValue, setSearchValue] = useState("");
-  const { itemCount } = useCart();
+  const { itemCount, lastOrder, resetLastOrder } = useCart();
   const { selectedSettlement, setDialogOpen } = useSettlement();
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (lastOrder) {
+      setCartOpen(false);
+    }
+  }, [lastOrder, setCartOpen]);
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b">
@@ -175,6 +187,49 @@ const Header = () => {
         initialMode={authMode}
         onAuthenticated={() => setAuthOpen(false)}
       />
+
+      <Dialog
+        open={Boolean(lastOrder)}
+        onOpenChange={(open) => {
+          if (!open) resetLastOrder();
+        }}
+      >
+        {lastOrder && (
+          <DialogContent className="w-[calc(100%-2rem)] max-w-md sm:max-w-lg p-6 sm:p-8">
+            <DialogHeader className="text-left">
+              <DialogTitle>
+                Заказ №{lastOrder.orderNumber} успешно оформлен
+              </DialogTitle>
+              <DialogDescription>
+                Состояние заказа вы можете отслеживать в личном кабинете.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  resetLastOrder();
+                  router.push("/");
+                }}
+              >
+                Вернуться к покупкам
+              </Button>
+              <Button
+                type="button"
+                className="w-full"
+                onClick={() => {
+                  resetLastOrder();
+                  router.push("/account?tab=orders");
+                }}
+              >
+                Мои заказы
+              </Button>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </header>
   );
 };
