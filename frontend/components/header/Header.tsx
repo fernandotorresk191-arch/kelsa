@@ -80,6 +80,7 @@ const Header = () => {
               type="button"
               className="items-center hidden p-2 md:flex"
               aria-label="Избранное"
+              onClick={() => router.push("/account?tab=favorites")}
             >
               <FiHeart size={22} />
             </button>

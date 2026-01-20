@@ -147,7 +147,7 @@ export function AuthDialog({
         <DialogHeader>
           <DialogTitle>Личный кабинет</DialogTitle>
           <DialogDescription>
-            Зарегистрируйтесь или войдите, чтобы оформить заказ и отслеживать статусы.
+            Зарегистрируйтесь или войдите, чтобы оформлять заказы и сохранять избранное.
           </DialogDescription>
         </DialogHeader>
 

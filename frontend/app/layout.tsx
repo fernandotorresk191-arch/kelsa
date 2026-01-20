@@ -6,6 +6,7 @@ import { CartProvider } from "../components/cart/CartProvider";
 import { SettlementProvider } from "../components/settlement/SettlementProvider";
 import { SettlementDialog } from "../components/settlement/SettlementDialog";
 import { AuthProvider } from "../components/auth/AuthProvider";
+import { FavoritesProvider } from "../components/favorites/FavoritesProvider";
 
 export const metadata: Metadata = {
   title: "kelsa — Доставка продуктов и товаров",
@@ -36,14 +37,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="font-sans">
         <AuthProvider>
           <SettlementProvider>
-            <CartProvider>
-              <div className="flex flex-col min-h-screen">
-                <Header />
-                <main className="flex-grow">{children}</main>
-                <Footer />
-              </div>
-              <SettlementDialog />
-            </CartProvider>
+            <FavoritesProvider>
+              <CartProvider>
+                <div className="flex flex-col min-h-screen">
+                  <Header />
+                  <main className="flex-grow">{children}</main>
+                  <Footer />
+                </div>
+                <SettlementDialog />
+              </CartProvider>
+            </FavoritesProvider>
           </SettlementProvider>
         </AuthProvider>
       </body>

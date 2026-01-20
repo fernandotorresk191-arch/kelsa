@@ -1,6 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { AuthDialog } from "../../components/auth/AuthDialog";
@@ -8,6 +10,8 @@ import { useAuth } from "../../components/auth/AuthProvider";
 import { authApi } from "features/auth/api";
 import type { UserOrder } from "features/auth/types";
 import type { OrderStatus } from "features/orders/types";
+import { useFavorites } from "../../components/favorites/FavoritesProvider";
+import ProductCard from "../../components/product/ProductCard";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   NEW: "Новый",
@@ -37,8 +41,15 @@ function formatDate(dateStr: string) {
   });
 }
 
-export default function AccountPage() {
+function AccountPageContent() {
+  const searchParams = useSearchParams();
+  const activeTab = searchParams.get("tab") === "favorites" ? "favorites" : "orders";
   const { user, logout, isReady, isLoading: authLoading } = useAuth();
+  const {
+    favorites,
+    isLoading: favoritesLoading,
+    error: favoritesError,
+  } = useFavorites();
   const [orders, setOrders] = useState<UserOrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +74,7 @@ export default function AccountPage() {
     }
   }, [user]);
 
-  const content = useMemo(() => {
+  const ordersContent = useMemo(() => {
     if (loading) {
       return (
         <div className="rounded-md border px-4 py-6 text-sm text-muted-foreground">
@@ -131,6 +142,47 @@ export default function AccountPage() {
     );
   }, [error, loading, orders]);
 
+  const favoritesContent = useMemo(() => {
+    if (favoritesLoading) {
+      return (
+        <div className="rounded-md border px-4 py-6 text-sm text-muted-foreground">
+          Загружаем избранное...
+        </div>
+      );
+    }
+
+    if (favoritesError) {
+      return (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          {favoritesError}
+        </div>
+      );
+    }
+
+    if (!favorites.length) {
+      return (
+        <div className="rounded-md border px-4 py-6 text-sm text-muted-foreground">
+          В избранном пока пусто. Добавьте товары на карточках товаров.
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        {favorites.map((product) => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    );
+  }, [favorites, favoritesError, favoritesLoading]);
+
+  const tabClass = (active: boolean) =>
+    `rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+      active
+        ? "bg-primary text-white border-primary"
+        : "bg-white hover:bg-accent"
+    }`;
+
   if (!isReady || authLoading) {
     return (
       <div className="kelsa-container py-10">
@@ -149,14 +201,14 @@ export default function AccountPage() {
           <div>
             <h1 className="text-2xl font-semibold mb-1">Личный кабинет</h1>
             <div className="text-sm text-muted-foreground">
-              Авторизуйтесь, чтобы увидеть свои заказы и статусы.
+              Авторизуйтесь, чтобы увидеть свои заказы, статусы и избранное.
             </div>
           </div>
         </div>
 
         <div className="rounded-md border px-4 py-6 bg-white">
           <div className="text-sm text-muted-foreground mb-4">
-            Войдите или зарегистрируйтесь, чтобы оформить и отслеживать заказы.
+            Войдите или зарегистрируйтесь, чтобы оформлять заказы и сохранять избранное.
           </div>
           <Button onClick={() => setAuthOpen(true)}>Войти</Button>
         </div>
@@ -186,9 +238,45 @@ export default function AccountPage() {
       </div>
 
       <div>
-        <div className="text-lg font-semibold mb-3">Мои заказы</div>
-        {content}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <Link
+            href="/account?tab=orders"
+            className={tabClass(activeTab === "orders")}
+          >
+            Мои заказы
+          </Link>
+          <Link
+            href="/account?tab=favorites"
+            className={tabClass(activeTab === "favorites")}
+          >
+            Избранное
+          </Link>
+        </div>
+
+        <div className="text-lg font-semibold mb-3">
+          {activeTab === "favorites" ? "Избранное" : "Мои заказы"}
+        </div>
+        {activeTab === "favorites" ? favoritesContent : ordersContent}
       </div>
     </div>
+  );
+}
+
+function AccountPageFallback() {
+  return (
+    <div className="kelsa-container py-10">
+      <h1 className="text-2xl font-semibold mb-3">Личный кабинет</h1>
+      <div className="rounded-md border px-4 py-6 text-sm text-muted-foreground">
+        Загружаем данные...
+      </div>
+    </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<AccountPageFallback />}>
+      <AccountPageContent />
+    </Suspense>
   );
 }

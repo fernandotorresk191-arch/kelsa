@@ -3,12 +3,13 @@
 import React from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { FiPlus } from 'react-icons/fi';
+import { FiHeart, FiPlus } from 'react-icons/fi';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { resolveMediaUrl } from 'shared/api/media';
 import { ProductDto } from 'features/catalog/types';
 import { useCart } from '../cart/CartProvider';
+import { useFavorites } from '../favorites/FavoritesProvider';
 
 interface ProductCardProps {
   product: ProductDto;
@@ -16,9 +17,12 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addItem, isCartLoading } = useCart();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const [isAdding, setIsAdding] = React.useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = React.useState(false);
 
   const imageUrl = resolveMediaUrl(product.imageUrl);
+  const isInFavorites = isFavorite(product.id);
   
   // Logic: Check if there is a discount (oldPrice exists and is greater than current price)
   const hasDiscount = (product.oldPrice ?? 0) > product.price;
@@ -37,6 +41,30 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             -{discountPercent}%
           </Badge>
         )}
+
+        <button
+          type="button"
+          className={`absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition-colors ${
+            isInFavorites
+              ? "border-primary text-primary"
+              : "border-border text-muted-foreground hover:text-primary"
+          }`}
+          aria-label={isInFavorites ? "Убрать из избранного" : "Добавить в избранное"}
+          aria-pressed={isInFavorites}
+          disabled={isTogglingFavorite}
+          onClick={async () => {
+            setIsTogglingFavorite(true);
+            try {
+              await toggleFavorite(product);
+            } catch {
+              // Ошибку покажем через глобальное состояние избранного
+            } finally {
+              setIsTogglingFavorite(false);
+            }
+          }}
+        >
+          <FiHeart size={16} />
+        </button>
         
         {/* Image */}
         <Link href={`/product/${product.id}`}>

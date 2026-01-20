@@ -5,11 +5,15 @@ import { FiHeart, FiMinus, FiPlus } from "react-icons/fi";
 import { Button } from "../ui/button";
 import { useCart } from "../cart/CartProvider";
 import type { ProductDto } from "features/catalog/types";
+import { useFavorites } from "../favorites/FavoritesProvider";
 
 export function ProductActions({ product }: { product: ProductDto }) {
   const { addItem, isCartLoading } = useCart();
+  const { toggleFavorite, isFavorite } = useFavorites();
   const [qty, setQty] = React.useState(1);
   const [isAdding, setIsAdding] = React.useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = React.useState(false);
+  const isInFavorites = isFavorite(product.id);
 
   const handleAdd = async () => {
     setIsAdding(true);
@@ -52,7 +56,24 @@ export function ProductActions({ product }: { product: ProductDto }) {
       >
         {isAdding ? "Добавляем..." : "В корзину"}
       </Button>
-      <Button variant="outline" size="icon" className="rounded-full">
+      <Button
+        variant="outline"
+        size="icon"
+        className={`rounded-full ${isInFavorites ? "text-primary border-primary" : ""}`}
+        aria-label={isInFavorites ? "Убрать из избранного" : "Добавить в избранное"}
+        aria-pressed={isInFavorites}
+        disabled={isTogglingFavorite}
+        onClick={async () => {
+          setIsTogglingFavorite(true);
+          try {
+            await toggleFavorite(product);
+          } catch {
+            // Ошибку покажем через глобальное состояние избранного
+          } finally {
+            setIsTogglingFavorite(false);
+          }
+        }}
+      >
         <FiHeart size={18} />
       </Button>
     </div>

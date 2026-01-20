@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Body, Controller, Get, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
@@ -61,6 +61,11 @@ class LoginDto {
 
   @IsString()
   password: string
+}
+
+class FavoriteDto {
+  @IsString()
+  productId: string
 }
 
 // 3) Guard is now in jwt.guard.ts file
@@ -182,5 +187,65 @@ export class AuthController {
         items: { select: { title: true, qty: true, price: true, amount: true } },
       },
     })
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('me/favorites')
+  async myFavorites(@Req() req: any) {
+    const userId = req.user?.sub as string
+    if (!userId) throw new UnauthorizedException('Invalid token payload')
+
+    const favorites = await this.prisma.favorite.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        product: {
+          include: {
+            category: { select: { id: true, name: true, slug: true } },
+          },
+        },
+      },
+    })
+
+    return favorites.map((favorite) => favorite.product)
+  }
+
+  @UseGuards(JwtGuard)
+  @Post('me/favorites')
+  async addFavorite(@Req() req: any, @Body() dto: FavoriteDto) {
+    const userId = req.user?.sub as string
+    if (!userId) throw new UnauthorizedException('Invalid token payload')
+
+    const product = await this.prisma.product.findUnique({
+      where: { id: dto.productId },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+      },
+    })
+
+    if (!product || !product.isActive) {
+      throw new NotFoundException('Product not found')
+    }
+
+    await this.prisma.favorite.upsert({
+      where: { userId_productId: { userId, productId: dto.productId } },
+      update: {},
+      create: { userId, productId: dto.productId },
+    })
+
+    return product
+  }
+
+  @UseGuards(JwtGuard)
+  @Delete('me/favorites/:productId')
+  async removeFavorite(@Req() req: any, @Param('productId') productId: string) {
+    const userId = req.user?.sub as string
+    if (!userId) throw new UnauthorizedException('Invalid token payload')
+
+    await this.prisma.favorite.deleteMany({
+      where: { userId, productId },
+    })
+
+    return { ok: true }
   }
 }

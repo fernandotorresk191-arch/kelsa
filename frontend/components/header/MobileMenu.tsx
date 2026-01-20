@@ -15,14 +15,19 @@ import {
 import { CategoryDto } from "features/catalog/types";
 import { useEffect, useState } from "react";
 import { catalogApi } from "features/catalog/api";
+import { useSettlement } from "../settlement/SettlementProvider";
+import { useAuth } from "../auth/AuthProvider";
+import { AuthDialog } from "../auth/AuthDialog";
 
 type MobileMenuProps = {
   onClose: () => void;
 };
 
 const MobileMenu = ({ onClose }: MobileMenuProps) => {
-
   const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const [authOpen, setAuthOpen] = useState(false);
+  const { selectedSettlement, setDialogOpen } = useSettlement();
+  const { user } = useAuth();
 
   useEffect(() => {
     let mounted = true;
@@ -75,9 +80,15 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
           type="button"
           className="flex items-center gap-2 text-sm"
           aria-label="Указать адрес доставки"
+          onClick={() => {
+            setDialogOpen(true);
+            onClose();
+          }}
         >
           <FiMapPin className="text-primary" />
-          <span>Укажите адрес доставки</span>
+          <span>
+            {selectedSettlement ? selectedSettlement.title : "Укажите адрес доставки"}
+          </span>
         </button>
 
         <div className="grid grid-cols-2 gap-3">
@@ -93,14 +104,15 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button
-            type="button"
+          <Link
+            href="/account?tab=favorites"
             className="flex items-center gap-2 text-sm"
             aria-label="Избранное"
+            onClick={onClose}
           >
             <FiHeart size={18} />
             <span>Избранное</span>
-          </button>
+          </Link>
           <button
             type="button"
             className="flex items-center gap-2 text-sm"
@@ -111,16 +123,38 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
           </button>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full justify-center"
-          aria-label="Войти"
-        >
-          <FiUser className="mr-2" size={18} />
-          <span>Войти</span>
-        </Button>
+        {user ? (
+          <Link
+            href="/account"
+            className="w-full justify-center inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent"
+            onClick={onClose}
+          >
+            <FiUser className="mr-2" size={18} />
+            <span>Личный кабинет</span>
+          </Link>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full justify-center"
+            aria-label="Войти"
+            onClick={() => setAuthOpen(true)}
+          >
+            <FiUser className="mr-2" size={18} />
+            <span>Войти</span>
+          </Button>
+        )}
       </div>
+
+      <AuthDialog
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        initialMode="login"
+        onAuthenticated={() => {
+          setAuthOpen(false);
+          onClose();
+        }}
+      />
     </div>
   );
 };
