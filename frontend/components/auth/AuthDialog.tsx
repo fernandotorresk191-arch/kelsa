@@ -13,6 +13,7 @@ import { Input } from "../ui/input";
 import { useAuth } from "./AuthProvider";
 import { useSettlement } from "../settlement/SettlementProvider";
 import type { SettlementCode } from "features/auth/types";
+import { formatRuPhone } from "../../shared/phone/format";
 
 type AuthDialogProps = {
   open: boolean;
@@ -216,12 +217,14 @@ export function AuthDialog({
               <Input
                 required
                 type="tel"
-                placeholder="Телефон"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder="+7 (___) ___-__-__"
                 value={registerForm.phone}
                 onChange={(e) =>
                   setRegisterForm((prev) => ({
                     ...prev,
-                    phone: e.target.value,
+                    phone: formatRuPhone(e.target.value),
                   }))
                 }
               />

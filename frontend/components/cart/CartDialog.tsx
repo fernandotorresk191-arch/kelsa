@@ -14,6 +14,7 @@ import { Input } from "../ui/input";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthDialog } from "../auth/AuthDialog";
+import { formatRuPhone } from "../../shared/phone/format";
 
 const currency = (value: number) => `${value} ₽`;
 
@@ -65,7 +66,9 @@ export function CartDialog() {
     lastUserIdRef.current = user.id;
 
     setCustomerName((prev) => (isUserChanged || !prev ? user.name : prev));
-    setPhone((prev) => (isUserChanged || !prev ? user.phone : prev));
+    setPhone((prev) =>
+      isUserChanged || !prev ? formatRuPhone(user.phone) : prev,
+    );
     setAddressLine((prev) =>
       isUserChanged || !prev ? user.addressLine : prev,
     );
@@ -91,7 +94,7 @@ export function CartDialog() {
 
       if (user) {
         setCustomerName(user.name);
-        setPhone(user.phone);
+        setPhone(formatRuPhone(user.phone));
         setAddressLine(user.addressLine);
       } else {
         setCustomerName("");
@@ -287,34 +290,72 @@ export function CartDialog() {
             </div>
           )}
 
-          <Input
-            placeholder="Имя"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            required
-          />
-          <Input
-            placeholder="Телефон"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            required
-          />
-          <Input
-            placeholder="Адрес доставки"
-            value={addressLine}
-            onChange={(e) => setAddressLine(e.target.value)}
-            required
-          />
+          <div className="space-y-1">
+            <label className="text-sm font-medium" htmlFor="cart-name">
+              Имя
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Как к вам обращаться при доставке.
+            </p>
+            <Input
+              id="cart-name"
+              placeholder="Иван"
+              autoComplete="name"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium" htmlFor="cart-phone">
+              Телефон
+            </label>
+            <Input
+              id="cart-phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              placeholder="+7 (___) ___-__-__"
+              value={phone}
+              onChange={(e) => setPhone(formatRuPhone(e.target.value))}
+              required
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium" htmlFor="cart-address">
+              Адрес доставки
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Улица, дом, подъезд, квартира.
+            </p>
+            <Input
+              id="cart-address"
+              autoComplete="street-address"
+              placeholder="ул. Ленина, 10, кв. 5"
+              value={addressLine}
+              onChange={(e) => setAddressLine(e.target.value)}
+              required
+            />
+          </div>
 
-          <textarea
-            placeholder="Комментарий (необязательно)"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            className={cn(
-              "min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              "disabled:cursor-not-allowed disabled:opacity-50"
-            )}
-          />
+          <div className="space-y-1">
+            <label className="text-sm font-medium" htmlFor="cart-comment">
+              Комментарий
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Пожелания курьеру, код домофона или время.
+            </p>
+            <textarea
+              id="cart-comment"
+              placeholder="Например, позвоните за 10 минут"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              className={cn(
+                "min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "disabled:cursor-not-allowed disabled:opacity-50"
+              )}
+            />
+          </div>
 
           <Button
             type="submit"
@@ -343,7 +384,9 @@ export function CartDialog() {
         onAuthenticated={() => setAuthDialogOpen(false)}
         onRegisteredContacts={({ name, phone: registeredPhone, addressLine }) => {
           if (name && !customerName) setCustomerName(name);
-          if (registeredPhone && !phone) setPhone(registeredPhone);
+          if (registeredPhone && !phone) {
+            setPhone(formatRuPhone(registeredPhone));
+          }
           if (addressLine && !addressLine) setAddressLine(addressLine);
         }}
       />
