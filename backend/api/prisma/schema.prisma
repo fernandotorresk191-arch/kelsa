@@ -29,6 +29,8 @@ model Product {
 
   price       Int      // в копейках/центах — лучше так
   oldPrice    Int?
+  stock       Int      @default(0) // остатки товара на складе
+  cellNumber  String?  // номер ячейки на складе (например: A1, B2, C3)
 
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -111,6 +113,7 @@ model Order {
   updatedAt    DateTime @updatedAt
 
   items        OrderItem[]
+  statusHistory OrderStatusHistory[]
 }
 
 model OrderItem {
@@ -145,6 +148,16 @@ enum OrderStatus {
   ON_THE_WAY
   DELIVERED
   CANCELED
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  status    OrderStatus
+  comment   String?
+  createdAt DateTime    @default(now())
+
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
 }
 
 

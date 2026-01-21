@@ -1,6 +1,17 @@
 import { API_URL } from "./config";
 import { getStoredAccessToken } from "../auth/token";
 
+const ADMIN_TOKEN_KEY = "admin_token";
+
+function getAdminToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export type ApiError = {
   status: number;
   message: string;
@@ -24,7 +35,10 @@ async function apiRequest<T>(
     "Content-Type": "application/json",
   });
 
-  const token = getStoredAccessToken();
+  // Для admin API используем admin токен, иначе пользовательский
+  const isAdminPath = path.includes('/admin');
+  const token = isAdminPath ? getAdminToken() : getStoredAccessToken();
+  
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
   }
@@ -87,3 +101,23 @@ export function apiDelete<T>(
 ) {
   return apiRequest<T>(path, { ...init, method: "DELETE" });
 }
+
+export function apiPut<T, B = unknown>(
+  path: string,
+  body?: B,
+  init?: Omit<RequestInit, "method" | "body">
+) {
+  return apiRequest<T>(path, {
+    ...init,
+    method: "PUT",
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+}
+
+export const http = {
+  get: apiGet,
+  post: apiPost,
+  patch: apiPatch,
+  put: apiPut,
+  delete: apiDelete,
+};
