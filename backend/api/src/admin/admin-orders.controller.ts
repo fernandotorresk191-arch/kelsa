@@ -12,6 +12,7 @@ import {
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { EventsService } from '../events/events.service';
 
 enum OrderStatus {
   NEW = 'NEW',
@@ -60,7 +61,10 @@ interface OrderData {
 @Controller('v1/admin/orders')
 @UseGuards(JwtGuard)
 export class AdminOrdersController {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventsService: EventsService,
+  ) {}
 
   private checkAdminRole(req: AuthRequest) {
     if (req.user.role !== 'admin' && req.user.role !== 'manager') {
@@ -144,9 +148,25 @@ export class AdminOrdersController {
     }
 
     // Обновляем статус заказа
-    await this.prisma.order.update({
+    const updatedOrder = await this.prisma.order.update({
       where: { id },
       data: { status: dto.status },
+    });
+
+    // Отправляем событие об обновлении заказа через SSE
+    // userId нужен для фильтрации событий для конкретного клиента
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_UPDATED',
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerName: updatedOrder.customerName,
+        phone: updatedOrder.phone,
+        totalAmount: updatedOrder.totalAmount,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+      },
+      userId: updatedOrder.userId,
     });
 
     return { success: true };

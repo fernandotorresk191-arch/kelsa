@@ -15,7 +15,14 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   imageUrl    String?
+  
+  // Поддержка подкатегорий (иерархическая структура)
+  parentId    String?
+  parent      Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: Cascade)
+  subcategories Category[] @relation("CategoryToSubcategory")
+  
   products  Product[]
+  productsAsSubcategory Product[] @relation("ProductSubcategory")
 }
 
 model Product {
@@ -34,6 +41,11 @@ model Product {
 
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  // Подкатегория (необязательная)
+  subcategoryId String?
+  subcategory   Category? @relation("ProductSubcategory", fields: [subcategoryId], references: [id], onDelete: SetNull)
+  
   cartItems   CartItem[]
   orderItems  OrderItem[]
   favorites   Favorite[]

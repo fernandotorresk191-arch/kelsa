@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState, useCallback } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { AuthDialog } from "../../components/auth/AuthDialog";
@@ -12,6 +12,7 @@ import type { UserOrder } from "features/auth/types";
 import type { OrderStatus } from "features/orders/types";
 import { useFavorites } from "../../components/favorites/FavoritesProvider";
 import ProductCard from "../../components/product/ProductCard";
+import { useMyOrdersSSE, OrderStatusEvent } from "@/features/orders/useMyOrdersSSE";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   NEW: "Новый",
@@ -54,6 +55,34 @@ function AccountPageContent() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
+  const [updatedOrderIds, setUpdatedOrderIds] = useState<Set<number>>(new Set());
+
+  // Обработчик обновления статуса заказа через SSE
+  const handleOrderUpdated = useCallback((orderData: OrderStatusEvent['order']) => {
+    setOrders((prev) =>
+      prev.map((order) =>
+        order.orderNumber === orderData.orderNumber
+          ? { ...order, status: orderData.status as OrderStatus }
+          : order
+      )
+    );
+    
+    // Подсветка обновленного заказа
+    setUpdatedOrderIds((prev) => new Set(prev).add(orderData.orderNumber));
+    setTimeout(() => {
+      setUpdatedOrderIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(orderData.orderNumber);
+        return newSet;
+      });
+    }, 3000);
+  }, []);
+
+  // SSE подключение для обновлений заказов
+  useMyOrdersSSE({
+    onOrderUpdated: handleOrderUpdated,
+    enabled: !!user,
+  });
 
   useEffect(() => {
     if (!user) return;
@@ -104,19 +133,28 @@ function AccountPageContent() {
         {orders.map((order) => (
           <div
             key={order.orderNumber}
-            className="rounded-lg border p-4 shadow-sm bg-white"
+            className={`rounded-lg border p-4 shadow-sm transition-all duration-500 ${
+              updatedOrderIds.has(order.orderNumber)
+                ? "bg-green-50 border-green-300 ring-2 ring-green-200"
+                : "bg-white"
+            }`}
           >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
                   Заказ №{order.orderNumber}
+                  {updatedOrderIds.has(order.orderNumber) && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 animate-pulse">
+                      Обновлён
+                    </span>
+                  )}
                 </div>
                 <div className="text-xs text-muted-foreground">
                   {formatDate(order.createdAt)}
                 </div>
               </div>
               <Badge
-                className={`${STATUS_STYLES[order.status]} border`}
+                className={`${STATUS_STYLES[order.status]} border transition-all duration-300`}
               >
                 {STATUS_LABELS[order.status]}
               </Badge>
@@ -140,7 +178,7 @@ function AccountPageContent() {
         ))}
       </div>
     );
-  }, [error, loading, orders]);
+  }, [error, loading, orders, updatedOrderIds]);
 
   const favoritesContent = useMemo(() => {
     if (favoritesLoading) {

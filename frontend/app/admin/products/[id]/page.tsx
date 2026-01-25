@@ -23,6 +23,7 @@ export default function AdminProductDetailPage() {
     imageUrl: '',
     isActive: true,
     categoryId: '',
+    subcategoryId: '',
     cellNumber: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -62,6 +63,7 @@ export default function AdminProductDetailPage() {
           imageUrl: productData.imageUrl || '',
           isActive: productData.isActive,
           categoryId: productData.categoryId || '',
+          subcategoryId: productData.subcategoryId || '',
           cellNumber: productData.cellNumber || '',
         });
       } catch (error) {
@@ -89,9 +91,17 @@ export default function AdminProductDetailPage() {
         imageUrl: formData.imageUrl,
         isActive: formData.isActive,
         categoryId: formData.categoryId || undefined,
+        subcategoryId: formData.subcategoryId || undefined,
         cellNumber: formData.cellNumber || undefined,
       });
-      router.push('/admin/products');
+      
+      // Возвращаемся с сохранением фильтров из URL
+      const currentUrl = new URL(window.location.href);
+      const params = new URLSearchParams(currentUrl.search);
+      const returnUrl = params.toString() 
+        ? `/admin/products?${params.toString()}` 
+        : '/admin/products';
+      router.push(returnUrl);
     } catch (error) {
       console.error('Failed to update product:', error);
     } finally {
@@ -150,23 +160,46 @@ export default function AdminProductDetailPage() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700 mb-1">
-                  Категория
-                </label>
-                <select
-                  id="edit-category"
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Без категории</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-category" className="block text-sm font-medium text-gray-700 mb-1">
+                    Категория *
+                  </label>
+                  <select
+                    id="edit-category"
+                    value={formData.categoryId}
+                    onChange={(e) => setFormData({ ...formData, categoryId: e.target.value, subcategoryId: '' })}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Выберите категорию</option>
+                    {categories.filter(c => !c.parentId).map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label htmlFor="edit-subcategory" className="block text-sm font-medium text-gray-700 mb-1">
+                    Подкатегория
+                  </label>
+                  <select
+                    id="edit-subcategory"
+                    value={formData.subcategoryId}
+                    onChange={(e) => setFormData({ ...formData, subcategoryId: e.target.value })}
+                    disabled={!formData.categoryId || categories.filter(c => c.parentId === formData.categoryId).length === 0}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
+                  >
+                    <option value="">Без подкатегории</option>
+                    {categories.filter(c => c.parentId === formData.categoryId).map((subcategory) => (
+                      <option key={subcategory.id} value={subcategory.id}>
+                        {subcategory.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>

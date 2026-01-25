@@ -8,10 +8,14 @@ export class JwtGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const req = context.switchToHttp().getRequest()
     const auth = req.headers?.authorization as string | undefined
-    const token = auth?.startsWith('Bearer ') ? auth.slice(7) : null
+    
+    // Поддержка токена через query параметр для SSE соединений
+    const queryToken = req.query?.token as string | undefined
+    const token = auth?.startsWith('Bearer ') ? auth.slice(7) : queryToken || null
     
     console.log('=== JWT Guard Debug ===')
     console.log('Authorization header:', auth)
+    console.log('Query token:', queryToken ? 'present' : 'absent')
     console.log('Extracted token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN')
     
     if (!token) throw new UnauthorizedException('No token')

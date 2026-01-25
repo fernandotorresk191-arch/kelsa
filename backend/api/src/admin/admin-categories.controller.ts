@@ -34,6 +34,10 @@ class CreateCategoryDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  parentId?: string;
 }
 
 class UpdateCategoryDto {
@@ -56,6 +60,10 @@ class UpdateCategoryDto {
   @IsOptional()
   @IsString()
   imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  parentId?: string;
 }
 
 @Controller('v1/admin/categories')
@@ -74,28 +82,58 @@ export class AdminCategoriesController {
   async getCategories(
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '50',
-    @Req() req: any,
+    @Query('parentId') parentId?: string,
+    @Req() req?: any,
   ) {
     this.checkAdminRole(req);
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
+    // Если parentId явно указан (не undefined), фильтруем по нему
+    // Если parentId не указан, возвращаем все категории для админки
+    const where = parentId !== undefined 
+      ? (parentId === 'null' ? { parentId: null } : { parentId })
+      : {};
+
     const [categories, total] = await Promise.all([
       this.prisma.category.findMany({
+        where,
         skip,
         take: parseInt(limit),
         orderBy: { sort: 'asc' },
         include: {
+          parent: true,
           _count: {
-            select: { products: true },
+            select: { subcategories: true },
           },
         },
       }),
-      this.prisma.category.count(),
+      this.prisma.category.count({ where }),
     ]);
 
+    // Подсчитываем товары с учетом subcategoryId для подкатегорий
+    const categoriesWithProductCount = await Promise.all(
+      categories.map(async (category) => {
+        // Для подкатегорий считаем товары где subcategoryId = category.id
+        // Для корневых категорий считаем товары где categoryId = category.id
+        const productCount = await this.prisma.product.count({
+          where: category.parentId
+            ? { subcategoryId: category.id }
+            : { categoryId: category.id },
+        });
+
+        return {
+          ...category,
+          _count: {
+            ...category._count,
+            products: productCount,
+          },
+        };
+      }),
+    );
+
     return {
-      data: categories,
+      data: categoriesWithProductCount,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -128,8 +166,10 @@ export class AdminCategoriesController {
     return this.prisma.category.findUnique({
       where: { id },
       include: {
+        parent: true,
+        subcategories: true,
         _count: {
-          select: { products: true },
+          select: { products: true, subcategories: true },
         },
       },
     });
@@ -139,22 +179,38 @@ export class AdminCategoriesController {
   async createCategory(@Body() dto: CreateCategoryDto, @Req() req: { user?: { role: string } }) {
     this.checkAdminRole(req);
 
-    // Проверяем уникальность slug
+    let finalSlug = dto.slug;
+
+    // Если указан parentId, проверяем что родительская категория существует
+    // и формируем slug с префиксом родителя
+    if (dto.parentId) {
+      const parent = await this.prisma.category.findUnique({
+        where: { id: dto.parentId },
+      });
+      if (!parent) {
+        throw new BadRequestException('Родительская категория не найдена');
+      }
+      // Формируем slug: parent-slug/subcategory-slug
+      finalSlug = `${parent.slug}/${dto.slug}`;
+    }
+
+    // Проверяем уникальность итогового slug
     const existing = await this.prisma.category.findUnique({
-      where: { slug: dto.slug },
+      where: { slug: finalSlug },
     });
 
     if (existing) {
-      throw new BadRequestException(`Категория с таким slug уже существует: "${dto.slug}". Измените slug.`);
+      throw new BadRequestException(`Категория с таким slug уже существует: "${finalSlug}". Измените slug.`);
     }
 
     return this.prisma.category.create({
       data: {
         name: dto.name,
-        slug: dto.slug,
+        slug: finalSlug,
         sort: dto.sort ?? 0,
         isActive: dto.isActive ?? true,
         imageUrl: dto.imageUrl,
+        parentId: dto.parentId || null,
       },
     });
   }
@@ -167,14 +223,55 @@ export class AdminCategoriesController {
   ) {
     this.checkAdminRole(req);
 
+    // Получаем текущую категорию
+    const currentCategory = await this.prisma.category.findUnique({
+      where: { id },
+      include: { parent: true },
+    });
+
+    if (!currentCategory) {
+      throw new BadRequestException('Категория не найдена');
+    }
+
+    let finalSlug = dto.slug || currentCategory.slug;
+    let parentId = dto.parentId !== undefined ? dto.parentId : currentCategory.parentId;
+
+    // Если указан parentId, проверяем что родительская категория существует
+    if (parentId) {
+      const parent = await this.prisma.category.findUnique({
+        where: { id: parentId },
+      });
+      if (!parent) {
+        throw new BadRequestException('Родительская категория не найдена');
+      }
+      // Проверяем, что категория не пытается стать потомком самой себя
+      if (parentId === id) {
+        throw new BadRequestException('Категория не может быть родителем самой себя');
+      }
+
+      // Если меняется slug или parentId, пересоздаем slug с префиксом
+      if (dto.slug || dto.parentId !== undefined) {
+        const baseSlug = dto.slug || currentCategory.slug.split('/').pop() || currentCategory.slug;
+        finalSlug = `${parent.slug}/${baseSlug}`;
+      }
+    } else {
+      // Если убираем родителя, slug должен быть без префикса
+      if (dto.slug) {
+        finalSlug = dto.slug;
+      } else if (currentCategory.parentId && dto.parentId === null) {
+        // Убираем префикс из существующего slug
+        finalSlug = currentCategory.slug.split('/').pop() || currentCategory.slug;
+      }
+    }
+
     // Проверяем уникальность slug, если он меняется
-    if (dto.slug) {
+    if (finalSlug !== currentCategory.slug) {
       const existing = await this.prisma.category.findUnique({
-        where: { slug: dto.slug },
+        where: { slug: finalSlug },
       });
 
       if (existing && existing.id !== id) {
-        throw new BadRequestException(`Категория с таким slug уже существует: "${dto.slug}". Измените slug.`);
+        throw new BadRequestException(`Категория с таким slug уже существует: "${finalSlug}". Измените slug.`);
       }
     }
 
@@ -182,10 +279,11 @@ export class AdminCategoriesController {
       where: { id },
       data: {
         ...(dto.name && { name: dto.name }),
-        ...(dto.slug && { slug: dto.slug }),
+        slug: finalSlug,
         ...(dto.sort !== undefined && { sort: dto.sort }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.imageUrl !== undefined && { imageUrl: dto.imageUrl }),
+        ...(dto.parentId !== undefined && { parentId: parentId || null }),
       },
     });
   }
@@ -204,6 +302,18 @@ export class AdminCategoriesController {
       await this.prisma.product.updateMany({
         where: { categoryId: id },
         data: { categoryId: null },
+      });
+    }
+
+    // Проверяем товары с этой подкатегорией
+    const productsWithSubcategory = await this.prisma.product.count({
+      where: { subcategoryId: id },
+    });
+
+    if (productsWithSubcategory > 0) {
+      await this.prisma.product.updateMany({
+        where: { subcategoryId: id },
+        data: { subcategoryId: null },
       });
     }
 

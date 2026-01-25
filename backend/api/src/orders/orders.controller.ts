@@ -16,10 +16,14 @@ import {
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
 import { CreateOrderDto } from './dto';
+import { EventsService } from '../events/events.service';
 
 @Controller('v1/orders')
 export class OrdersController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly eventsService: EventsService,
+  ) {}
 
   @UseGuards(JwtGuard)
   @Post()
@@ -47,8 +51,8 @@ export class OrdersController {
     );
 
     // 4. Выполняем транзакцию: создаем заказ и обновляем статус корзины
-    return this.prisma.$transaction(async (tx) => {
-      const createdOrder = await tx.order.create({
+    const createdOrder = await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.create({
         data: {
           cartId: cart.id,
           cartToken: cart.token,
@@ -77,8 +81,24 @@ export class OrdersController {
         data: { status: 'CHECKED_OUT' },
       });
 
-      return createdOrder;
+      return order;
     });
+
+    // 5. Отправляем событие о новом заказе через SSE
+    this.eventsService.emitOrderEvent({
+      type: 'NEW_ORDER',
+      order: {
+        id: createdOrder.id,
+        orderNumber: createdOrder.orderNumber,
+        customerName: createdOrder.customerName,
+        phone: createdOrder.phone,
+        totalAmount: createdOrder.totalAmount,
+        status: createdOrder.status,
+        createdAt: createdOrder.createdAt,
+      },
+    });
+
+    return createdOrder;
   }
 
   @Get(':orderNumber')

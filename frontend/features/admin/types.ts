@@ -85,10 +85,16 @@ export type Product = {
   oldPrice?: number;
   stock: number;
   categoryId?: string;
+  subcategoryId?: string;
   cellNumber?: string;
   createdAt: string;
   updatedAt: string;
   category?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  subcategory?: {
     id: string;
     name: string;
     slug: string;
@@ -102,6 +108,13 @@ export type Category = {
   sort: number;
   isActive: boolean;
   imageUrl?: string;
+  parentId?: string;
+  parent?: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  subcategories?: Category[];
 };
 
 export type DashboardStats = {

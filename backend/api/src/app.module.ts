@@ -7,6 +7,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/order.module';
 import { AdminModule } from './admin/admin.module';
+import { EventsModule } from './events/events.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { JwtGuard } from './auth/jwt.guard';
@@ -21,6 +22,7 @@ import { JwtGuard } from './auth/jwt.guard';
     CartModule,
     OrdersModule,
     AdminModule,
+    EventsModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

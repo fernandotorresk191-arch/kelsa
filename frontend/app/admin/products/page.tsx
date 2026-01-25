@@ -3,12 +3,16 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { adminProductsApi, adminCategoriesApi } from '@/features/admin/api';
 import { Product, Category } from '@/features/admin/types';
 
 type CategoryWithCount = Category & { _count: { products: number } };
 
 export default function AdminProductsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -16,6 +20,7 @@ export default function AdminProductsPage() {
   const [total, setTotal] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
 
@@ -33,10 +38,12 @@ export default function AdminProductsPage() {
   const fetchProducts = async () => {
     try {
       setIsLoading(true);
+      // Используем подкатегорию если выбрана, иначе основную категорию
+      const categoryToFilter = selectedSubcategory || selectedCategory;
       const response = await adminProductsApi.getProducts(
         page,
         limit,
-        selectedCategory || undefined,
+        categoryToFilter || undefined,
         searchQuery || undefined
       );
       setProducts(response.data as unknown as Product[]);
@@ -52,20 +59,56 @@ export default function AdminProductsPage() {
     fetchCategories();
   }, []);
 
+  // Отдельный useEffect для восстановления фильтров из URL и загрузки товаров
   useEffect(() => {
-    fetchProducts();
+    const categoryParam = searchParams.get('category');
+    const subcategoryParam = searchParams.get('subcategory');
+    const searchParam = searchParams.get('search');
+    
+    const newCategory = categoryParam || '';
+    const newSubcategory = subcategoryParam || '';
+    const newSearch = searchParam || '';
+    
+    setSelectedCategory(newCategory);
+    setSelectedSubcategory(newSubcategory);
+    setSearchQuery(newSearch);
+    setSearchInput(newSearch);
+    
+    // Загружаем товары с актуальными параметрами из URL
+    const loadProducts = async () => {
+      try {
+        setIsLoading(true);
+        const categoryToFilter = newSubcategory || newCategory;
+        const response = await adminProductsApi.getProducts(
+          page,
+          limit,
+          categoryToFilter || undefined,
+          newSearch || undefined
+        );
+        setProducts(response.data as unknown as Product[]);
+        setTotal(response.pagination.total);
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, selectedCategory, searchQuery]);
+  }, [searchParams, page]);
 
   const handleSearch = () => {
     setSearchQuery(searchInput);
     setPage(1);
+    updateURL(selectedCategory, selectedSubcategory, searchInput);
   };
 
   const handleClearSearch = () => {
     setSearchInput('');
     setSearchQuery('');
     setPage(1);
+    updateURL(selectedCategory, selectedSubcategory, '');
   };
 
   const handleDelete = async (id: string) => {
@@ -81,8 +124,32 @@ export default function AdminProductsPage() {
 
   const handleCategoryFilter = (categoryId: string) => {
     setSelectedCategory(categoryId);
+    setSelectedSubcategory(''); // Сбрасываем подкатегорию при смене категории
     setPage(1);
+    updateURL(categoryId, '', searchQuery);
   };
+
+  const handleSubcategoryFilter = (subcategoryId: string) => {
+    setSelectedSubcategory(subcategoryId);
+    setPage(1);
+    updateURL(selectedCategory, subcategoryId, searchQuery);
+  };
+
+  const updateURL = (category: string, subcategory: string, search: string) => {
+    const params = new URLSearchParams();
+    if (category) params.set('category', category);
+    if (subcategory) params.set('subcategory', subcategory);
+    if (search) params.set('search', search);
+    
+    const newURL = params.toString() ? `/admin/products?${params.toString()}` : '/admin/products';
+    router.push(newURL, { scroll: false });
+  };
+
+  // Получаем корневые категории и подкатегории
+  const rootCategories = categories.filter(cat => !cat.parentId);
+  const subcategories = selectedCategory 
+    ? categories.filter(cat => cat.parentId === selectedCategory)
+    : [];
 
   const totalPages = Math.ceil(total / limit);
 
@@ -146,31 +213,67 @@ export default function AdminProductsPage() {
 
       {/* Фильтр по категориям */}
       <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex items-center gap-4 flex-wrap">
-          <span className="text-sm font-medium text-gray-700">Фильтр по категории:</span>
-          <button
-            onClick={() => handleCategoryFilter('')}
-            className={`px-3 py-1.5 rounded-lg text-sm transition ${
-              selectedCategory === ''
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Все
-          </button>
-          {categories.map((category) => (
+        <div className="space-y-3">
+          {/* Корневые категории */}
+          <div className="flex items-center gap-4 flex-wrap">
+            <span className="text-sm font-medium text-gray-700">Фильтр по категории:</span>
             <button
-              key={category.id}
-              onClick={() => handleCategoryFilter(category.id)}
+              onClick={() => handleCategoryFilter('')}
               className={`px-3 py-1.5 rounded-lg text-sm transition ${
-                selectedCategory === category.id
+                selectedCategory === ''
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              {category.name} ({category._count.products})
+              Все
             </button>
-          ))}
+            {rootCategories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => handleCategoryFilter(category.id)}
+                className={`px-3 py-1.5 rounded-lg text-sm transition ${
+                  selectedCategory === category.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {category.name} ({category._count.products})
+              </button>
+            ))}
+          </div>
+
+          {/* Подкатегории (теги) */}
+          {selectedCategory && subcategories.length > 0 && (
+            <div className="flex items-start gap-3 pt-2 border-t border-gray-200">
+              <span className="text-sm font-medium text-gray-600 mt-1.5">Подкатегории:</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={() => handleSubcategoryFilter('')}
+                  className={`px-3 py-1 rounded-full text-sm transition ${
+                    selectedSubcategory === ''
+                      ? 'bg-green-600 text-white'
+                      : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                  }`}
+                >
+                  Все из категории
+                </button>
+                {subcategories.map((subcategory) => (
+                  <button
+                    key={subcategory.id}
+                    onClick={() => handleSubcategoryFilter(subcategory.id)}
+                    className={`px-3 py-1 rounded-full text-sm transition flex items-center gap-1 ${
+                      selectedSubcategory === subcategory.id
+                        ? 'bg-green-600 text-white'
+                        : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                    }`}
+                  >
+                    <span>{subcategory.name}</span>
+                    <span className="text-xs opacity-75">({subcategory._count.products})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -215,9 +318,20 @@ export default function AdminProductsPage() {
                       </td>
                       <td className="px-6 py-4">
                         {product.category ? (
-                          <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-sm">
-                            {product.category.name}
-                          </span>
+                          <div className="space-y-1">
+                            <div>
+                              <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 text-sm">
+                                {product.category.name}
+                              </span>
+                            </div>
+                            {product.subcategory && (
+                              <div className="pl-1">
+                                <span className="px-2 py-1 rounded bg-yellow-50 text-yellow-700 text-sm">
+                                  ↳ {product.subcategory.name}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-gray-400 text-sm">—</span>
                         )}
@@ -246,7 +360,15 @@ export default function AdminProductsPage() {
                       <td className="px-6 py-4 text-sm">
                         <div className="flex gap-2">
                           <Link
-                            href={`/admin/products/${product.id}`}
+                            href={`/admin/products/${product.id}${
+                              selectedCategory || selectedSubcategory || searchQuery
+                                ? `?${new URLSearchParams({
+                                    ...(selectedCategory && { category: selectedCategory }),
+                                    ...(selectedSubcategory && { subcategory: selectedSubcategory }),
+                                    ...(searchQuery && { search: searchQuery }),
+                                  }).toString()}`
+                                : ''
+                            }`}
                             className="text-blue-600 hover:text-blue-800 font-medium"
                           >
                             Редактировать
@@ -304,11 +426,16 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
     stock: '',
     imageUrl: '',
     categoryId: '',
+    subcategoryId: '',
     cellNumber: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
+
+  // Получаем список подкатегорий для выбранной категории
+  const subcategories = categories.filter(c => c.parentId === formData.categoryId);
+  const rootCategories = categories.filter(c => !c.parentId);
 
   // Автогенерация slug из названия
   const generateSlug = (name: string) => {
@@ -352,6 +479,13 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
       setError('Исправьте ошибки в форме перед сохранением.');
       return;
     }
+
+    // Проверяем, что выбрана категория
+    if (!formData.categoryId) {
+      setError('Категория обязательна для заполнения');
+      return;
+    }
+
     setIsSubmitting(true);
     setError(null);
 
@@ -360,7 +494,8 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
         ...formData,
         price: Math.round(parseFloat(formData.price)),
         stock: parseInt(formData.stock) || 0,
-        categoryId: formData.categoryId || undefined,
+        categoryId: formData.categoryId,
+        subcategoryId: formData.subcategoryId || undefined,
         cellNumber: formData.cellNumber || undefined,
         isActive: true,
       } as unknown as Parameters<typeof adminProductsApi.createProduct>[0]);
@@ -435,23 +570,54 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
           </div>
         </div>
 
-        <div>
-          <label htmlFor="product-category" className="block text-sm font-medium text-gray-700 mb-1">
-            Категория
-          </label>
-          <select
-            id="product-category"
-            value={formData.categoryId}
-            onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-          >
-            <option value="">Без категории</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="product-category" className="block text-sm font-medium text-gray-700 mb-1">
+              Категория *
+            </label>
+            <select
+              id="product-category"
+              value={formData.categoryId}
+              onChange={(e) => setFormData({ ...formData, categoryId: e.target.value, subcategoryId: '' })}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Выберите категорию</option>
+              {rootCategories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-sm text-gray-500 mt-1">Обязательное поле</p>
+          </div>
+
+          <div>
+            <label htmlFor="product-subcategory" className="block text-sm font-medium text-gray-700 mb-1">
+              Подкатегория
+            </label>
+            <select
+              id="product-subcategory"
+              value={formData.subcategoryId}
+              onChange={(e) => setFormData({ ...formData, subcategoryId: e.target.value })}
+              disabled={!formData.categoryId || subcategories.length === 0}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Без подкатегории</option>
+              {subcategories.map((subcategory) => (
+                <option key={subcategory.id} value={subcategory.id}>
+                  {subcategory.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-sm text-gray-500 mt-1">
+              {!formData.categoryId 
+                ? 'Сначала выберите категорию' 
+                : subcategories.length === 0 
+                ? 'Нет подкатегорий для выбранной категории'
+                : 'Необязательное поле'}
+            </p>
+          </div>
         </div>
 
         <div>

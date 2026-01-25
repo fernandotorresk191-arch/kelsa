@@ -50,6 +50,10 @@ class CreateProductDto {
   categoryId?: string;
 
   @IsOptional()
+  @IsString()
+  subcategoryId?: string;
+
+  @IsOptional()
   @IsNumber()
   stock: number;
 
@@ -92,6 +96,10 @@ class UpdateProductDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  subcategoryId?: string;
 
   @IsOptional()
   @IsNumber()
@@ -140,15 +148,30 @@ export class AdminProductsController {
     // Формируем условия поиска
     const where: {
       categoryId?: string;
+      subcategoryId?: string;
       OR?: Array<{
         title?: { contains: string; mode: 'insensitive' };
         slug?: { contains: string; mode: 'insensitive' };
         cellNumber?: { contains: string; mode: 'insensitive' };
       }>;
     } = {};
+    
     if (categoryId) {
-      where.categoryId = categoryId;
+      // Проверяем, является ли переданный ID подкатегорией
+      const category = await this.prisma.category.findUnique({
+        where: { id: categoryId },
+        select: { parentId: true },
+      });
+      
+      if (category?.parentId) {
+        // Это подкатегория - фильтруем по subcategoryId
+        where.subcategoryId = categoryId;
+      } else {
+        // Это корневая категория - фильтруем по categoryId
+        where.categoryId = categoryId;
+      }
     }
+    
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
@@ -162,7 +185,7 @@ export class AdminProductsController {
         where,
         skip,
         take: parseInt(limit),
-        include: { category: true },
+        include: { category: true, subcategory: true },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.product.count({ where }),
@@ -204,7 +227,7 @@ export class AdminProductsController {
 
     const product = await this.prisma.product.findUnique({
       where: { id },
-      include: { category: true },
+      include: { category: true, subcategory: true },
     });
 
     if (!product) {
@@ -239,9 +262,10 @@ export class AdminProductsController {
         price: dto.price,
         oldPrice: dto.oldPrice,
         categoryId: dto.categoryId,
+        subcategoryId: dto.subcategoryId,
         cellNumber: dto.cellNumber,
       },
-      include: { category: true },
+      include: { category: true, subcategory: true },
     });
 
     return product;
@@ -276,7 +300,7 @@ export class AdminProductsController {
     const updated = await this.prisma.product.update({
       where: { id },
       data: dto,
-      include: { category: true },
+      include: { category: true, subcategory: true },
     });
 
     return updated;
