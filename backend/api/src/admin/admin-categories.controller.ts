@@ -104,7 +104,10 @@ export class AdminCategoriesController {
         include: {
           parent: true,
           _count: {
-            select: { subcategories: true },
+            select: { 
+              products: true,
+              subcategories: true 
+            },
           },
         },
       }),
@@ -125,8 +128,8 @@ export class AdminCategoriesController {
         return {
           ...category,
           _count: {
-            ...category._count,
             products: productCount,
+            subcategories: category._count.subcategories,
           },
         };
       }),

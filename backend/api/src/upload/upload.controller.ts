@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import {
   Controller,
   Post,
@@ -26,8 +27,9 @@ interface AuthRequest {
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 const PRODUCTS_DIR = join(UPLOAD_DIR, 'products');
 const CATEGORIES_DIR = join(UPLOAD_DIR, 'categories');
+const PROMOTIONS_DIR = join(UPLOAD_DIR, 'promotions');
 
-[UPLOAD_DIR, PRODUCTS_DIR, CATEGORIES_DIR].forEach((dir) => {
+[UPLOAD_DIR, PRODUCTS_DIR, CATEGORIES_DIR, PROMOTIONS_DIR].forEach((dir) => {
   if (!existsSync(dir)) {
     mkdirSync(dir, { recursive: true });
   }
@@ -260,6 +262,102 @@ export class UploadController {
     await this.prisma.category.update({
       where: { id: categoryId },
       data: { imageUrl: null },
+    });
+
+    return { success: true, message: 'Изображение удалено' };
+  }
+
+  @Post('promotion/:promotionId')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: PROMOTIONS_DIR,
+        filename: generateFilename,
+      }),
+      fileFilter: imageFileFilter,
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB max
+      },
+    }),
+  )
+  async uploadPromotionImage(
+    @Param('promotionId') promotionId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthRequest,
+  ) {
+    this.checkAdminRole(req);
+    
+    if (!file) {
+      throw new BadRequestException('Файл не загружен');
+    }
+
+    // Удаляем старый файл если есть
+    const promotion = await this.prisma.promotion.findUnique({
+      where: { id: promotionId },
+      select: { imageUrl: true },
+    });
+    
+    if (promotion?.imageUrl?.startsWith('/uploads/promotions/')) {
+      const oldFilename = basename(promotion.imageUrl);
+      const oldPath = join(PROMOTIONS_DIR, oldFilename);
+      if (existsSync(oldPath)) {
+        try {
+          unlinkSync(oldPath);
+        } catch {
+          // Игнорируем ошибки удаления старого файла
+        }
+      }
+    }
+
+    const imageUrl = `/uploads/promotions/${file.filename}`;
+    
+    // Обновляем imageUrl в БД
+    await this.prisma.promotion.update({
+      where: { id: promotionId },
+      data: { imageUrl },
+    });
+
+    return {
+      imageUrl,
+      filename: file.filename,
+      originalName: file.originalname,
+      size: file.size,
+    };
+  }
+
+  @Delete('promotion/:promotionId')
+  async deletePromotionImage(
+    @Param('promotionId') promotionId: string,
+    @Req() req: AuthRequest,
+  ) {
+    this.checkAdminRole(req);
+    
+    const promotion = await this.prisma.promotion.findUnique({
+      where: { id: promotionId },
+      select: { imageUrl: true },
+    });
+
+    if (!promotion) {
+      throw new BadRequestException('Промо не найдено');
+    }
+
+    if (promotion.imageUrl?.startsWith('/uploads/promotions/')) {
+      const filename = basename(promotion.imageUrl);
+      const filePath = join(PROMOTIONS_DIR, filename);
+      
+      if (existsSync(filePath)) {
+        try {
+          unlinkSync(filePath);
+        } catch {
+          // Игнорируем ошибки удаления файла
+        }
+      }
+    }
+
+    // Очищаем imageUrl в БД
+    await this.prisma.promotion.update({
+      where: { id: promotionId },
+      data: { imageUrl: '' },
     });
 
     return { success: true, message: 'Изображение удалено' };

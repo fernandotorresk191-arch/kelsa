@@ -6,16 +6,12 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "ext.same-assets.com",
+        protocol: "http",
+        hostname: "localhost",
       },
       {
-        protocol: "https",
-        hostname: "cm.samokat.ru",
-      },
-      {
-        protocol: "https",
-        hostname: "damcdn.samokat.ru",
+        protocol: "http",
+        hostname: "127.0.0.1",
       },
     ],
   },

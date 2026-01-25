@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminProductsApi, adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Product, Category } from '@/features/admin/types';

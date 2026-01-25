@@ -141,3 +141,14 @@ export type DashboardStats = {
     };
   }>;
 };
+
+export type Promotion = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  url?: string | null;
+  sort: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};

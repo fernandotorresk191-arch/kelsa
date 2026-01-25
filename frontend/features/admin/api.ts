@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, DashboardStats, Order, Product, Category } from './types';
+import { AdminUser, DashboardStats, Order, Product, Category, Promotion } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -27,7 +27,7 @@ interface ProductsResponse {
 }
 
 interface CategoriesResponse {
-  data: (Category & { _count: { products: number } })[];
+  data: (Category & { _count: { products: number; subcategories: number } })[];
   pagination: {
     page: number;
     limit: number;
@@ -263,11 +263,67 @@ export const adminUploadApi = {
     return http.upload<{ imageUrl: string }>(`/v1/upload/category/${categoryId}`, formData);
   },
 
+  uploadPromotionImage: async (promotionId: string, file: File): Promise<{ imageUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return http.upload<{ imageUrl: string }>(`/v1/upload/promotion/${promotionId}`, formData);
+  },
+
   deleteProductImage: async (productId: string): Promise<{ success: boolean }> => {
     return http.delete<{ success: boolean }>(`/v1/upload/product/${productId}`);
   },
 
   deleteCategoryImage: async (categoryId: string): Promise<{ success: boolean }> => {
     return http.delete<{ success: boolean }>(`/v1/upload/category/${categoryId}`);
+  },
+
+  deletePromotionImage: async (promotionId: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/upload/promotion/${promotionId}`);
+  },
+};
+
+export const adminPromotionsApi = {
+  getPromotions: async (
+    page = 1,
+    limit = 20
+  ): Promise<{
+    data: Promotion[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return http.get<{
+      data: Promotion[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+    }>(`/v1/admin/promotions?${params.toString()}`);
+  },
+
+  getPromotion: async (id: string): Promise<Promotion> => {
+    return http.get<Promotion>(`/v1/admin/promotions/${id}`);
+  },
+
+  createPromotion: async (promotion: Omit<Promotion, 'id' | 'createdAt' | 'updatedAt'>): Promise<Promotion> => {
+    return http.post<Promotion>('/v1/admin/promotions', promotion);
+  },
+
+  updatePromotion: async (
+    id: string,
+    promotion: Partial<Promotion>
+  ): Promise<Promotion> => {
+    return http.put<Promotion>(`/v1/admin/promotions/${id}`, promotion);
+  },
+
+  deletePromotion: async (id: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/admin/promotions/${id}`);
   },
 };

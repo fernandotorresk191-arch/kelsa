@@ -94,6 +94,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               🛍️ Товары
             </Link>
             <Link
+              href="/admin/promotions"
+              className={`block px-4 py-2 rounded-lg transition ${pathname.startsWith('/admin/promotions') ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-200'}`}
+            >
+              🎯 Баннеры
+            </Link>
+            <Link
               href="/admin/analytics"
               className={`block px-4 py-2 rounded-lg transition ${pathname.startsWith('/admin/analytics') ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-200'}`}
             >

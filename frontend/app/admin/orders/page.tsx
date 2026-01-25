@@ -51,6 +51,16 @@ export default function AdminOrdersPage() {
           status: orderData.status as OrderStatus,
           createdAt: orderData.createdAt,
           items: [],
+          userId: '',
+          addressLine: '',
+          updatedAt: orderData.createdAt,
+          user: {
+            id: '',
+            login: '',
+            name: orderData.customerName,
+            phone: orderData.phone,
+          },
+          statusHistory: [],
         };
         return [newOrder, ...prev.slice(0, limit - 1)];
       });

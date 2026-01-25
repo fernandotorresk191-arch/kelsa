@@ -251,7 +251,7 @@ export default function AdminCatalogPage() {
                         </td>
                       </tr>
                       {/* Подкатегории */}
-                      {isExpanded && subcategories.map((subcategory, idx) => (
+                      {isExpanded && subcategories.map((subcategory) => (
                         <tr 
                           key={subcategory.id} 
                           className="hover:bg-blue-100/50 bg-blue-50/40 border-l-4 border-blue-400 animate-in fade-in slide-in-from-top-2 duration-200"
@@ -415,7 +415,7 @@ function CategoryForm({
       if (category) {
         await adminCategoriesApi.updateCategory(category.id, data);
       } else {
-        await adminCategoriesApi.createCategory(data as any);
+        await adminCategoriesApi.createCategory(data as Omit<Category, 'id'>);
       }
       onSuccess();
     } catch (err: unknown) {

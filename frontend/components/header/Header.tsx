@@ -18,6 +18,7 @@ import {
   DialogTrigger,
 } from '../ui/dialog';
 import { CartDialog } from '../cart/CartDialog';
+import { FloatingCartButton } from '../cart/FloatingCartButton';
 import { useCart } from '../cart/CartProvider';
 import { useSettlement } from '../settlement/SettlementProvider';
 import { AuthDialog } from '../auth/AuthDialog';
@@ -230,6 +231,9 @@ const Header = () => {
           </DialogContent>
         )}
       </Dialog>
+
+      {/* Плавающая кнопка корзины */}
+      <FloatingCartButton onClick={() => setCartOpen(true)} />
     </header>
   );
 };
