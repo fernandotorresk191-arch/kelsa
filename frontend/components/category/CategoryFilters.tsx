@@ -188,8 +188,29 @@ export default function CategoryFilters({
           {[...Array(10)].map((_, i) => (
             <div
               key={i}
-              className="bg-muted/50 rounded-lg aspect-square animate-pulse"
-            />
+              className="flex flex-col h-full p-2 rounded-md border bg-card animate-pulse"
+            >
+              {/* Image skeleton */}
+              <div className="relative aspect-square mb-2 rounded-md overflow-hidden bg-gray-200" />
+              
+              {/* Weight skeleton */}
+              <div className="h-3 w-12 rounded bg-gray-200 mb-2" />
+              
+              {/* Title skeleton */}
+              <div className="space-y-2 flex-grow mb-2">
+                <div className="h-3 rounded bg-gray-200" />
+                <div className="h-3 w-3/4 rounded bg-gray-200" />
+              </div>
+              
+              {/* Price and button skeleton */}
+              <div className="flex items-center justify-between pt-2">
+                <div className="space-y-1">
+                  <div className="h-5 w-16 rounded bg-gray-200" />
+                  <div className="h-3 w-12 rounded bg-gray-100" />
+                </div>
+                <div className="h-9 w-9 rounded-full bg-gray-200" />
+              </div>
+            </div>
           ))}
         </div>
       ) : sortedProducts.length > 0 ? (
