@@ -246,3 +246,28 @@ export const adminCategoriesApi = {
     return http.delete<{ success: boolean }>(`/v1/admin/categories/${id}`);
   },
 };
+
+// API для загрузки изображений
+export const adminUploadApi = {
+  uploadProductImage: async (productId: string, file: File): Promise<{ imageUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return http.upload<{ imageUrl: string }>(`/v1/upload/product/${productId}`, formData);
+  },
+
+  uploadCategoryImage: async (categoryId: string, file: File): Promise<{ imageUrl: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    return http.upload<{ imageUrl: string }>(`/v1/upload/category/${categoryId}`, formData);
+  },
+
+  deleteProductImage: async (productId: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/upload/product/${productId}`);
+  },
+
+  deleteCategoryImage: async (categoryId: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/upload/category/${categoryId}`);
+  },
+};

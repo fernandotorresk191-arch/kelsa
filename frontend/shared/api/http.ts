@@ -35,8 +35,8 @@ async function apiRequest<T>(
     "Content-Type": "application/json",
   });
 
-  // Для admin API используем admin токен, иначе пользовательский
-  const isAdminPath = path.includes('/admin');
+  // Для admin/upload API используем admin токен, иначе пользовательский
+  const isAdminPath = path.includes('/admin') || path.includes('/upload');
   const token = isAdminPath ? getAdminToken() : getStoredAccessToken();
   
   if (token) {
@@ -114,10 +114,49 @@ export function apiPut<T, B = unknown>(
   });
 }
 
+// Upload файлов через FormData (без Content-Type - браузер установит автоматически)
+export async function apiUpload<T>(
+  path: string,
+  formData: FormData,
+  init?: Omit<RequestInit, "method" | "body">
+): Promise<T> {
+  const headers = new Headers();
+
+  // Для admin/upload API используем admin токен
+  const isAdminPath = path.includes('/admin') || path.includes('/upload');
+  const token = isAdminPath ? getAdminToken() : getStoredAccessToken();
+  
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  if (init?.headers) {
+    const override = new Headers(init.headers as HeadersInit);
+    override.forEach((value, key) => headers.set(key, value));
+  }
+
+  const res = await fetch(`${API_URL}${path}`, {
+    ...init,
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) throw await parseError(res);
+
+  const contentType = res.headers.get("content-type");
+  if (contentType?.includes("application/json")) {
+    return (await res.json()) as T;
+  }
+
+  return (await res.text()) as unknown as T;
+}
+
 export const http = {
   get: apiGet,
   post: apiPost,
   patch: apiPatch,
   put: apiPut,
   delete: apiDelete,
+  upload: apiUpload,
 };

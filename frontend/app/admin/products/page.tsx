@@ -95,7 +95,6 @@ export default function AdminProductsPage() {
     };
     
     loadProducts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, page]);
 
   const handleSearch = () => {
@@ -683,7 +682,11 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
               value={formData.imageUrl}
               onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder="Добавьте через редактирование"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Загрузка файла доступна после создания товара
+            </p>
           </div>
         </div>
 

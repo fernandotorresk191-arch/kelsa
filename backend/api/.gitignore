@@ -56,3 +56,8 @@ pids
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
 /generated/prisma
+
+# Uploaded files (keep directory structure with .gitkeep)
+/uploads/**/*
+!/uploads
+!/uploads/**/.gitkeep

@@ -8,7 +8,7 @@ export class CatalogController {
   @Get('categories')
   categories() {
     return this.prisma.category.findMany({
-      where: { isActive: true },
+      where: { isActive: true, parentId: null },
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
       select: { id: true, name: true, slug: true, sort: true, imageUrl: true },
     });

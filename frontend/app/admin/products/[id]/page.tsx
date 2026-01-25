@@ -1,10 +1,10 @@
 'use client';
 
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminProductsApi, adminCategoriesApi } from '@/features/admin/api';
+import { adminProductsApi, adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Product, Category } from '@/features/admin/types';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 
 type CategoryWithCount = Category & { _count: { products: number } };
 
@@ -203,27 +203,22 @@ export default function AdminProductDetailPage() {
               </div>
 
               <div>
-                <label htmlFor="edit-image" className="block text-sm font-medium text-gray-700 mb-1">
-                  URL изображения
-                </label>
-                <input
-                  id="edit-image"
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                <ImageUpload
+                  label="Изображение товара"
+                  currentImageUrl={formData.imageUrl || null}
+                  onUpload={async (file) => {
+                    if (!product) throw new Error('Product not found');
+                    const result = await adminUploadApi.uploadProductImage(product.id, file);
+                    setFormData(prev => ({ ...prev, imageUrl: result.imageUrl }));
+                    return result.imageUrl;
+                  }}
+                  onDelete={async () => {
+                    if (!product) throw new Error('Product not found');
+                    await adminUploadApi.deleteProductImage(product.id);
+                    setFormData(prev => ({ ...prev, imageUrl: '' }));
+                  }}
+                  disabled={isSubmitting}
                 />
-                {formData.imageUrl && (
-                  <div className="mt-3">
-                    <Image
-                      src={formData.imageUrl}
-                      alt="preview"
-                      width={400}
-                      height={160}
-                      className="w-full h-40 object-cover rounded-lg"
-                    />
-                  </div>
-                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

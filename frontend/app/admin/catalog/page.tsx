@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, Fragment } from 'react';
-import { adminCategoriesApi } from '@/features/admin/api';
+import { adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Category } from '@/features/admin/types';
+import { ImageUpload } from '@/components/admin/ImageUpload';
+import { resolveMediaUrl } from '@/shared/api/media';
 
 type CategoryWithCount = Category & { _count: { products: number; subcategories: number } };
 
@@ -178,8 +180,9 @@ export default function AdminCatalogPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             {category.imageUrl && (
+                              /* eslint-disable-next-line @next/next/no-img-element */
                               <img
-                                src={category.imageUrl}
+                                src={resolveMediaUrl(category.imageUrl) || ''}
                                 alt={category.name}
                                 className="w-10 h-10 rounded-lg object-cover"
                               />
@@ -262,8 +265,9 @@ export default function AdminCatalogPage() {
                           <td className="px-6 py-4 pl-8">
                             <div className="flex items-center gap-3">
                               {subcategory.imageUrl && (
+                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
-                                  src={subcategory.imageUrl}
+                                  src={resolveMediaUrl(subcategory.imageUrl) || ''}
                                   alt={subcategory.name}
                                   className="w-10 h-10 rounded-lg object-cover"
                                 />
@@ -566,16 +570,39 @@ function CategoryForm({
             />
           </div>
           <div>
-            <label htmlFor="category-image" className="block text-sm font-medium text-gray-700 mb-1">
-              URL изображения
-            </label>
-            <input
-              id="category-image"
-              type="url"
-              value={formData.imageUrl}
-              onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            />
+            {category ? (
+              <ImageUpload
+                label="Изображение категории"
+                currentImageUrl={formData.imageUrl || null}
+                onUpload={async (file) => {
+                  const result = await adminUploadApi.uploadCategoryImage(category.id, file);
+                  setFormData(prev => ({ ...prev, imageUrl: result.imageUrl }));
+                  return result.imageUrl;
+                }}
+                onDelete={async () => {
+                  await adminUploadApi.deleteCategoryImage(category.id);
+                  setFormData(prev => ({ ...prev, imageUrl: '' }));
+                }}
+                disabled={isSubmitting}
+              />
+            ) : (
+              <>
+                <label htmlFor="category-image" className="block text-sm font-medium text-gray-700 mb-1">
+                  URL изображения
+                </label>
+                <input
+                  id="category-image"
+                  type="url"
+                  value={formData.imageUrl}
+                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Добавьте изображение после создания категории"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Загрузка изображения доступна после создания категории
+                </p>
+              </>
+            )}
           </div>
           <div className="flex items-end">
             <label className="flex items-center gap-2 cursor-pointer">

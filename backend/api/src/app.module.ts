@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaModule } from 'prisma/prisma.module';
@@ -8,6 +10,7 @@ import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/order.module';
 import { AdminModule } from './admin/admin.module';
 import { EventsModule } from './events/events.module';
+import { UploadModule } from './upload/upload.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { JwtGuard } from './auth/jwt.guard';
@@ -17,12 +20,18 @@ import { JwtGuard } from './auth/jwt.guard';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    // Раздаём статические файлы из /uploads
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads',
+    }),
     PrismaModule,
     CatalogModule,
     CartModule,
     OrdersModule,
     AdminModule,
     EventsModule,
+    UploadModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],
