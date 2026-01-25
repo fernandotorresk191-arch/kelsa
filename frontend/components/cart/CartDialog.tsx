@@ -357,7 +357,7 @@ export function CartDialog() {
 
           <Button
             type="submit"
-            className={user ? "w-full bg-green-600 hover:bg-green-700 text-white" : "w-full"}
+            className="w-full"
             disabled={
               isEmpty || isSubmittingOrder || submitting || isCartLoading
             }

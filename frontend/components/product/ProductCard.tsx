@@ -46,8 +46,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           type="button"
           className={`absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center rounded-full border bg-white shadow-sm transition-colors ${
             isInFavorites
-              ? "border-primary text-primary"
-              : "border-border text-muted-foreground hover:text-primary"
+              ? "border-rose-500 text-rose-500 bg-rose-50"
+              : "border-border text-muted-foreground hover:text-rose-500 hover:border-rose-300"
           }`}
           aria-label={isInFavorites ? "Убрать из избранного" : "Добавить в избранное"}
           aria-pressed={isInFavorites}
@@ -118,7 +118,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <Button
             variant="outline"
             size="icon"
-            className="h-9 w-9 rounded-full border-primary/20 text-primary hover:bg-primary hover:text-white transition-colors"
+            className="h-9 w-9 rounded-full border-[#6206c7]/30 bg-[#6206c7]/10 text-[#6206c7] 
+                       hover:bg-[#6206c7] hover:text-white hover:border-[#6206c7] 
+                       hover:shadow-lg transition-all"
             disabled={isCartLoading || isAdding}
             onClick={async () => {
               setIsAdding(true);

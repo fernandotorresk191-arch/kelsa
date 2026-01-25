@@ -215,10 +215,10 @@ function AccountPageContent() {
   }, [favorites, favoritesError, favoritesLoading]);
 
   const tabClass = (active: boolean) =>
-    `rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+    `rounded-full border px-4 py-2 text-sm font-medium transition-all ${
       active
-        ? "bg-primary text-white border-primary"
-        : "bg-white hover:bg-accent"
+        ? "bg-foreground text-background border-foreground shadow-sm"
+        : "bg-background border-input hover:bg-accent hover:text-accent-foreground"
     }`;
 
   if (!isReady || authLoading) {

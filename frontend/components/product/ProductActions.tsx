@@ -59,7 +59,7 @@ export function ProductActions({ product }: { product: ProductDto }) {
       <Button
         variant="outline"
         size="icon"
-        className={`rounded-full ${isInFavorites ? "text-primary border-primary" : ""}`}
+        className={`rounded-full transition-all ${isInFavorites ? "text-rose-500 border-rose-500 bg-rose-50 hover:bg-rose-100" : "hover:text-rose-500 hover:border-rose-300"}`}
         aria-label={isInFavorites ? "Убрать из избранного" : "Добавить в избранное"}
         aria-pressed={isInFavorites}
         disabled={isTogglingFavorite}

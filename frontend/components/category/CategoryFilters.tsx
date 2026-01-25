@@ -23,6 +23,7 @@ export default function CategoryFilters({
   const [sortOrder, setSortOrder] = useState<SortOrder>("none");
   const [selectedSubcategory, setSelectedSubcategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -61,11 +62,11 @@ export default function CategoryFilters({
   }, [categorySlug, selectedSubcategory, sortOrder]);
 
   useEffect(() => {
-    // Пропускаем первый рендер, т.к. у нас уже есть initialProducts
-    if (sortOrder !== "none" || selectedSubcategory !== null) {
+    // Загружаем только если пользователь взаимодействовал с фильтрами
+    if (hasInteracted) {
       fetchProducts();
     }
-  }, [sortOrder, selectedSubcategory, fetchProducts]);
+  }, [sortOrder, selectedSubcategory, hasInteracted, fetchProducts]);
 
   // Сортировка на клиенте для начальных данных
   const sortedProducts = useMemo(() => {
@@ -80,6 +81,7 @@ export default function CategoryFilters({
   }, [products, sortOrder]);
 
   const handleSortToggle = () => {
+    setHasInteracted(true);
     // Переключаем: none -> asc -> desc -> none
     if (sortOrder === "none") {
       setSortOrder("asc");
@@ -91,13 +93,14 @@ export default function CategoryFilters({
   };
 
   const handleSubcategoryChange = (subcategorySlug: string | null) => {
+    setHasInteracted(true);
     setSelectedSubcategory(subcategorySlug);
   };
 
   const clearFilters = () => {
+    setHasInteracted(true);
     setSortOrder("none");
     setSelectedSubcategory(null);
-    setProducts(initialProducts);
   };
 
   const hasActiveFilters = sortOrder !== "none" || selectedSubcategory !== null;
