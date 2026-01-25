@@ -16,16 +16,6 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link href="/career" className="text-sm hover:text-primary transition-colors">
-                  Вакансии
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-sm hover:text-primary transition-colors">
-                  Блог
-                </Link>
-              </li>
-              <li>
                 <Link href="/coverage" className="text-sm hover:text-primary transition-colors">
                   Зона доставки
                 </Link>
@@ -51,11 +41,6 @@ const Footer = () => {
               <li>
                 <Link href="/return" className="text-sm hover:text-primary transition-colors">
                   Возврат и обмен
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy" className="text-sm hover:text-primary transition-colors">
-                  Политика конфиденциальности
                 </Link>
               </li>
             </ul>
