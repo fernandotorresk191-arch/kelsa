@@ -5,6 +5,7 @@ export type CategoryDto = {
   sort: number;
   isActive?: boolean;
   imageUrl?: string | null;
+  parentId?: string | null;
 };
 
 export type ProductDto = {
@@ -19,6 +20,12 @@ export type ProductDto = {
   oldPrice?: number | null;
   categoryId?: string | null;
   category?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+  subcategoryId?: string | null;
+  subcategory?: {
     id: string;
     name: string;
     slug: string;
