@@ -289,6 +289,7 @@ function PromotionForm({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-16 h-16 rounded overflow-hidden bg-gray-100">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={URL.createObjectURL(imageFile)}
                           alt="Preview"

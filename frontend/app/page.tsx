@@ -23,7 +23,7 @@ export default async function Home() {
   return (
     <div className="pb-10">
       {/* Promo section */}
-      <section className="bg-accent/30 py-6">
+      <section className="py-6">
         <div className="kelsa-container">
           {/* Вариант 1 (правильно): прокинуть промо в карусель */}
           <PromoCarousel />
