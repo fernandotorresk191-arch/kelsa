@@ -312,7 +312,7 @@ export default function PurchaseDetailPage() {
               <th className="px-4 py-3 text-center">Ячейка</th>
               <th className="px-4 py-3 text-center">Кол-во</th>
               <th className="px-4 py-3 text-center">Остаток</th>
-              <th className="px-4 py-3 text-right">Цена</th>
+              <th className="px-4 py-3 text-right">Цена за шт.</th>
               <th className="px-4 py-3 text-center">Срок годности</th>
               <th className="px-4 py-3 text-center">Статус</th>
               <th className="px-4 py-3 text-center">Этикетка</th>

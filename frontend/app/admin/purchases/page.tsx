@@ -368,7 +368,7 @@ export default function AdminPurchasesPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Закупочная цена (₽) *
+                      Закупочная цена за шт. (₽) *
                     </label>
                     <Input
                       type="number"
@@ -407,7 +407,7 @@ export default function AdminPurchasesPage() {
                     <th className="px-4 py-2 text-left">Товар</th>
                     <th className="px-4 py-2 text-center">Ячейка</th>
                     <th className="px-4 py-2 text-center">Кол-во</th>
-                    <th className="px-4 py-2 text-right">Цена</th>
+                    <th className="px-4 py-2 text-right">Цена за шт.</th>
                     <th className="px-4 py-2 text-right">Сумма</th>
                     <th className="px-4 py-2 text-center">Срок годности</th>
                     <th className="px-4 py-2"></th>
