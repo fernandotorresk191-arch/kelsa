@@ -50,7 +50,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               : "border-border text-muted-foreground hover:text-rose-500 hover:border-rose-300"
           }`}
           aria-label={isInFavorites ? "Убрать из избранного" : "Добавить в избранное"}
-          aria-pressed={isInFavorites}
           disabled={isTogglingFavorite}
           onClick={async () => {
             setIsTogglingFavorite(true);
