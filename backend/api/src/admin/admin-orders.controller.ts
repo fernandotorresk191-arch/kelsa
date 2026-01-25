@@ -38,12 +38,23 @@ interface AuthRequest {
 
 interface OrderItem {
   product: {
+    id: string;
     title: string;
     cellNumber?: string | null;
   };
   qty: number;
   price: number;
   amount: number;
+  batchCode?: string | null;
+}
+
+interface OrderItemWithBatch extends OrderItem {
+  batchInfo?: {
+    batchCode: string;
+    cellNumber: string;
+    qtyFromBatch: number;
+    expiryDate: Date | null;
+  }[];
 }
 
 interface OrderData {
@@ -55,7 +66,7 @@ interface OrderData {
   addressLine: string;
   totalAmount: number;
   comment?: string | null;
-  items: OrderItem[];
+  items: OrderItemWithBatch[];
 }
 
 @Controller('v1/admin/orders')
@@ -211,9 +222,47 @@ export class AdminOrdersController {
       throw new Error('Order not found');
     }
 
+    // Получаем информацию о партиях для каждого товара (FIFO)
+    const itemsWithBatches: OrderItemWithBatch[] = [];
+    
+    for (const item of order.items) {
+      // Находим партии по FIFO (сначала с ближайшим сроком годности)
+      const batches = await this.prisma.batch.findMany({
+        where: {
+          productId: item.productId,
+          status: 'ACTIVE',
+          remainingQty: { gt: 0 },
+        },
+        orderBy: [
+          { expiryDate: 'asc' },
+          { createdAt: 'asc' },
+        ],
+      });
+
+      const batchInfo: OrderItemWithBatch['batchInfo'] = [];
+      let remaining = item.qty;
+
+      for (const batch of batches) {
+        if (remaining <= 0) break;
+        const qtyFromBatch = Math.min(batch.remainingQty, remaining);
+        batchInfo.push({
+          batchCode: batch.batchCode,
+          cellNumber: batch.cellNumber,
+          qtyFromBatch,
+          expiryDate: batch.expiryDate,
+        });
+        remaining -= qtyFromBatch;
+      }
+
+      itemsWithBatches.push({
+        ...item,
+        batchInfo: batchInfo.length > 0 ? batchInfo : undefined,
+      });
+    }
+
     // Возвращаем HTML для печати накладной сбора
     return {
-      html: this.generatePickingListHTML(order),
+      html: this.generatePickingListHTML({ ...order, items: itemsWithBatches }),
       fileName: `picking-${order.orderNumber}.html`,
     };
   }
@@ -296,10 +345,43 @@ export class AdminOrdersController {
   }
 
   private generatePickingListHTML(order: OrderData): string {
-    // Сортируем товары по номеру ячейки для удобства сборки
-    const sortedItems = [...order.items].sort((a, b) => {
-      const cellA: string = a.product.cellNumber || 'zzz';
-      const cellB: string = b.product.cellNumber || 'zzz';
+    // Разворачиваем товары по партиям для удобства сборки
+    const expandedItems: Array<{
+      productTitle: string;
+      cellNumber: string;
+      batchCode: string;
+      qty: number;
+      expiryDate: Date | null;
+    }> = [];
+
+    for (const item of order.items) {
+      if (item.batchInfo && item.batchInfo.length > 0) {
+        // Есть информация о партиях
+        for (const batch of item.batchInfo) {
+          expandedItems.push({
+            productTitle: item.product.title,
+            cellNumber: batch.cellNumber,
+            batchCode: batch.batchCode,
+            qty: batch.qtyFromBatch,
+            expiryDate: batch.expiryDate,
+          });
+        }
+      } else {
+        // Нет партий (старые товары без партионного учёта)
+        expandedItems.push({
+          productTitle: item.product.title,
+          cellNumber: item.product.cellNumber || '—',
+          batchCode: '—',
+          qty: item.qty,
+          expiryDate: null,
+        });
+      }
+    }
+
+    // Сортируем по номеру ячейки для удобства сборки
+    const sortedItems = expandedItems.sort((a, b) => {
+      const cellA: string = a.cellNumber || 'zzz';
+      const cellB: string = b.cellNumber || 'zzz';
       return cellA.localeCompare(cellB);
     });
 
@@ -308,10 +390,14 @@ export class AdminOrdersController {
         (item, index) => `
       <tr>
         <td style="text-align: center">${index + 1}</td>
-        <td style="font-size: 24px; font-weight: bold; text-align: center">${item.product.cellNumber || '—'}</td>
-        <td>${item.product.title}</td>
-        <td style="text-align: center; font-size: 20px; font-weight: bold">${item.qty}</td>
-        <td style="text-align: center; width: 50px;">☐</td>
+        <td style="font-size: 20px; font-weight: bold; text-align: center; background-color: #ffffcc;">${item.cellNumber}</td>
+        <td style="font-size: 14px; font-weight: bold; text-align: center; background-color: #e6f3ff; font-family: monospace;">${item.batchCode}</td>
+        <td>${item.productTitle}</td>
+        <td style="text-align: center; font-size: 18px; font-weight: bold; background-color: #e6ffe6;">${item.qty}</td>
+        <td style="text-align: center; font-size: 12px; color: ${item.expiryDate && new Date(item.expiryDate) < new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) ? 'red; font-weight: bold' : '#666'}">
+          ${item.expiryDate ? new Date(item.expiryDate).toLocaleDateString('ru-RU') : '—'}
+        </td>
+        <td style="text-align: center; width: 40px;">☐</td>
       </tr>
     `,
       )
@@ -330,10 +416,10 @@ export class AdminOrdersController {
           .header p { margin: 5px 0; font-size: 14px; color: #666; }
           .order-info { margin-bottom: 20px; padding: 10px; background: #f5f5f5; border-radius: 5px; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #333; padding: 12px 8px; text-align: left; }
-          th { background-color: #333; color: white; font-weight: bold; }
-          .cell-col { background-color: #ffffcc; }
-          .qty-col { background-color: #e6ffe6; }
+          th, td { border: 1px solid #333; padding: 10px 6px; text-align: left; }
+          th { background-color: #333; color: white; font-weight: bold; font-size: 12px; }
+          .legend { margin-bottom: 15px; padding: 10px; background: #f9f9f9; border-radius: 5px; font-size: 12px; }
+          .legend span { margin-right: 20px; }
           .footer { margin-top: 30px; display: flex; justify-content: space-between; }
           .signature { border-top: 1px solid #333; padding-top: 5px; width: 200px; text-align: center; }
           @media print { 
@@ -354,14 +440,22 @@ export class AdminOrdersController {
           <strong>Адрес:</strong> ${order.addressLine}
         </div>
 
+        <div class="legend">
+          <span>📍 <strong>Ячейка</strong> - место хранения</span>
+          <span>🏷️ <strong>Код партии</strong> - формат: Ячейка Закупка Товар</span>
+          <span>⏰ <strong>Срок</strong> - срок годности</span>
+        </div>
+
         <table>
           <thead>
             <tr>
-              <th style="width: 40px">№</th>
-              <th style="width: 100px" class="cell-col">Ячейка</th>
+              <th style="width: 30px">№</th>
+              <th style="width: 70px">📍 Ячейка</th>
+              <th style="width: 120px">🏷️ Код партии</th>
               <th>Товар</th>
-              <th style="width: 80px" class="qty-col">Кол-во</th>
-              <th style="width: 50px">✓</th>
+              <th style="width: 60px">Кол-во</th>
+              <th style="width: 80px">⏰ Срок</th>
+              <th style="width: 40px">✓</th>
             </tr>
           </thead>
           <tbody>

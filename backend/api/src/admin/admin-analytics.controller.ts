@@ -218,4 +218,121 @@ export class AdminAnalyticsController {
       })),
     };
   }
+
+  @Get('write-offs-stats')
+  async getWriteOffsStats(
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Req() req?: any,
+  ) {
+    this.checkAdminRole(req);
+
+    const where: any = {};
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+
+    // Получаем списания
+    const writeOffs = await this.prisma.writeOff.findMany({
+      where,
+      include: {
+        batch: {
+          select: { purchasePrice: true, productId: true },
+        },
+      },
+    });
+
+    const totalQuantity = writeOffs.reduce((sum, w) => sum + w.quantity, 0);
+    const totalValue = writeOffs.reduce(
+      (sum, w) => sum + w.quantity * w.batch.purchasePrice,
+      0,
+    );
+
+    // Группировка по товарам
+    const byProduct: Record<string, { quantity: number; value: number }> = {};
+    for (const wo of writeOffs) {
+      const pid = wo.batch.productId;
+      if (!byProduct[pid]) {
+        byProduct[pid] = { quantity: 0, value: 0 };
+      }
+      byProduct[pid].quantity += wo.quantity;
+      byProduct[pid].value += wo.quantity * wo.batch.purchasePrice;
+    }
+
+    // Получаем названия товаров
+    const productIds = Object.keys(byProduct);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true, title: true },
+    });
+
+    const productMap = new Map(products.map((p) => [p.id, p.title]));
+
+    const byProductList = Object.entries(byProduct)
+      .map(([productId, data]) => ({
+        productId,
+        productTitle: productMap.get(productId) || 'Неизвестный товар',
+        quantity: data.quantity,
+        value: data.value,
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+
+    // Группировка по дням
+    const byDate: Record<string, { quantity: number; value: number }> = {};
+    for (const wo of writeOffs) {
+      const date = wo.createdAt.toISOString().split('T')[0];
+      if (!byDate[date]) {
+        byDate[date] = { quantity: 0, value: 0 };
+      }
+      byDate[date].quantity += wo.quantity;
+      byDate[date].value += wo.quantity * wo.batch.purchasePrice;
+    }
+
+    // Партии с истекающим сроком (7 дней)
+    const today = new Date();
+    const weekLater = new Date();
+    weekLater.setDate(today.getDate() + 7);
+
+    const expiringBatches = await this.prisma.batch.findMany({
+      where: {
+        status: 'ACTIVE',
+        remainingQty: { gt: 0 },
+        expiryDate: {
+          not: null,
+          lte: weekLater,
+          gte: today,
+        },
+      },
+      include: {
+        product: { select: { title: true } },
+      },
+    });
+
+    const expiringValue = expiringBatches.reduce(
+      (sum, b) => sum + b.remainingQty * b.purchasePrice,
+      0,
+    );
+
+    return {
+      totalWriteOffs: writeOffs.length,
+      totalQuantity,
+      totalValue,
+      byProduct: byProductList,
+      byDate: Object.entries(byDate)
+        .map(([date, data]) => ({ date, ...data }))
+        .sort((a, b) => b.date.localeCompare(a.date)),
+      expiringBatches: expiringBatches.length,
+      expiringValue,
+      expiringProducts: expiringBatches.map((b) => ({
+        batchCode: b.batchCode,
+        productTitle: b.product.title,
+        quantity: b.remainingQty,
+        value: b.remainingQty * b.purchasePrice,
+        expiryDate: b.expiryDate,
+      })),
+    };
+  }
 }

@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, DashboardStats, Order, Product, Category, Promotion } from './types';
+import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -325,5 +325,147 @@ export const adminPromotionsApi = {
 
   deletePromotion: async (id: string): Promise<{ success: boolean }> => {
     return http.delete<{ success: boolean }>(`/v1/admin/promotions/${id}`);
+  },
+};
+
+// ==================== ЗАКУПКИ ====================
+
+interface PurchasesResponse {
+  data: Purchase[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+interface BatchItemInput {
+  productId: string;
+  quantity: number;
+  purchasePrice: number;
+  cellNumber: string;
+  expiryDate?: string;
+}
+
+interface CreatePurchaseInput {
+  supplierName?: string;
+  notes?: string;
+  items: BatchItemInput[];
+}
+
+export const adminPurchasesApi = {
+  // Получить список закупок
+  getPurchases: async (page = 1, limit = 20): Promise<PurchasesResponse> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    return http.get<PurchasesResponse>(`/admin/purchases?${params.toString()}`);
+  },
+
+  // Получить закупку по ID
+  getPurchase: async (id: string): Promise<Purchase> => {
+    return http.get<Purchase>(`/admin/purchases/${id}`);
+  },
+
+  // Создать новую закупку
+  createPurchase: async (data: CreatePurchaseInput): Promise<Purchase> => {
+    return http.post<Purchase>('/admin/purchases', data);
+  },
+
+  // Получить партии товара
+  getProductBatches: async (productId: string, status?: string): Promise<Batch[]> => {
+    const params = status ? `?status=${status}` : '';
+    return http.get<Batch[]>(`/admin/purchases/product/${productId}/batches${params}`);
+  },
+
+  // Получить партию по ID
+  getBatch: async (batchId: string): Promise<Batch> => {
+    return http.get<Batch>(`/admin/purchases/batch/${batchId}`);
+  },
+
+  // Получить партию по коду
+  getBatchByCode: async (code: string): Promise<Batch> => {
+    return http.get<Batch>(`/admin/purchases/batch/code/${encodeURIComponent(code)}`);
+  },
+
+  // FIFO - получить партии для продажи
+  getNextBatchForSale: async (productId: string, qty = 1): Promise<{
+    batches: Array<{
+      batchId: string;
+      batchCode: string;
+      cellNumber: string;
+      qtyFromBatch: number;
+      expiryDate: string | null;
+    }>;
+    totalAvailable: number;
+    canFulfill: boolean;
+  }> => {
+    return http.get(`/admin/purchases/product/${productId}/fifo?qty=${qty}`);
+  },
+
+  // Удалить закупку
+  deletePurchase: async (id: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/admin/purchases/${id}`);
+  },
+};
+
+// ==================== ПРОСРОЧКА И СПИСАНИЯ ====================
+
+interface ExpiringBatchesResponse {
+  data: Batch[];
+  total: number;
+  daysThreshold: number;
+}
+
+interface WriteOffsResponse {
+  data: WriteOff[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+export const adminExpiryApi = {
+  // Получить партии с истекающим сроком годности
+  getExpiringBatches: async (days = 7): Promise<ExpiringBatchesResponse> => {
+    return http.get<ExpiringBatchesResponse>(`/admin/expiry/expiring?days=${days}`);
+  },
+
+  // Получить просроченные партии
+  getExpiredBatches: async (): Promise<{ data: Batch[]; total: number }> => {
+    return http.get<{ data: Batch[]; total: number }>('/admin/expiry/expired');
+  },
+
+  // Списать товар
+  writeOff: async (batchId: string, quantity: number, reason?: string): Promise<{ success: boolean; message: string }> => {
+    return http.post<{ success: boolean; message: string }>('/admin/expiry/write-off', {
+      batchId,
+      quantity,
+      reason,
+    });
+  },
+
+  // Списать всю партию
+  writeOffBatch: async (batchId: string, reason?: string): Promise<{ success: boolean; message: string }> => {
+    return http.post<{ success: boolean; message: string }>(`/admin/expiry/write-off-batch/${batchId}`, {
+      reason,
+    });
+  },
+
+  // Получить историю списаний
+  getWriteOffs: async (page = 1, limit = 50, from?: string, to?: string): Promise<WriteOffsResponse> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    return http.get<WriteOffsResponse>(`/admin/expiry/write-offs?${params.toString()}`);
+  },
+
+  // Статистика списаний
+  getStats: async (from?: string, to?: string): Promise<ExpiryStats> => {
+    const params = new URLSearchParams();
+    if (from) params.append('from', from);
+    if (to) params.append('to', to);
+    return http.get<ExpiryStats>(`/admin/expiry/stats?${params.toString()}`);
   },
 };

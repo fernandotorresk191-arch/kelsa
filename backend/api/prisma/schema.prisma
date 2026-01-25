@@ -34,10 +34,11 @@ model Product {
   weightGr    Int?
   isActive    Boolean  @default(true)
 
-  price       Int      // в копейках/центах — лучше так
-  oldPrice    Int?
-  stock       Int      @default(0) // остатки товара на складе
-  cellNumber  String?  // номер ячейки на складе (например: A1, B2, C3)
+  price         Int      // в копейках/центах — лучше так
+  oldPrice      Int?
+  purchasePrice Int?     // закупочная цена в копейках
+  stock         Int      @default(0) // остатки товара на складе
+  cellNumber    String?  // номер ячейки на складе (например: A1, B2, C3)
 
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
@@ -49,6 +50,7 @@ model Product {
   cartItems   CartItem[]
   orderItems  OrderItem[]
   favorites   Favorite[]
+  batches     Batch[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -136,6 +138,11 @@ model OrderItem {
   price     Int
   qty       Int
   amount    Int
+  
+  // Связь с партией для FIFO
+  batchId   String?
+  batchCode String?  // Код партии формата "24 00001 18"
+  batch     Batch?   @relation(fields: [batchId], references: [id], onDelete: SetNull)
 
   order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -194,4 +201,63 @@ model User {
   addressLine   String
   orders       Order[]
   favorites    Favorite[]
+}
+
+// ==================== ЗАКУПКИ И ПАРТИИ ====================
+
+model Purchase {
+  id              String   @id @default(cuid())
+  purchaseNumber  Int      @unique @default(autoincrement()) // Номер закупки (00001)
+  supplierName    String?  // Поставщик
+  notes           String?  // Примечания
+  totalAmount     Int      @default(0) // Общая сумма закупки
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  batches         Batch[]
+}
+
+model Batch {
+  id              String      @id @default(cuid())
+  batchCode       String      @unique // Код партии: "24 00001 18"
+  
+  productId       String
+  product         Product     @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  purchaseId      String
+  purchase        Purchase    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  
+  quantity        Int         // Закупленное количество
+  remainingQty    Int         // Оставшееся количество
+  purchasePrice   Int         // Закупочная цена за единицу (копейки)
+  
+  expiryDate      DateTime?   // Срок годности
+  cellNumber      String      // Номер ячейки хранения
+  
+  status          BatchStatus @default(ACTIVE)
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  
+  orderItems      OrderItem[]
+  writeOffs       WriteOff[]
+}
+
+enum BatchStatus {
+  ACTIVE      // Активная партия
+  EXPIRED     // Просрочена
+  SOLD_OUT    // Распродана
+  WRITTEN_OFF // Списана
+}
+
+model WriteOff {
+  id          String   @id @default(cuid())
+  batchId     String
+  batch       Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  
+  quantity    Int      // Количество списанного товара
+  reason      String   // Причина списания (просрочка, брак, и т.д.)
+  
+  createdAt   DateTime @default(now())
 }

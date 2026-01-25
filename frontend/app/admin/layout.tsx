@@ -99,6 +99,29 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             >
               🎯 Баннеры
             </Link>
+            
+            {/* Разделитель */}
+            <div className="border-t border-gray-200 my-3"></div>
+            <div className="px-4 py-1 text-xs font-medium text-gray-400 uppercase">
+              Склад
+            </div>
+            
+            <Link
+              href="/admin/purchases"
+              className={`block px-4 py-2 rounded-lg transition ${pathname.startsWith('/admin/purchases') ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-200'}`}
+            >
+              📥 Закупки
+            </Link>
+            <Link
+              href="/admin/expiry"
+              className={`block px-4 py-2 rounded-lg transition ${pathname.startsWith('/admin/expiry') ? 'bg-orange-50 text-orange-600' : 'hover:bg-gray-200'}`}
+            >
+              ⏰ Просрочка
+            </Link>
+            
+            {/* Разделитель */}
+            <div className="border-t border-gray-200 my-3"></div>
+            
             <Link
               href="/admin/analytics"
               className={`block px-4 py-2 rounded-lg transition ${pathname.startsWith('/admin/analytics') ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-200'}`}

@@ -83,6 +83,7 @@ export type Product = {
   isActive: boolean;
   price: number;
   oldPrice?: number;
+  purchasePrice?: number;
   stock: number;
   categoryId?: string;
   subcategoryId?: string;
@@ -151,4 +152,73 @@ export type Promotion = {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+};
+
+// ==================== ЗАКУПКИ И ПАРТИИ ====================
+
+export type BatchStatus = 'ACTIVE' | 'EXPIRED' | 'SOLD_OUT' | 'WRITTEN_OFF';
+
+export type Batch = {
+  id: string;
+  batchCode: string;
+  productId: string;
+  purchaseId: string;
+  quantity: number;
+  remainingQty: number;
+  purchasePrice: number;
+  cellNumber: string;
+  expiryDate?: string;
+  status: BatchStatus;
+  createdAt: string;
+  updatedAt: string;
+  product?: {
+    id: string;
+    title: string;
+    imageUrl?: string;
+    cellNumber?: string;
+    price?: number;
+    category?: {
+      id: string;
+      name: string;
+    };
+  };
+  purchase?: {
+    id: string;
+    purchaseNumber: number;
+    createdAt: string;
+  };
+};
+
+export type Purchase = {
+  id: string;
+  purchaseNumber: number;
+  supplierName?: string;
+  notes?: string;
+  totalAmount: number;
+  createdAt: string;
+  updatedAt: string;
+  batches: Batch[];
+};
+
+export type WriteOff = {
+  id: string;
+  batchId: string;
+  quantity: number;
+  reason: string;
+  createdAt: string;
+  batch: Batch;
+};
+
+export type ExpiryStats = {
+  totalWriteOffs: number;
+  totalQuantity: number;
+  totalValue: number;
+  byProduct: Array<{
+    productId: string;
+    productTitle: string;
+    quantity: number;
+    value: number;
+  }>;
+  expiringBatches: number;
+  expiredBatches: number;
 };
