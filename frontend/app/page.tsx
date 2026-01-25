@@ -48,14 +48,14 @@ export default async function Home() {
         <ProductSection
           title="Молочное и сыр"
           products={milkProducts}
-          viewAllLink="/category/molochnoe-i-syr"
+          viewAllLink="/category/molochnoe-i-yaytsa-i-sir"
         />
 
         {/* Drinks */}
         <ProductSection
           title="Вода и напитки"
           products={drinksProducts}
-          viewAllLink="/category/voda-i-napitki-1"
+          viewAllLink="/category/voda-i-napitki"
         />
 
         {/* Info blocks */}

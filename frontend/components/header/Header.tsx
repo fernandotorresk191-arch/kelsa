@@ -49,15 +49,15 @@ const Header = () => {
           {/* Mobile menu button */}
           <button
             type="button"
-            className="p-2 mr-2 md:hidden"
+            className="p-2 md:hidden"
             aria-label={mobileMenuOpen ? "Закрыть меню" : "Открыть меню"}
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <FiX size={22} /> : <FiMenu size={22} />}
           </button>
 
-          {/* Logo */}
-          <Link href="/" className="flex items-center">
+          {/* Logo - centered on mobile */}
+          <Link href="/" className="flex items-center absolute left-1/2 -translate-x-1/2 md:relative md:left-0 md:translate-x-0">
             <div className="relative w-24 h-8">
               <Image
                 src="/kelsa-logo.svg"
