@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { adminExpiryApi } from '@/features/admin/api';
 import { Batch, WriteOff, ExpiryStats } from '@/features/admin/types';
-import { Button } from '@/components/ui/button';
+
 
 type TabType = 'expiring' | 'expired' | 'history';
 
@@ -102,24 +102,28 @@ export default function AdminExpiryPage() {
   };
 
   const renderBatchesTable = (batches: Batch[], showDaysColumn = false) => (
-    <table className="w-full">
-      <thead className="bg-gray-100">
+    <table className="admin-table">
+      <thead>
         <tr>
-          <th className="px-4 py-3 text-left">Код партии</th>
-          <th className="px-4 py-3 text-left">Товар</th>
-          <th className="px-4 py-3 text-center">Ячейка</th>
-          <th className="px-4 py-3 text-center">Остаток</th>
-          <th className="px-4 py-3 text-center">Срок годности</th>
-          {showDaysColumn && <th className="px-4 py-3 text-center">Дней</th>}
-          <th className="px-4 py-3 text-right">Стоимость</th>
-          <th className="px-4 py-3 text-center">Действия</th>
+          <th>Код партии</th>
+          <th>Товар</th>
+          <th className="text-center">Ячейка</th>
+          <th className="text-center">Остаток</th>
+          <th className="text-center">Срок годности</th>
+          {showDaysColumn && <th className="text-center">Дней</th>}
+          <th className="text-right">Стоимость</th>
+          <th className="admin-th-actions-lg">Действия</th>
         </tr>
       </thead>
       <tbody>
         {batches.length === 0 ? (
           <tr>
-            <td colSpan={showDaysColumn ? 8 : 7} className="px-4 py-8 text-center text-gray-500">
-              Нет данных
+            <td colSpan={showDaysColumn ? 8 : 7} className="text-center py-12">
+              <div className="admin-empty-state">
+                <div className="admin-empty-icon">✓</div>
+                <div className="admin-empty-title">Всё в порядке</div>
+                <div className="admin-empty-text">Нет товаров с истекающим сроком</div>
+              </div>
             </td>
           </tr>
         ) : (
@@ -128,52 +132,50 @@ export default function AdminExpiryPage() {
             const value = batch.remainingQty * batch.purchasePrice;
 
             return (
-              <tr key={batch.id} className="border-b hover:bg-gray-50">
-                <td className="px-4 py-3">
-                  <span className="font-mono font-bold bg-blue-100 px-2 py-1 rounded">
+              <tr key={batch.id}>
+                <td>
+                  <span className="font-mono font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
                     {batch.batchCode}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <div className="font-medium">{batch.product?.title}</div>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <span className="font-mono bg-yellow-100 px-2 py-1 rounded">
+                <td className="font-medium">{batch.product?.title}</td>
+                <td className="text-center">
+                  <span className="font-mono text-amber-700 bg-amber-50 px-2 py-1 rounded">
                     {batch.cellNumber}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-center font-bold">{batch.remainingQty}</td>
-                <td className="px-4 py-3 text-center">
+                <td className="text-center font-semibold">{batch.remainingQty}</td>
+                <td className="text-center text-slate-600">
                   {batch.expiryDate ? formatDate(batch.expiryDate) : '—'}
                 </td>
                 {showDaysColumn && (
-                  <td className={`px-4 py-3 text-center font-bold ${
-                    daysLeft !== null && daysLeft <= 3 ? 'text-red-600' :
-                    daysLeft !== null && daysLeft <= 7 ? 'text-orange-600' :
-                    'text-gray-600'
-                  }`}>
-                    {daysLeft !== null ? (daysLeft <= 0 ? '⚠️ Просрочен' : `${daysLeft} дн.`) : '—'}
+                  <td className="text-center">
+                    <span className={`admin-badge ${
+                      daysLeft !== null && daysLeft <= 0 ? 'admin-badge-danger' :
+                      daysLeft !== null && daysLeft <= 3 ? 'admin-badge-warning' :
+                      'admin-badge-gray'
+                    }`}>
+                      {daysLeft !== null ? (daysLeft <= 0 ? 'Просрочен' : `${daysLeft} дн.`) : '—'}
+                    </span>
                   </td>
                 )}
-                <td className="px-4 py-3 text-right">
+                <td className="text-right font-medium text-slate-800">
                   {formatPrice(value)}
                 </td>
-                <td className="px-4 py-3 text-center">
-                  <div className="flex gap-2 justify-center">
-                    <Button
-                      size="sm"
-                      variant="outline"
+                <td>
+                  <div className="flex gap-2">
+                    <button
+                      className="admin-btn admin-btn-secondary admin-btn-sm"
                       onClick={() => openWriteOffModal(batch)}
                     >
                       Списать
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="destructive"
+                    </button>
+                    <button
+                      className="admin-btn admin-btn-danger admin-btn-sm"
                       onClick={() => handleWriteOffAll(batch)}
                     >
-                      Списать всё
-                    </Button>
+                      Всё
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -186,88 +188,126 @@ export default function AdminExpiryPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Просрочка</h1>
-        <p className="text-gray-500">Контроль сроков годности и списание товаров</p>
+      {/* Page Header */}
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-title">Просрочка</h1>
+          <p className="admin-page-subtitle">Контроль сроков годности и списание товаров</p>
+        </div>
       </div>
 
       {/* Статистика */}
       {stats && (
         <div className="grid grid-cols-4 gap-4">
-          <div className="bg-orange-50 rounded-lg p-4 border border-orange-200">
-            <div className="text-orange-600 text-sm font-medium">Истекает через 7 дней</div>
-            <div className="text-2xl font-bold text-orange-700">{stats.expiringBatches}</div>
-            <div className="text-sm text-orange-600">партий</div>
+          <div className="admin-kpi-card warning">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="admin-kpi-label">Истекает через 7 дней</p>
+                <p className="admin-kpi-value warning">{stats.expiringBatches}</p>
+                <p className="text-sm text-slate-500 mt-1">партий</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center text-2xl">
+                ⏰
+              </div>
+            </div>
           </div>
-          <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-            <div className="text-red-600 text-sm font-medium">Просрочено</div>
-            <div className="text-2xl font-bold text-red-700">{stats.expiredBatches}</div>
-            <div className="text-sm text-red-600">партий</div>
+          <div className="admin-kpi-card danger">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="admin-kpi-label">Просрочено</p>
+                <p className="admin-kpi-value danger">{stats.expiredBatches}</p>
+                <p className="text-sm text-slate-500 mt-1">партий</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl">
+                ⚠️
+              </div>
+            </div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="text-gray-600 text-sm font-medium">Всего списано</div>
-            <div className="text-2xl font-bold">{stats.totalQuantity}</div>
-            <div className="text-sm text-gray-600">единиц</div>
+          <div className="admin-kpi-card">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="admin-kpi-label">Всего списано</p>
+                <p className="admin-kpi-value">{stats.totalQuantity}</p>
+                <p className="text-sm text-slate-500 mt-1">единиц</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-2xl">
+                📦
+              </div>
+            </div>
           </div>
-          <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="text-gray-600 text-sm font-medium">Потери</div>
-            <div className="text-2xl font-bold text-red-600">{formatPrice(stats.totalValue)}</div>
-            <div className="text-sm text-gray-600">всего</div>
+          <div className="admin-kpi-card danger">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="admin-kpi-label">Потери</p>
+                <p className="admin-kpi-value danger">{formatPrice(stats.totalValue)}</p>
+                <p className="text-sm text-slate-500 mt-1">всего</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl">
+                💸
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Табы */}
-      <div className="border-b">
-        <nav className="flex gap-4">
-          <button
-            className={`px-4 py-2 border-b-2 ${
-              activeTab === 'expiring'
-                ? 'border-orange-500 text-orange-600 font-medium'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('expiring')}
-          >
-            ⏰ Истекает скоро ({expiringBatches.length})
-          </button>
-          <button
-            className={`px-4 py-2 border-b-2 ${
-              activeTab === 'expired'
-                ? 'border-red-500 text-red-600 font-medium'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('expired')}
-          >
-            ⚠️ Просрочено ({expiredBatches.length})
-          </button>
-          <button
-            className={`px-4 py-2 border-b-2 ${
-              activeTab === 'history'
-                ? 'border-gray-500 text-gray-600 font-medium'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
-            }`}
-            onClick={() => setActiveTab('history')}
-          >
-            📋 История списаний
-          </button>
-        </nav>
-      </div>
+      <div className="admin-card overflow-hidden">
+        <div className="border-b border-slate-200">
+          <nav className="flex">
+            <button
+              className={`px-6 py-4 font-medium transition-colors border-b-2 ${
+                activeTab === 'expiring'
+                  ? 'border-amber-500 text-amber-600 bg-amber-50/50'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+              onClick={() => setActiveTab('expiring')}
+            >
+              <span className="mr-2">⏰</span>
+              Истекает скоро
+              <span className="ml-2 admin-badge admin-badge-warning">{expiringBatches.length}</span>
+            </button>
+            <button
+              className={`px-6 py-4 font-medium transition-colors border-b-2 ${
+                activeTab === 'expired'
+                  ? 'border-red-500 text-red-600 bg-red-50/50'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+              onClick={() => setActiveTab('expired')}
+            >
+              <span className="mr-2">⚠️</span>
+              Просрочено
+              <span className="ml-2 admin-badge admin-badge-danger">{expiredBatches.length}</span>
+            </button>
+            <button
+              className={`px-6 py-4 font-medium transition-colors border-b-2 ${
+                activeTab === 'history'
+                  ? 'border-slate-500 text-slate-700 bg-slate-50'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              }`}
+              onClick={() => setActiveTab('history')}
+            >
+              <span className="mr-2">📋</span>
+              История списаний
+            </button>
+          </nav>
+        </div>
 
-      {/* Контент таба */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Контент таба */}
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Загрузка...</div>
+          <div className="admin-loading">
+            <div className="admin-spinner" />
+          </div>
         ) : activeTab === 'expiring' ? (
           <div>
-            <div className="px-4 py-3 border-b flex justify-between items-center">
-              <h2 className="font-medium">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <h2 className="font-medium text-slate-700">
                 Товары со сроком годности в ближайшие {daysThreshold} дней
               </h2>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">Показать за:</span>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-500">Показать за:</span>
                 <select
                   title="Выберите период"
-                  className="border rounded px-2 py-1"
+                  className="admin-input admin-select admin-select-sm"
                   value={daysThreshold}
                   onChange={(e) => setDaysThreshold(parseInt(e.target.value))}
                 >
@@ -282,49 +322,56 @@ export default function AdminExpiryPage() {
           </div>
         ) : activeTab === 'expired' ? (
           <div>
-            <div className="px-4 py-3 border-b bg-red-50">
-              <h2 className="font-medium text-red-700">
-                ⚠️ Просроченные товары требуют списания
+            <div className="px-6 py-4 border-b border-red-200 bg-red-50">
+              <h2 className="font-medium text-red-700 flex items-center gap-2">
+                <span>⚠️</span>
+                Просроченные товары требуют списания
               </h2>
             </div>
             {renderBatchesTable(expiredBatches)}
           </div>
         ) : (
           <div>
-            <div className="px-4 py-3 border-b">
-              <h2 className="font-medium">История списаний</h2>
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50">
+              <h2 className="font-medium text-slate-700">История списаний</h2>
             </div>
-            <table className="w-full">
-              <thead className="bg-gray-100">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left">Дата</th>
-                  <th className="px-4 py-3 text-left">Код партии</th>
-                  <th className="px-4 py-3 text-left">Товар</th>
-                  <th className="px-4 py-3 text-center">Кол-во</th>
-                  <th className="px-4 py-3 text-left">Причина</th>
-                  <th className="px-4 py-3 text-right">Потери</th>
+                  <th>Дата</th>
+                  <th>Код партии</th>
+                  <th>Товар</th>
+                  <th className="text-center">Кол-во</th>
+                  <th>Причина</th>
+                  <th className="text-right">Потери</th>
                 </tr>
               </thead>
               <tbody>
                 {writeOffs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                      Нет списаний
+                    <td colSpan={6} className="text-center py-12">
+                      <div className="admin-empty-state">
+                        <div className="admin-empty-icon">📋</div>
+                        <div className="admin-empty-title">Нет списаний</div>
+                        <div className="admin-empty-text">История пуста</div>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   writeOffs.map((wo) => (
-                    <tr key={wo.id} className="border-b hover:bg-gray-50">
-                      <td className="px-4 py-3">{formatDate(wo.createdAt)}</td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                    <tr key={wo.id}>
+                      <td className="text-slate-600">{formatDate(wo.createdAt)}</td>
+                      <td>
+                        <span className="font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded">
                           {wo.batch?.batchCode}
                         </span>
                       </td>
-                      <td className="px-4 py-3">{wo.batch?.product?.title}</td>
-                      <td className="px-4 py-3 text-center font-bold">{wo.quantity}</td>
-                      <td className="px-4 py-3">{wo.reason}</td>
-                      <td className="px-4 py-3 text-right text-red-600 font-medium">
+                      <td className="font-medium">{wo.batch?.product?.title}</td>
+                      <td className="text-center">
+                        <span className="admin-badge admin-badge-gray">{wo.quantity}</span>
+                      </td>
+                      <td className="text-slate-600">{wo.reason}</td>
+                      <td className="text-right font-semibold text-red-600">
                         {formatPrice(wo.quantity * (wo.batch?.purchasePrice || 0))}
                       </td>
                     </tr>
@@ -338,28 +385,31 @@ export default function AdminExpiryPage() {
 
       {/* Модалка списания */}
       {showWriteOffModal && selectedBatch && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold mb-4">Списание товара</h3>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md admin-fade-in">
+            <div className="px-6 py-4 border-b border-slate-200">
+              <h3 className="text-lg font-semibold text-slate-800">Списание товара</h3>
+            </div>
             
-            <div className="space-y-4">
-              <div>
-                <div className="text-sm text-gray-500">Партия</div>
-                <div className="font-mono font-bold">{selectedBatch.batchCode}</div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-slate-500 mb-1">Партия</div>
+                  <div className="font-mono font-semibold text-indigo-600">{selectedBatch.batchCode}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-slate-500 mb-1">Доступно</div>
+                  <div className="font-semibold">{selectedBatch.remainingQty} шт.</div>
+                </div>
               </div>
 
               <div>
-                <div className="text-sm text-gray-500">Товар</div>
-                <div>{selectedBatch.product?.title}</div>
+                <div className="text-sm text-slate-500 mb-1">Товар</div>
+                <div className="font-medium">{selectedBatch.product?.title}</div>
               </div>
 
               <div>
-                <div className="text-sm text-gray-500">Доступно для списания</div>
-                <div className="font-bold">{selectedBatch.remainingQty} шт.</div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Количество для списания
                 </label>
                 <input
@@ -369,19 +419,19 @@ export default function AdminExpiryPage() {
                   max={selectedBatch.remainingQty}
                   value={writeOffQuantity}
                   onChange={(e) => setWriteOffQuantity(parseInt(e.target.value) || 0)}
-                  className="w-full border rounded px-3 py-2"
+                  className="admin-input"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
                   Причина списания
                 </label>
                 <select
                   title="Выберите причину списания"
                   value={writeOffReason}
                   onChange={(e) => setWriteOffReason(e.target.value)}
-                  className="w-full border rounded px-3 py-2"
+                  className="admin-input admin-select"
                 >
                   <option value="Просрочка">Просрочка</option>
                   <option value="Брак">Брак</option>
@@ -390,29 +440,27 @@ export default function AdminExpiryPage() {
                 </select>
               </div>
 
-              <div className="bg-red-50 p-3 rounded">
-                <div className="text-sm text-red-700">Потери:</div>
-                <div className="text-lg font-bold text-red-700">
+              <div className="bg-red-50 border border-red-200 p-4 rounded-xl">
+                <div className="text-sm text-red-600 mb-1">Потери от списания:</div>
+                <div className="text-2xl font-bold text-red-700">
                   {formatPrice(writeOffQuantity * selectedBatch.purchasePrice)}
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-2 mt-6">
-              <Button
-                variant="outline"
-                className="flex-1"
+            <div className="px-6 py-4 border-t border-slate-200 flex gap-3">
+              <button
+                className="admin-btn admin-btn-secondary flex-1"
                 onClick={() => setShowWriteOffModal(false)}
               >
                 Отмена
-              </Button>
-              <Button
-                variant="destructive"
-                className="flex-1"
+              </button>
+              <button
+                className="admin-btn admin-btn-danger flex-1"
                 onClick={handleWriteOff}
               >
                 Списать
-              </Button>
+              </button>
             </div>
           </div>
         </div>

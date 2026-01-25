@@ -216,35 +216,43 @@ export default function AdminPurchasesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      {/* Page Header */}
+      <div className="admin-page-header">
         <div>
-          <h1 className="text-2xl font-bold">Закупки</h1>
-          <p className="text-gray-500">Управление закупками и партиями товаров</p>
+          <h1 className="admin-page-title">Закупки</h1>
+          <p className="admin-page-subtitle">Управление закупками и партиями товаров</p>
         </div>
-        <Button onClick={() => setShowForm(!showForm)}>
+        <button 
+          className={`admin-btn ${showForm ? 'admin-btn-secondary' : 'admin-btn-primary'}`}
+          onClick={() => setShowForm(!showForm)}
+        >
           {showForm ? 'Отмена' : '+ Новая закупка'}
-        </Button>
+        </button>
       </div>
 
       {/* Форма создания закупки */}
       {showForm && (
-        <div className="bg-white rounded-lg shadow p-6 space-y-6">
-          <h2 className="text-lg font-semibold">Новая закупка</h2>
+        <div className="admin-card admin-fade-in">
+          <div className="admin-card-header">
+            <h2 className="admin-card-title">Новая закупка</h2>
+          </div>
+          <div className="admin-card-body space-y-6">
 
           {/* Информация о закупке */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Поставщик
               </label>
               <Input
                 value={supplierName}
                 onChange={(e) => setSupplierName(e.target.value)}
                 placeholder="Название поставщика"
+                className="admin-input"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-2">
                 Примечания
               </label>
               <Input
@@ -458,88 +466,93 @@ export default function AdminPurchasesPage() {
             </div>
           )}
         </div>
+          </div>
       )}
 
       {/* Список закупок */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-100">
-            <tr>
-              <th className="px-4 py-3 text-left">№ Закупки</th>
-              <th className="px-4 py-3 text-left">Дата</th>
-              <th className="px-4 py-3 text-left">Поставщик</th>
-              <th className="px-4 py-3 text-center">Позиций</th>
-              <th className="px-4 py-3 text-right">Сумма</th>
-              <th className="px-4 py-3 text-center">Действия</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  Загрузка...
-                </td>
-              </tr>
-            ) : purchases.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
-                  Закупок пока нет
-                </td>
-              </tr>
-            ) : (
-              purchases.map((purchase) => (
-                <tr key={purchase.id} className="border-b hover:bg-gray-50">
-                  <td className="px-4 py-3">
-                    <span className="font-mono font-medium">
-                      #{String(purchase.purchaseNumber).padStart(5, '0')}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">{formatDate(purchase.createdAt)}</td>
-                  <td className="px-4 py-3">{purchase.supplierName || '—'}</td>
-                  <td className="px-4 py-3 text-center">{purchase.batches.length}</td>
-                  <td className="px-4 py-3 text-right font-medium">
-                    {formatPrice(purchase.totalAmount)}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <Link
-                      href={`/admin/purchases/${purchase.id}`}
-                      className="text-blue-600 hover:text-blue-800"
-                    >
-                      Просмотреть
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-
-        {/* Пагинация */}
-        {totalPages > 1 && (
-          <div className="px-4 py-3 flex justify-between items-center border-t">
-            <div className="text-sm text-gray-500">
-              Показано {Math.min((page - 1) * limit + 1, total)} - {Math.min(page * limit, total)} из {total}
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                disabled={page === 1}
-                onClick={() => setPage(page - 1)}
-              >
-                ←
-              </Button>
-              <span className="px-3 py-2">
-                {page} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                disabled={page === totalPages}
-                onClick={() => setPage(page + 1)}
-              >
-                →
-              </Button>
-            </div>
+      <div className="admin-card">
+        {isLoading ? (
+          <div className="admin-loading">
+            <div className="admin-spinner" />
           </div>
+        ) : purchases.length === 0 ? (
+          <div className="admin-empty-state">
+            <div className="admin-empty-icon">📥</div>
+            <div className="admin-empty-title">Закупок пока нет</div>
+            <div className="admin-empty-text">Создайте первую закупку</div>
+          </div>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>№ Закупки</th>
+                    <th>Дата</th>
+                    <th>Поставщик</th>
+                    <th className="text-center">Позиций</th>
+                    <th className="text-right">Сумма</th>
+                    <th className="admin-th-actions">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchases.map((purchase) => (
+                    <tr key={purchase.id}>
+                      <td>
+                        <span className="font-mono font-semibold text-indigo-600">
+                          #{String(purchase.purchaseNumber).padStart(5, '0')}
+                        </span>
+                      </td>
+                      <td className="text-slate-600">{formatDate(purchase.createdAt)}</td>
+                      <td className="font-medium">{purchase.supplierName || '—'}</td>
+                      <td className="text-center">
+                        <span className="admin-badge admin-badge-gray">{purchase.batches.length}</span>
+                      </td>
+                      <td className="text-right font-semibold text-slate-800">
+                        {formatPrice(purchase.totalAmount)}
+                      </td>
+                      <td>
+                        <Link
+                          href={`/admin/purchases/${purchase.id}`}
+                          className="admin-btn admin-btn-secondary admin-btn-sm"
+                        >
+                          Открыть
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Пагинация */}
+            {totalPages > 1 && (
+              <div className="admin-card-body border-t border-slate-200 flex items-center justify-between">
+                <div className="admin-pagination-info">
+                  Показано {Math.min((page - 1) * limit + 1, total)}–{Math.min(page * limit, total)} из {total}
+                </div>
+                <div className="admin-pagination">
+                  <button
+                    className="admin-pagination-btn"
+                    disabled={page === 1}
+                    onClick={() => setPage(page - 1)}
+                  >
+                    ← Назад
+                  </button>
+                  <span className="admin-pagination-info">
+                    {page} / {totalPages}
+                  </span>
+                  <button
+                    className="admin-pagination-btn"
+                    disabled={page === totalPages}
+                    onClick={() => setPage(page + 1)}
+                  >
+                    Далее →
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

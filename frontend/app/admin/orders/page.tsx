@@ -3,8 +3,18 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { adminOrdersApi } from '@/features/admin/api';
-import { Order, OrderStatus, OrderStatusLabels, OrderStatusColors } from '@/features/admin/types';
+import { Order, OrderStatus, OrderStatusLabels } from '@/features/admin/types';
 import { useOrdersSSE, OrderEventData } from '@/features/admin/useOrdersSSE';
+
+// Статусы с современными стилями
+const StatusStyles: Record<OrderStatus, string> = {
+  NEW: 'admin-status-new',
+  CONFIRMED: 'admin-status-confirmed',
+  ASSEMBLING: 'admin-status-assembling',
+  ON_THE_WAY: 'admin-status-delivering',
+  DELIVERED: 'admin-status-completed',
+  CANCELED: 'admin-status-cancelled',
+};
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -23,8 +33,8 @@ export default function AdminOrdersPage() {
       const response = await adminOrdersApi.getOrders(page, limit, statusFilter || undefined);
       setOrders(response.data as unknown as Order[]);
       setTotal(response.pagination.total);
-      setNewOrdersCount(0); // Сбрасываем счетчик при загрузке
-      setRecentOrderIds(new Set()); // Сбрасываем подсветку
+      setNewOrdersCount(0);
+      setRecentOrderIds(new Set());
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     } finally {
@@ -32,16 +42,12 @@ export default function AdminOrdersPage() {
     }
   };
 
-  // Обработчик нового заказа через SSE
   const handleNewOrder = useCallback((orderData: OrderEventData['order']) => {
-    // Если мы на первой странице и нет фильтра, добавляем заказ в начало списка
     if (page === 1 && !statusFilter) {
       setOrders((prev) => {
-        // Проверяем, нет ли уже такого заказа
         if (prev.some((o) => o.id === orderData.id)) {
           return prev;
         }
-        // Добавляем новый заказ в начало
         const newOrder: Order = {
           id: orderData.id,
           orderNumber: orderData.orderNumber,
@@ -65,11 +71,7 @@ export default function AdminOrdersPage() {
         return [newOrder, ...prev.slice(0, limit - 1)];
       });
       setTotal((prev) => prev + 1);
-      
-      // Добавляем ID для подсветки
       setRecentOrderIds((prev) => new Set(prev).add(orderData.id));
-      
-      // Убираем подсветку через 5 секунд
       setTimeout(() => {
         setRecentOrderIds((prev) => {
           const newSet = new Set(prev);
@@ -78,12 +80,10 @@ export default function AdminOrdersPage() {
         });
       }, 5000);
     } else {
-      // Если не на первой странице, показываем уведомление
       setNewOrdersCount((prev) => prev + 1);
     }
   }, [page, statusFilter, limit]);
 
-  // Обработчик обновления заказа через SSE
   const handleOrderUpdated = useCallback((orderData: OrderEventData['order']) => {
     setOrders((prev) =>
       prev.map((order) =>
@@ -94,7 +94,6 @@ export default function AdminOrdersPage() {
     );
   }, []);
 
-  // Подключаемся к SSE стриму
   useOrdersSSE({
     onNewOrder: handleNewOrder,
     onOrderUpdated: handleOrderUpdated,
@@ -110,12 +109,16 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Управление заказами</h1>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 text-sm text-green-600">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-            Live
+      {/* Page Header */}
+      <div className="admin-page-header">
+        <div>
+          <h1 className="admin-page-title">Заказы</h1>
+          <p className="admin-page-subtitle">Управление заказами клиентов</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="inline-flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-4 py-2 rounded-full font-medium">
+            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+            Live обновления
           </span>
         </div>
       </div>
@@ -128,114 +131,113 @@ export default function AdminOrdersPage() {
             setStatusFilter('');
             fetchOrders();
           }}
-          className="w-full bg-blue-50 border border-blue-200 rounded-lg p-4 text-blue-700 hover:bg-blue-100 transition-colors flex items-center justify-center gap-2"
+          className="w-full admin-card p-4 border-2 border-indigo-200 hover:border-indigo-300 transition-colors flex items-center justify-center gap-3 group"
         >
-          <span className="text-lg">🔔</span>
-          <span className="font-medium">
+          <span className="text-2xl group-hover:animate-bounce">🔔</span>
+          <span className="font-semibold text-indigo-700">
             {newOrdersCount} {newOrdersCount === 1 ? 'новый заказ' : 'новых заказов'}
           </span>
-          <span className="text-sm">(нажмите для обновления)</span>
+          <span className="text-sm text-indigo-500">(нажмите для обновления)</span>
         </button>
       )}
 
       {/* Фильтры */}
-      <div className="bg-white rounded-lg shadow p-4">
-        <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-2">
-          Фильтр по статусу
-        </label>
-        <select
-          id="status-filter"
-          value={statusFilter}
-          onChange={(e) => {
-            setStatusFilter(e.target.value);
-            setPage(1);
-          }}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="">Все статусы</option>
-          {Object.entries(OrderStatusLabels).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label as React.ReactNode}
-            </option>
-          ))}
-        </select>
+      <div className="admin-card">
+        <div className="admin-card-body">
+          <div className="flex items-center gap-4">
+            <label htmlFor="status-filter" className="text-sm font-medium text-slate-600">
+              Фильтр:
+            </label>
+            <select
+              id="status-filter"
+              title="Фильтр по статусу"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="admin-input admin-select max-w-xs"
+            >
+              <option value="">Все статусы</option>
+              {Object.entries(OrderStatusLabels).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label as React.ReactNode}
+                </option>
+              ))}
+            </select>
+            <div className="flex-1" />
+            <span className="text-sm text-slate-500">
+              Всего: <strong>{total}</strong> заказов
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Таблица заказов */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
+      <div className="admin-card">
         {isLoading ? (
-          <div className="p-6 text-center">Загрузка...</div>
+          <div className="admin-loading">
+            <div className="admin-spinner" />
+          </div>
         ) : orders.length === 0 ? (
-          <div className="p-6 text-center text-gray-600">Заказы не найдены</div>
+          <div className="admin-empty-state">
+            <div className="admin-empty-icon">📦</div>
+            <div className="admin-empty-title">Заказы не найдены</div>
+            <div className="admin-empty-text">Попробуйте изменить фильтры</div>
+          </div>
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+              <table className="admin-table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      №
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Клиент
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Статус
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Сумма
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Дата
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
-                      Действия
-                    </th>
+                    <th>№ заказа</th>
+                    <th>Клиент</th>
+                    <th>Статус</th>
+                    <th className="text-right">Сумма</th>
+                    <th>Дата</th>
+                    <th className="admin-th-actions">Действия</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-200">
+                <tbody>
                   {orders.map((order) => (
                     <tr 
                       key={order.id} 
-                      className={`hover:bg-gray-50 transition-colors duration-500 ${
-                        recentOrderIds.has(order.id) 
-                          ? 'bg-green-50 animate-pulse' 
-                          : ''
-                      }`}
+                      className={recentOrderIds.has(order.id) ? 'bg-emerald-50' : ''}
                     >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
-                        #{order.orderNumber}
-                        {recentOrderIds.has(order.id) && (
-                          <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                            Новый!
-                          </span>
-                        )}
+                      <td>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-indigo-600">#{order.orderNumber}</span>
+                          {recentOrderIds.has(order.id) && (
+                            <span className="admin-badge admin-badge-success text-xs">Новый!</span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{order.customerName}</div>
-                        <div className="text-xs text-gray-500">{order.phone}</div>
+                      <td>
+                        <div className="font-medium text-slate-800">{order.customerName}</div>
+                        <div className="text-xs text-slate-500">{order.phone}</div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs font-medium ${
-                            OrderStatusColors[order.status as OrderStatus]
-                          }`}
-                        >
-                          {OrderStatusLabels[order.status as OrderStatus]}
+                      <td>
+                        <span className={`admin-badge px-3 py-1 ${StatusStyles[order.status] || 'admin-badge-gray'}`}>
+                          {OrderStatusLabels[order.status]}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
+                      <td className="text-right font-semibold text-slate-800">
                         {order.totalAmount.toLocaleString('ru-RU')} ₽
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                        {new Date(order.createdAt).toLocaleDateString('ru-RU')}
+                      <td className="text-slate-600">
+                        {new Date(order.createdAt).toLocaleDateString('ru-RU', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <td>
                         <Link
                           href={`/admin/orders/${order.id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          className="admin-btn admin-btn-secondary admin-btn-sm"
                         >
-                          Просмотр →
+                          Открыть
                         </Link>
                       </td>
                     </tr>
@@ -245,25 +247,25 @@ export default function AdminOrdersPage() {
             </div>
 
             {/* Пагинация */}
-            <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
-                Показано {(page - 1) * limit + 1}-{Math.min(page * limit, total)} из {total}
+            <div className="admin-card-body border-t border-slate-200 flex items-center justify-between">
+              <div className="admin-pagination-info">
+                Показано {(page - 1) * limit + 1}–{Math.min(page * limit, total)} из {total}
               </div>
-              <div className="flex gap-2">
+              <div className="admin-pagination">
                 <button
                   onClick={() => setPage(Math.max(1, page - 1))}
                   disabled={page === 1}
-                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="admin-pagination-btn"
                 >
                   ← Назад
                 </button>
-                <span className="px-4 py-2">
+                <span className="admin-pagination-info">
                   {page} / {totalPages}
                 </span>
                 <button
                   onClick={() => setPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
-                  className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                  className="admin-pagination-btn"
                 >
                   Далее →
                 </button>
