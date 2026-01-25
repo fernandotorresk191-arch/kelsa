@@ -27,7 +27,7 @@ const CategoryButtons: React.FC<CategoryButtonsProps> = ({ categories }) => {
               href={`/category/${category.slug}`}
               className="block"
             >
-              <div className="relative h-52 rounded-2xl bg-gray-200 overflow-hidden transition hover:brightness-95">
+              <div className="relative h-52 rounded-2xl bg-gray-100 overflow-hidden transition hover:brightness-95">
                 {/* Название */}
                 <div className="relative z-10 p-4">
                   <span className="text-sm font-semibold text-gray-900">
@@ -42,7 +42,7 @@ const CategoryButtons: React.FC<CategoryButtonsProps> = ({ categories }) => {
                     alt={category.name}
                     fill
                     // Исправленная строка:
-                    className="object-cover object-center"
+                    className="object-contain object-center"
                     sizes="(max-width: 768px) 50vw, 20vw"
                     priority
                   />
