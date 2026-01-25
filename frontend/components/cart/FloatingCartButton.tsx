@@ -27,8 +27,8 @@ export function FloatingCartButton({ onClick }: FloatingCartButtonProps) {
     <button
       onClick={onClick}
       className="fixed right-4 bottom-6 z-50 flex items-center gap-2 px-5 py-3 
-                 bg-primary text-primary-foreground rounded-full shadow-lg
-                 hover:bg-primary/90 active:scale-95 transition-all duration-150
+                 bg-[#6206c7] text-primary-foreground rounded-full shadow-lg
+                 hover:bg-[#5205A8] active:scale-95 transition-all duration-150
                  md:right-6 md:bottom-8"
       aria-label={`Корзина: ${formattedTotal} ₽`}
     >
