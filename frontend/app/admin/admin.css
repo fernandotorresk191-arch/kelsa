@@ -114,6 +114,12 @@
 
 .admin-card-body {
   padding: 24px;
+  overflow: visible;
+}
+
+/* Allow overflow for form elements with dropdowns */
+.admin-card.admin-card-overflow-visible {
+  overflow: visible;
 }
 
 /* Admin Buttons */

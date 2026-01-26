@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
 import { adminPurchasesApi, adminProductsApi, adminCategoriesApi } from '@/features/admin/api';
 import { Purchase, Product, Category } from '@/features/admin/types';
@@ -39,6 +39,7 @@ export default function AdminPurchasesPage() {
   const [productSearch, setProductSearch] = useState('');
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Выбранный товар для добавления
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -48,6 +49,18 @@ export default function AdminPurchasesPage() {
   const [expiryDate, setExpiryDate] = useState('');
 
   const limit = 20;
+
+  // Закрытие dropdown при клике вне области
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowProductDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const fetchPurchases = async () => {
     try {
@@ -232,7 +245,7 @@ export default function AdminPurchasesPage() {
 
       {/* Форма создания закупки */}
       {showForm && (
-        <div className="admin-card admin-fade-in">
+        <div className="admin-card admin-card-overflow-visible admin-fade-in">
           <div className="admin-card-header">
             <h2 className="admin-card-title">Новая закупка</h2>
           </div>
@@ -309,7 +322,7 @@ export default function AdminPurchasesPage() {
                 </div>
               )}
 
-              <div className="relative">
+              <div ref={dropdownRef} className="relative" style={{ overflow: 'visible' }}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Товар
                 </label>
@@ -324,7 +337,7 @@ export default function AdminPurchasesPage() {
                   placeholder="Начните вводить название..."
                 />
                 {showProductDropdown && filteredProducts.length > 0 && !selectedProduct && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                     {filteredProducts.map((product) => (
                       <div
                         key={product.id}
