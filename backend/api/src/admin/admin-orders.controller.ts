@@ -33,7 +33,7 @@ class UpdateOrderStatusDto {
 }
 
 interface AuthRequest {
-  user: { role: string };
+  user: { role: string; login?: string };
 }
 
 interface OrderItem {
@@ -135,6 +135,9 @@ export class AdminOrdersController {
           include: { product: true },
         },
         user: true,
+        statusHistory: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -158,10 +161,26 @@ export class AdminOrdersController {
       throw new Error('Order not found');
     }
 
-    // Обновляем статус заказа
-    const updatedOrder = await this.prisma.order.update({
-      where: { id },
-      data: { status: dto.status },
+    // Получаем логин админа из токена
+    const adminLogin = req.user?.login || 'admin';
+
+    // Обновляем статус заказа и создаём запись в истории
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      // Создаём запись в истории статусов
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          status: dto.status,
+          comment: dto.comment || null,
+          changedBy: adminLogin,
+        },
+      });
+
+      // Обновляем статус заказа
+      return tx.order.update({
+        where: { id },
+        data: { status: dto.status },
+      });
     });
 
     // Отправляем событие об обновлении заказа через SSE

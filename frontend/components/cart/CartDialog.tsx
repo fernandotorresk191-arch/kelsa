@@ -16,6 +16,7 @@ import { cn } from "../../lib/utils";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthDialog } from "../auth/AuthDialog";
 import { formatRuPhone } from "../../shared/phone/format";
+import { useSettlement } from "../settlement/SettlementProvider";
 import { resolveMediaUrl } from "../../shared/api/media";
 
 const currency = (value: number) => `${value} ₽`;
@@ -32,6 +33,7 @@ export function CartDialog() {
     createOrder,
   } = useCart();
   const { user } = useAuth();
+  const { selectedSettlement } = useSettlement();
 
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
@@ -85,10 +87,15 @@ export function CartDialog() {
 
     setSubmitting(true);
     try {
+      // Формируем полный адрес с населённым пунктом
+      const fullAddress = selectedSettlement
+        ? `${selectedSettlement.title}, ${addressLine}`
+        : addressLine;
+
       await createOrder({
         customerName,
         phone,
-        addressLine,
+        addressLine: fullAddress,
         comment: comment || undefined,
       });
 

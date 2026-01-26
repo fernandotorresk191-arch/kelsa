@@ -11,6 +11,11 @@ export default function AdminPromotionsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingPromotion, setEditingPromotion] = useState<Promotion | null>(null);
+  
+  // Состояние удаления
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [promotionToDelete, setPromotionToDelete] = useState<Promotion | null>(null);
 
   const fetchPromotions = async () => {
     try {
@@ -28,15 +33,30 @@ export default function AdminPromotionsPage() {
     fetchPromotions();
   }, []);
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Вы уверены?')) return;
+  const handleDeleteClick = (promotion: Promotion) => {
+    setPromotionToDelete(promotion);
+    setShowDeleteConfirm(true);
+  };
 
+  const handleConfirmDelete = async () => {
+    if (!promotionToDelete) return;
+
+    setDeletingId(promotionToDelete.id);
     try {
-      await adminPromotionsApi.deletePromotion(id);
+      await adminPromotionsApi.deletePromotion(promotionToDelete.id);
       fetchPromotions();
     } catch (error) {
       console.error('Failed to delete promotion:', error);
+    } finally {
+      setDeletingId(null);
+      setShowDeleteConfirm(false);
+      setPromotionToDelete(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setPromotionToDelete(null);
   };
 
   const handleEdit = (promotion: Promotion) => {
@@ -142,18 +162,25 @@ export default function AdminPromotionsPage() {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      <div className="flex gap-2">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleEdit(promotion)}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          className="admin-btn admin-btn-secondary admin-btn-sm"
+                          title="Редактировать"
                         >
-                          Редактировать
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
                         </button>
                         <button
-                          onClick={() => handleDelete(promotion.id)}
-                          className="text-red-600 hover:text-red-800 font-medium"
+                          onClick={() => handleDeleteClick(promotion)}
+                          disabled={deletingId === promotion.id}
+                          className="admin-btn admin-btn-danger admin-btn-sm"
+                          title="Удалить"
                         >
-                          Удалить
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </td>
@@ -164,6 +191,40 @@ export default function AdminPromotionsPage() {
           </div>
         )}
       </div>
+
+      {/* Модальное окно подтверждения удаления */}
+      {showDeleteConfirm && promotionToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl p-6">
+            <div className="text-center mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Удалить баннер?</h3>
+              <p className="text-slate-600 text-sm">
+                Вы уверены, что хотите удалить баннер <strong>{promotionToDelete.title}</strong>? Это действие нельзя отменить.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelDelete}
+                className="flex-1 admin-btn admin-btn-secondary"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deletingId === promotionToDelete.id}
+                className="flex-1 admin-btn admin-btn-danger"
+              >
+                {deletingId === promotionToDelete.id ? 'Удаление...' : 'Удалить'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

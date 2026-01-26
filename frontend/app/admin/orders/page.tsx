@@ -222,15 +222,21 @@ export default function AdminOrdersPage() {
                           {OrderStatusLabels[order.status]}
                         </span>
                       </td>
-                      <td className="text-right font-semibold text-slate-800">
+                      <td className="text-left font-semibold text-slate-800">
                         {order.totalAmount.toLocaleString('ru-RU')} ₽
                       </td>
                       <td className="text-slate-600">
-                        {new Date(order.createdAt).toLocaleDateString('ru-RU', {
+                        <div>{new Date(order.createdAt).toLocaleDateString('ru-RU', {
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric'
-                        })}
+                        })}</div>
+                        <div className="text-xs text-slate-400">
+                          {new Date(order.createdAt).toLocaleTimeString('ru-RU', {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
                       </td>
                       <td>
                         <Link

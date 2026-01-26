@@ -23,12 +23,12 @@ export const OrderStatusLabels: Record<OrderStatus, string> = {
 };
 
 export const OrderStatusColors: Record<OrderStatus, string> = {
-  [OrderStatus.NEW]: 'bg-blue-100 text-blue-800',
-  [OrderStatus.CONFIRMED]: 'bg-green-100 text-green-800',
-  [OrderStatus.ASSEMBLING]: 'bg-yellow-100 text-yellow-800',
-  [OrderStatus.ON_THE_WAY]: 'bg-purple-100 text-purple-800',
-  [OrderStatus.DELIVERED]: 'bg-green-200 text-green-900',
-  [OrderStatus.CANCELED]: 'bg-red-100 text-red-800',
+  [OrderStatus.NEW]: 'admin-status-new',
+  [OrderStatus.CONFIRMED]: 'admin-status-confirmed',
+  [OrderStatus.ASSEMBLING]: 'admin-status-assembling',
+  [OrderStatus.ON_THE_WAY]: 'admin-status-delivering',
+  [OrderStatus.DELIVERED]: 'admin-status-completed',
+  [OrderStatus.CANCELED]: 'admin-status-cancelled',
 };
 
 export type OrderItem = {
@@ -69,6 +69,7 @@ export type Order = {
     orderId: string;
     status: OrderStatus;
     comment?: string;
+    changedBy?: string;
     createdAt: string;
   }[];
 };
@@ -221,4 +222,18 @@ export type ExpiryStats = {
   }>;
   expiringBatches: number;
   expiredBatches: number;
+};
+
+// ==================== КУРЬЕРЫ ====================
+
+export type Courier = {
+  id: string;
+  fullName: string;
+  login: string;
+  phone: string;
+  carBrand?: string;
+  carNumber?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 };

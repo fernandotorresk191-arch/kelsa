@@ -188,6 +188,17 @@
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
 }
 
+.admin-btn-warning {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+  box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3);
+}
+
+.admin-btn-warning:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.4);
+}
+
 .admin-btn-sm {
   padding: 6px 12px;
   font-size: 12px;
@@ -479,9 +490,9 @@
 
 /* Status Colors Enhanced */
 .admin-status-new {
-  background: linear-gradient(135deg, #fef3c7, #fde68a);
-  color: #92400e;
-  border: 1px solid #fcd34d;
+  background: rgba(248, 113, 113, 0.1);
+  color: #f87171;
+  border: 1px solid rgba(248, 113, 113, 0.2);
 }
 
 .admin-status-confirmed {

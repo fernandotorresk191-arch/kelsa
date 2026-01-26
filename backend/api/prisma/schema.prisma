@@ -174,6 +174,7 @@ model OrderStatusHistory {
   orderId   String
   status    OrderStatus
   comment   String?
+  changedBy String?     // Логин админа, изменившего статус
   createdAt DateTime    @default(now())
 
   order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -260,4 +261,22 @@ model WriteOff {
   reason      String   // Причина списания (просрочка, брак, и т.д.)
   
   createdAt   DateTime @default(now())
+}
+
+// ==================== КУРЬЕРЫ ====================
+
+model Courier {
+  id            String   @id @default(cuid())
+  fullName      String   // ФИО курьера
+  login         String   @unique // Логин для входа
+  passwordHash  String   // Хеш пароля
+  phone         String   // Номер телефона
+  
+  carBrand      String?  // Марка автомобиля (необязательно)
+  carNumber     String?  // Номер автомобиля (необязательно)
+  
+  isActive      Boolean  @default(true) // Активен или нет
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

@@ -187,20 +187,27 @@ export default function AdminOrderDetailPage() {
             <h2 className="text-lg font-bold mb-4">История статусов</h2>
             <div className="space-y-3">
               {order.statusHistory && order.statusHistory.length > 0 ? (
-                order.statusHistory.map((history: { id: string; status: string; createdAt: string; comment?: string }) => (
+                order.statusHistory.map((history: { id: string; status: string; createdAt: string; comment?: string; changedBy?: string }) => (
                   <div
                     key={history.id}
                     className="flex items-start gap-4 p-3 bg-gray-50 rounded-lg"
                   >
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {OrderStatusLabels[history.status as OrderStatus]}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className={`admin-badge px-2 py-1 text-xs ${OrderStatusColors[history.status as OrderStatus]}`}>
+                          {OrderStatusLabels[history.status as OrderStatus]}
+                        </span>
+                        {history.changedBy && (
+                          <span className="text-xs text-gray-500">
+                            • {history.changedBy}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-600 mt-1">
                         {new Date(history.createdAt).toLocaleString('ru-RU')}
                       </p>
                       {history.comment && (
-                        <p className="text-sm text-gray-700 mt-2">{history.comment}</p>
+                        <p className="text-sm text-gray-700 mt-2 bg-gray-100 p-2 rounded">{history.comment}</p>
                       )}
                     </div>
                   </div>
@@ -250,14 +257,14 @@ export default function AdminOrderDetailPage() {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Например: товар отправлен с курьером"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm"
+                className="admin-input mb-3 text-sm"
                 rows={3}
               />
 
               <button
                 onClick={handleStatusUpdate}
                 disabled={isUpdating || newStatus === order.status}
-                className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 transition disabled:bg-gray-400"
+                className="w-full admin-btn admin-btn-primary"
               >
                 {isUpdating ? 'Обновление...' : 'Обновить статус'}
               </button>
@@ -266,13 +273,13 @@ export default function AdminOrderDetailPage() {
             {/* Печать */}
             <button
               onClick={handlePrint}
-              className="w-full mt-3 bg-green-600 text-white py-2 rounded-lg font-medium hover:bg-green-700 transition flex items-center justify-center gap-2"
+              className="w-full mt-3 admin-btn admin-btn-success flex items-center justify-center gap-2"
             >
               🖨️ Печать накладной
             </button>
             <button
               onClick={handlePrintPicking}
-              className="w-full mt-2 bg-orange-500 text-white py-2 rounded-lg font-medium hover:bg-orange-600 transition flex items-center justify-center gap-2"
+              className="w-full mt-2 admin-btn admin-btn-warning flex items-center justify-center gap-2"
             >
               📦 Накладная сбора
             </button>

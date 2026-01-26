@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats } from './types';
+import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -467,5 +467,74 @@ export const adminExpiryApi = {
     if (from) params.append('from', from);
     if (to) params.append('to', to);
     return http.get<ExpiryStats>(`/admin/expiry/stats?${params.toString()}`);
+  },
+};
+
+// ==================== КУРЬЕРЫ ====================
+
+interface CouriersResponse {
+  data: Courier[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+interface CreateCourierInput {
+  fullName: string;
+  login: string;
+  password: string;
+  phone: string;
+  carBrand?: string;
+  carNumber?: string;
+  isActive?: boolean;
+}
+
+interface UpdateCourierInput {
+  fullName?: string;
+  login?: string;
+  password?: string;
+  phone?: string;
+  carBrand?: string;
+  carNumber?: string;
+  isActive?: boolean;
+}
+
+export const adminCouriersApi = {
+  // Получить список курьеров
+  getCouriers: async (page = 1, limit = 20, search?: string): Promise<CouriersResponse> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) params.append('search', search);
+    return http.get<CouriersResponse>(`/v1/admin/couriers?${params.toString()}`);
+  },
+
+  // Получить курьера по ID
+  getCourier: async (id: string): Promise<Courier> => {
+    return http.get<Courier>(`/v1/admin/couriers/${id}`);
+  },
+
+  // Создать курьера
+  createCourier: async (data: CreateCourierInput): Promise<Courier> => {
+    return http.post<Courier>('/v1/admin/couriers', data);
+  },
+
+  // Обновить курьера
+  updateCourier: async (id: string, data: UpdateCourierInput): Promise<Courier> => {
+    return http.put<Courier>(`/v1/admin/couriers/${id}`, data);
+  },
+
+  // Удалить курьера
+  deleteCourier: async (id: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/admin/couriers/${id}`);
+  },
+
+  // Проверить доступность логина
+  checkLogin: async (login: string, excludeId?: string): Promise<{ available: boolean; existingId: string | null }> => {
+    const params = excludeId ? `?excludeId=${excludeId}` : '';
+    return http.get<{ available: boolean; existingId: string | null }>(
+      `/v1/admin/couriers/check-login/${encodeURIComponent(login)}${params}`
+    );
   },
 };

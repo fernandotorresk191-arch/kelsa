@@ -8,6 +8,7 @@ import { AdminCategoriesController } from './admin-categories.controller';
 import { AdminPromotionsController } from './admin-promotions.controller';
 import { AdminPurchasesController } from './admin-purchases.controller';
 import { AdminExpiryController } from './admin-expiry.controller';
+import { AdminCouriersController } from './admin-couriers.controller';
 
 @Module({
   imports: [PrismaModule],
@@ -20,6 +21,7 @@ import { AdminExpiryController } from './admin-expiry.controller';
     AdminPromotionsController,
     AdminPurchasesController,
     AdminExpiryController,
+    AdminCouriersController,
   ],
 })
 export class AdminModule {}
