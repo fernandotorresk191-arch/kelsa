@@ -63,6 +63,7 @@ export class CatalogController {
     return this.prisma.product.findMany({
       where: {
         isActive: true,
+        stock: { gt: 0 }, // Показываем только товары в наличии
         ...(subcategorySlug 
           ? { subcategory: { is: { slug: subcategorySlug } } }
           : categorySlug 

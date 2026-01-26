@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 
 import {
   FiHeart,
@@ -15,20 +14,19 @@ import {
 import { CategoryDto } from "features/catalog/types";
 import { useEffect, useState } from "react";
 import { catalogApi } from "features/catalog/api";
-import { useRouter } from "next/navigation";
 import { useSettlement } from "../settlement/SettlementProvider";
 import { useAuth } from "../auth/AuthProvider";
 import { AuthDialog } from "../auth/AuthDialog";
+import MobileSearch from "./MobileSearch";
 
 type MobileMenuProps = {
   onClose: () => void;
 };
 
 const MobileMenu = ({ onClose }: MobileMenuProps) => {
-  const router = useRouter();
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [authOpen, setAuthOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const { selectedSettlement, setDialogOpen } = useSettlement();
   const { user } = useAuth();
 
@@ -68,32 +66,15 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
           </button>
         </div>
 
-        <form
-          className="relative"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const query = searchValue.trim();
-            if (!query) return;
-            router.push(`/search?q=${encodeURIComponent(query)}`);
-            onClose();
-          }}
+        {/* Поиск - открывает полноэкранный поиск */}
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 text-slate-500 text-left transition-colors active:bg-slate-200"
         >
-          <Input
-            placeholder="Поиск товаров"
-            className="pl-10 rounded-full bg-accent/50"
-            value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            aria-label="Поиск товаров"
-          />
-          <button
-            type="submit"
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            aria-label="Найти"
-          >
-            <FiSearch size={18} />
-          </button>
-        </form>
+          <FiSearch size={18} />
+          <span>Поиск товаров...</span>
+        </button>
 
         <button
           type="button"
@@ -173,6 +154,13 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
           setAuthOpen(false);
           onClose();
         }}
+      />
+
+      {/* Полноэкранный поиск */}
+      <MobileSearch 
+        isOpen={searchOpen} 
+        onClose={() => setSearchOpen(false)}
+        onNavigate={onClose}
       />
     </div>
   );

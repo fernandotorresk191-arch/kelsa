@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import { FiMapPin, FiHeart, FiShoppingBag, FiUser, FiSearch, FiMenu, FiX } from 'react-icons/fi';
+import { FiMapPin, FiHeart, FiShoppingBag, FiUser, FiMenu, FiX } from 'react-icons/fi';
 import CategoryMenu from './CategoryMenu';
 import MobileMenu from './MobileMenu';
+import SearchWithSuggestions from './SearchWithSuggestions';
 import { useEffect, useState } from 'react';
 import {
   Dialog,
@@ -30,7 +30,6 @@ const Header = () => {
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [searchValue, setSearchValue] = useState("");
   const { itemCount, lastOrder, resetLastOrder } = useCart();
   const { selectedSettlement, setDialogOpen } = useSettlement();
   const { user } = useAuth();
@@ -79,32 +78,10 @@ const Header = () => {
             <span>{selectedSettlement ? selectedSettlement.title : "Укажите адрес доставки"}</span>
           </button>
 
-          {/* Search */}
-          <form
-            className="relative flex-grow hidden mx-6 md:block"
-            role="search"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const query = searchValue.trim();
-              if (!query) return;
-              router.push(`/search?q=${encodeURIComponent(query)}`);
-            }}
-          >
-            <Input
-              placeholder="Поиск товаров"
-              className="pl-10 rounded-full bg-accent/50"
-              value={searchValue}
-              onChange={(event) => setSearchValue(event.target.value)}
-              aria-label="Поиск товаров"
-            />
-            <button
-              type="submit"
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              aria-label="Найти"
-            >
-              <FiSearch size={18} />
-            </button>
-          </form>
+          {/* Search with suggestions */}
+          <div className="hidden md:block flex-grow">
+            <SearchWithSuggestions />
+          </div>
 
           {/* Navigation buttons */}
           <div className="flex items-center gap-2">

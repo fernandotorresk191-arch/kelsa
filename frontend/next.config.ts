@@ -13,6 +13,15 @@ const nextConfig: NextConfig = {
         protocol: "http",
         hostname: "127.0.0.1",
       },
+      {
+        // Allow any IP in local network (192.168.x.x, 10.x.x.x, etc.)
+        protocol: "http",
+        hostname: "**",
+      },
+      {
+        protocol: "https",
+        hostname: "**",
+      },
     ],
   },
 };
