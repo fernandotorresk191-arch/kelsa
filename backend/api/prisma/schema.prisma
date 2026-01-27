@@ -302,6 +302,9 @@ model Courier {
   isActive      Boolean       @default(true) // Активен или нет
   status        CourierStatus @default(AVAILABLE) // Текущий статус курьера
   
+  // Push-уведомления
+  pushSubscription  String?   // JSON подписки для Web Push
+  
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   

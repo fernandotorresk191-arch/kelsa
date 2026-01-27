@@ -2,9 +2,11 @@
 
 import { useCourier } from '@/components/courier/CourierProvider';
 import { CourierStatusLabels } from '@/features/courier/types';
+import { usePushNotifications } from '@/features/courier/usePushNotifications';
 
 export default function CourierProfilePage() {
   const { courier, logout } = useCourier();
+  const { isSupported, isSubscribed, isLoading, error, debugInfo, subscribe, unsubscribe } = usePushNotifications();
 
   if (!courier) {
     return (
@@ -74,6 +76,57 @@ export default function CourierProfilePage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Настройки уведомлений */}
+      <div className="courier-card courier-mt-md">
+        <div className="courier-card-body">
+          <h3 className="courier-card-title">🔔 Уведомления</h3>
+          
+          {!isSupported ? (
+            <p className="courier-order-label">
+              Push-уведомления не поддерживаются на этом устройстве.
+              Убедитесь, что приложение добавлено на домашний экран.
+            </p>
+          ) : isSubscribed ? (
+            <div>
+              <p className="courier-order-value courier-mb-sm">
+                ✅ Уведомления включены
+              </p>
+              <button
+                onClick={unsubscribe}
+                disabled={isLoading}
+                className="courier-btn courier-btn-secondary"
+              >
+                {isLoading ? 'Отключение...' : 'Отключить уведомления'}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="courier-order-label courier-mb-sm">
+                Включите уведомления, чтобы получать оповещения о новых заказах
+              </p>
+              <button
+                onClick={subscribe}
+                disabled={isLoading}
+                className="courier-btn courier-btn-primary"
+              >
+                {isLoading ? 'Включение...' : '🔔 Включить уведомления'}
+              </button>
+            </div>
+          )}
+          
+          {error && (
+            <p className="courier-login-error courier-mt-sm">{error}</p>
+          )}
+          
+          {/* Debug info - можно убрать после отладки */}
+          {debugInfo && (
+            <p className="courier-order-label courier-mt-sm" style={{ fontSize: '10px', opacity: 0.6, wordBreak: 'break-all' }}>
+              Debug: {debugInfo}
+            </p>
+          )}
         </div>
       </div>
 

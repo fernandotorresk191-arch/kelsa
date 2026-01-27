@@ -12,6 +12,7 @@ import { AdminModule } from './admin/admin.module';
 import { CourierModule } from './courier/courier.module';
 import { EventsModule } from './events/events.module';
 import { UploadModule } from './upload/upload.module';
+import { PushModule } from './push/push.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { JwtGuard } from './auth/jwt.guard';
@@ -34,6 +35,7 @@ import { JwtGuard } from './auth/jwt.guard';
     CourierModule,
     EventsModule,
     UploadModule,
+    PushModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

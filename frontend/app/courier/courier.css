@@ -594,6 +594,14 @@
   margin-top: 0.5rem;
 }
 
+.courier-mt-md {
+  margin-top: 1rem;
+}
+
+.courier-mb-sm {
+  margin-bottom: 0.5rem;
+}
+
 .courier-mb-md {
   margin-bottom: 1rem;
 }

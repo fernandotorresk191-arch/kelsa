@@ -14,6 +14,7 @@ import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { EventsService } from '../events/events.service';
+import { PushService } from '../push/push.service';
 
 enum OrderStatus {
   NEW = 'NEW',
@@ -83,6 +84,7 @@ export class AdminOrdersController {
   constructor(
     private prisma: PrismaService,
     private eventsService: EventsService,
+    private pushService: PushService,
   ) {}
 
   private checkAdminRole(req: AuthRequest) {
@@ -346,6 +348,13 @@ export class AdminOrdersController {
       },
       courierId: dto.courierId,
     });
+
+    // Отправляем Push-уведомление курьеру
+    this.pushService.notifyNewOrder(
+      dto.courierId,
+      updatedOrder.orderNumber,
+      updatedOrder.addressLine,
+    );
 
     return { success: true, order: updatedOrder };
   }
