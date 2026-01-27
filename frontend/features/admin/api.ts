@@ -114,6 +114,28 @@ export const adminOrdersApi = {
       `/v1/admin/orders/${id}/print/picking`
     );
   },
+
+  // Назначить курьера на заказ
+  assignCourier: async (orderId: string, courierId: string): Promise<{ success: boolean }> => {
+    return http.patch<{ success: boolean }>(`/v1/admin/orders/${orderId}/assign-courier`, {
+      courierId,
+    });
+  },
+
+  // Получить список доступных курьеров
+  getAvailableCouriers: async (): Promise<{
+    data: Array<{
+      id: string;
+      fullName: string;
+      phone: string;
+      carBrand?: string;
+      carNumber?: string;
+      status: string;
+      activeOrdersCount: number;
+    }>;
+  }> => {
+    return http.get('/v1/admin/orders/available-couriers');
+  },
 };
 
 export const adminProductsApi = {

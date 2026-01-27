@@ -369,7 +369,7 @@ export default function AdminCatalogPage() {
               </div>
               <h3 className="text-lg font-semibold text-slate-800 mb-2">Удалить категорию?</h3>
               <p className="text-slate-600 text-sm">
-                Вы уверены, что хотите удалить категорию <strong>{categoryToDelete.title}</strong>? Товары из этой категории останутся без категории.
+                Вы уверены, что хотите удалить категорию <strong>{categoryToDelete.name}</strong>? Товары из этой категории останутся без категории.
               </p>
             </div>
             <div className="flex gap-3">

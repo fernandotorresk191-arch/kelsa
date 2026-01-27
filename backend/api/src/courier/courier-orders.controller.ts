@@ -1,0 +1,429 @@
+import {
+  Controller,
+  Get,
+  Patch,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
+import { IsString, IsOptional } from 'class-validator';
+import { PrismaService } from 'prisma/prisma.service';
+import { CourierJwtGuard } from './courier-jwt.guard';
+import { EventsService } from '../events/events.service';
+
+interface CourierRequest {
+  user: {
+    sub: string;
+    login: string;
+    role: string;
+  };
+}
+
+class CancelOrderDto {
+  @IsOptional()
+  @IsString()
+  reason?: string;
+}
+
+@Controller('v1/courier/orders')
+@UseGuards(CourierJwtGuard)
+export class CourierOrdersController {
+  constructor(
+    private prisma: PrismaService,
+    private eventsService: EventsService,
+  ) {}
+
+  // Получить заказы, назначенные курьеру
+  @Get()
+  async getMyOrders(@Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        courierId,
+        status: {
+          in: ['ASSIGNED_TO_COURIER', 'ACCEPTED_BY_COURIER', 'ON_THE_WAY'],
+        },
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { id: true, title: true, imageUrl: true },
+            },
+          },
+        },
+        user: {
+          select: { id: true, name: true, phone: true },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return { data: orders };
+  }
+
+  // Получить историю доставленных заказов
+  @Get('history')
+  async getOrdersHistory(@Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+
+    const orders = await this.prisma.order.findMany({
+      where: {
+        courierId,
+        status: {
+          in: ['DELIVERED', 'CANCELED'],
+        },
+      },
+      include: {
+        items: {
+          include: {
+            product: {
+              select: { id: true, title: true },
+            },
+          },
+        },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    return { data: orders };
+  }
+
+  // Курьер берёт заказ (статус → ACCEPTED_BY_COURIER)
+  @Patch(':id/accept')
+  async acceptOrder(@Param('id') orderId: string, @Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+    const courierLogin = req.user.login;
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Заказ не найден');
+    }
+
+    if (order.courierId !== courierId) {
+      throw new BadRequestException('Этот заказ назначен другому курьеру');
+    }
+
+    if (order.status !== 'ASSIGNED_TO_COURIER') {
+      throw new BadRequestException('Заказ уже принят или недоступен');
+    }
+
+    // Обновляем заказ и статус курьера
+    const [updatedOrder] = await this.prisma.$transaction([
+      this.prisma.order.update({
+        where: { id: orderId },
+        data: { status: 'ACCEPTED_BY_COURIER' },
+      }),
+      this.prisma.orderStatusHistory.create({
+        data: {
+          orderId,
+          status: 'ACCEPTED_BY_COURIER',
+          comment: 'Курьер принял заказ',
+          changedBy: `courier:${courierLogin}`,
+        },
+      }),
+      this.prisma.courier.update({
+        where: { id: courierId },
+        data: { status: 'ACCEPTED' },
+      }),
+    ]);
+
+    // Отправляем SSE событие
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_UPDATED',
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerName: updatedOrder.customerName,
+        phone: updatedOrder.phone,
+        totalAmount: updatedOrder.totalAmount,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+      },
+      userId: updatedOrder.userId,
+    });
+
+    return { success: true, order: updatedOrder };
+  }
+
+  // Курьер выезжает с заказами (все ACCEPTED_BY_COURIER → ON_THE_WAY)
+  @Patch('start-delivery')
+  async startDelivery(@Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+    const courierLogin = req.user.login;
+
+    // Находим все принятые заказы курьера
+    const acceptedOrders = await this.prisma.order.findMany({
+      where: {
+        courierId,
+        status: 'ACCEPTED_BY_COURIER',
+      },
+    });
+
+    if (acceptedOrders.length === 0) {
+      throw new BadRequestException('Нет принятых заказов для доставки');
+    }
+
+    // Обновляем все заказы и статус курьера
+    await this.prisma.$transaction(async (tx) => {
+      // Обновляем статус всех принятых заказов
+      for (const order of acceptedOrders) {
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: 'ON_THE_WAY' },
+        });
+
+        await tx.orderStatusHistory.create({
+          data: {
+            orderId: order.id,
+            status: 'ON_THE_WAY',
+            comment: 'Курьер выехал',
+            changedBy: `courier:${courierLogin}`,
+          },
+        });
+
+        // Отправляем SSE событие для каждого заказа
+        this.eventsService.emitOrderEvent({
+          type: 'ORDER_UPDATED',
+          order: {
+            id: order.id,
+            orderNumber: order.orderNumber,
+            customerName: order.customerName,
+            phone: order.phone,
+            totalAmount: order.totalAmount,
+            status: 'ON_THE_WAY',
+            createdAt: order.createdAt,
+          },
+          userId: order.userId,
+        });
+      }
+
+      // Обновляем статус курьера на "Везу заказы"
+      await tx.courier.update({
+        where: { id: courierId },
+        data: { status: 'DELIVERING' },
+      });
+    });
+
+    return {
+      success: true,
+      message: `Выехали с ${acceptedOrders.length} заказами`,
+      count: acceptedOrders.length,
+    };
+  }
+
+  // Курьер доставил заказ
+  @Patch(':id/deliver')
+  async deliverOrder(@Param('id') orderId: string, @Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+    const courierLogin = req.user.login;
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Заказ не найден');
+    }
+
+    if (order.courierId !== courierId) {
+      throw new BadRequestException('Этот заказ назначен другому курьеру');
+    }
+
+    if (order.status !== 'ON_THE_WAY') {
+      throw new BadRequestException('Заказ не в статусе "В пути"');
+    }
+
+    // Обновляем заказ
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { id: orderId },
+        data: { status: 'DELIVERED' },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId,
+          status: 'DELIVERED',
+          comment: 'Заказ доставлен',
+          changedBy: `courier:${courierLogin}`,
+        },
+      });
+
+      // Проверяем, остались ли ещё заказы в доставке
+      const remainingOrders = await tx.order.count({
+        where: {
+          courierId,
+          status: { in: ['ACCEPTED_BY_COURIER', 'ON_THE_WAY'] },
+        },
+      });
+
+      // Если заказов больше нет, освобождаем курьера
+      if (remainingOrders === 0) {
+        await tx.courier.update({
+          where: { id: courierId },
+          data: { status: 'AVAILABLE' },
+        });
+      }
+
+      return updated;
+    });
+
+    // Отправляем SSE событие
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_UPDATED',
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerName: updatedOrder.customerName,
+        phone: updatedOrder.phone,
+        totalAmount: updatedOrder.totalAmount,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+      },
+      userId: updatedOrder.userId,
+    });
+
+    return { success: true, order: updatedOrder };
+  }
+
+  // Курьер отменяет заказ
+  @Patch(':id/cancel')
+  async cancelOrder(
+    @Param('id') orderId: string,
+    @Body() dto: CancelOrderDto,
+    @Req() req: CourierRequest,
+  ) {
+    const courierId = req.user.sub;
+    const courierLogin = req.user.login;
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Заказ не найден');
+    }
+
+    if (order.courierId !== courierId) {
+      throw new BadRequestException('Этот заказ назначен другому курьеру');
+    }
+
+    if (
+      !['ASSIGNED_TO_COURIER', 'ACCEPTED_BY_COURIER', 'ON_THE_WAY'].includes(
+        order.status,
+      )
+    ) {
+      throw new BadRequestException(
+        'Невозможно отменить заказ в текущем статусе',
+      );
+    }
+
+    // Обновляем заказ
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { id: orderId },
+        data: {
+          status: 'CANCELED',
+          canceledBy: 'COURIER',
+          cancelReason: dto.reason || 'Отменено курьером',
+          courierId: null, // Снимаем назначение
+        },
+      });
+
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId,
+          status: 'CANCELED',
+          comment: dto.reason || 'Отменено курьером',
+          changedBy: `courier:${courierLogin}`,
+        },
+      });
+
+      // Проверяем, остались ли ещё заказы
+      const remainingOrders = await tx.order.count({
+        where: {
+          courierId,
+          status: {
+            in: ['ASSIGNED_TO_COURIER', 'ACCEPTED_BY_COURIER', 'ON_THE_WAY'],
+          },
+        },
+      });
+
+      // Если заказов больше нет, освобождаем курьера
+      if (remainingOrders === 0) {
+        await tx.courier.update({
+          where: { id: courierId },
+          data: { status: 'AVAILABLE' },
+        });
+      }
+
+      return updated;
+    });
+
+    // Отправляем SSE событие
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_UPDATED',
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerName: updatedOrder.customerName,
+        phone: updatedOrder.phone,
+        totalAmount: updatedOrder.totalAmount,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+      },
+      userId: updatedOrder.userId,
+    });
+
+    return { success: true, order: updatedOrder };
+  }
+
+  // Получить текущий статус курьера
+  @Get('status')
+  async getStatus(@Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+
+    const courier = await this.prisma.courier.findUnique({
+      where: { id: courierId },
+      select: {
+        id: true,
+        fullName: true,
+        status: true,
+        _count: {
+          select: {
+            orders: {
+              where: {
+                status: {
+                  in: [
+                    'ASSIGNED_TO_COURIER',
+                    'ACCEPTED_BY_COURIER',
+                    'ON_THE_WAY',
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!courier) {
+      throw new BadRequestException('Курьер не найден');
+    }
+
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      status: courier.status,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+      activeOrdersCount: courier._count.orders,
+    };
+  }
+}

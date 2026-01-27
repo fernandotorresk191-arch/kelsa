@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Button } from '../ui/button';
 import { FiMapPin, FiHeart, FiShoppingBag, FiUser, FiMenu, FiX } from 'react-icons/fi';
 import CategoryMenu from './CategoryMenu';
@@ -26,6 +26,7 @@ import { useAuth } from '../auth/AuthProvider';
 
 const Header = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
@@ -39,6 +40,11 @@ const Header = () => {
       setCartOpen(false);
     }
   }, [lastOrder, setCartOpen]);
+
+  // Не показывать header на страницах курьера и админа
+  if (pathname.startsWith('/courier') || pathname.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-50 bg-white border-b">

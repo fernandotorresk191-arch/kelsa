@@ -1,9 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminOrdersApi } from '@/features/admin/api';
 import { Order, OrderStatus, OrderStatusLabels, OrderStatusColors } from '@/features/admin/types';
+import { useOrdersSSE } from '@/features/admin/useOrdersSSE';
+
+interface AvailableCourier {
+  id: string;
+  fullName: string;
+  phone: string;
+  carBrand?: string;
+  carNumber?: string;
+  status: string;
+  activeOrdersCount: number;
+}
 
 export default function AdminOrderDetailPage() {
   const router = useRouter();
@@ -13,12 +24,35 @@ export default function AdminOrderDetailPage() {
   const [newStatus, setNewStatus] = useState<OrderStatus | ''>('');
   const [comment, setComment] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Состояние для назначения курьера
+  const [showCourierModal, setShowCourierModal] = useState(false);
+  const [availableCouriers, setAvailableCouriers] = useState<AvailableCourier[]>([]);
+  const [loadingCouriers, setLoadingCouriers] = useState(false);
+  const [assigningCourier, setAssigningCourier] = useState(false);
 
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
     const id = pathParts[pathParts.length - 1];
     setOrderId(id);
   }, []);
+
+  // SSE для live обновлений статуса заказа
+  const handleOrderUpdated = useCallback((orderData: { id: string; status: string }) => {
+    if (orderId && orderData.id === orderId) {
+      // Перезагружаем заказ для получения полных данных
+      adminOrdersApi.getOrder(orderId).then((data) => {
+        setOrder(data as Order);
+        setNewStatus(data.status);
+      }).catch(console.error);
+    }
+  }, [orderId]);
+
+  useOrdersSSE({
+    onOrderUpdated: handleOrderUpdated,
+    enabled: !!orderId,
+    playSound: false,
+  });
 
   useEffect(() => {
     if (!orderId) return;
@@ -84,6 +118,45 @@ export default function AdminOrderDetailPage() {
       }
     } catch (error) {
       console.error('Failed to print picking list:', error);
+    }
+  };
+
+  // Загрузка доступных курьеров
+  const loadAvailableCouriers = useCallback(async () => {
+    try {
+      setLoadingCouriers(true);
+      const response = await adminOrdersApi.getAvailableCouriers();
+      setAvailableCouriers(response.data);
+    } catch (error) {
+      console.error('Failed to load couriers:', error);
+    } finally {
+      setLoadingCouriers(false);
+    }
+  }, []);
+
+  // Открыть модальное окно назначения курьера
+  const handleOpenCourierModal = () => {
+    setShowCourierModal(true);
+    loadAvailableCouriers();
+  };
+
+  // Назначить курьера
+  const handleAssignCourier = async (courierId: string) => {
+    if (!orderId) return;
+    
+    try {
+      setAssigningCourier(true);
+      await adminOrdersApi.assignCourier(orderId, courierId);
+      // Перезагружаем заказ
+      const updated = await adminOrdersApi.getOrder(orderId);
+      setOrder(updated as Order);
+      setNewStatus(updated.status);
+      setShowCourierModal(false);
+    } catch (error) {
+      console.error('Failed to assign courier:', error);
+      alert('Ошибка при назначении курьера');
+    } finally {
+      setAssigningCourier(false);
     }
   };
 
@@ -283,9 +356,98 @@ export default function AdminOrderDetailPage() {
             >
               📦 Накладная сбора
             </button>
+
+            {/* Кнопка передать курьеру - только для статуса ASSEMBLING */}
+            {order.status === OrderStatus.ASSEMBLING && (
+              <button
+                onClick={handleOpenCourierModal}
+                className="w-full mt-4 admin-btn flex items-center justify-center gap-2"
+                style={{ 
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                  color: 'white',
+                }}
+              >
+                🚚 Передать курьеру
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Модальное окно выбора курьера */}
+      {showCourierModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowCourierModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-gray-900">Выберите курьера</h3>
+              <button 
+                onClick={() => setShowCourierModal(false)}
+                className="text-gray-400 hover:text-gray-600 text-xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto max-h-[60vh]">
+              {loadingCouriers ? (
+                <div className="text-center py-8">
+                  <div className="admin-spinner mx-auto" />
+                  <p className="text-gray-500 mt-2">Загрузка курьеров...</p>
+                </div>
+              ) : availableCouriers.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-4xl mb-2">😔</p>
+                  <p className="text-gray-600 font-medium">Нет доступных курьеров</p>
+                  <p className="text-gray-400 text-sm">Все курьеры сейчас на доставке</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {availableCouriers.map((courier) => (
+                    <button
+                      key={courier.id}
+                      onClick={() => handleAssignCourier(courier.id)}
+                      disabled={assigningCourier}
+                      className="w-full p-4 bg-gray-50 hover:bg-indigo-50 rounded-lg border border-gray-200 hover:border-indigo-300 transition-all text-left"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-semibold text-gray-900">{courier.fullName}</p>
+                          <p className="text-sm text-gray-500">{courier.phone}</p>
+                          {courier.carBrand && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              🚗 {courier.carBrand} {courier.carNumber && `(${courier.carNumber})`}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                            courier.status === 'AVAILABLE' 
+                              ? 'bg-green-100 text-green-700' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {courier.status === 'AVAILABLE' ? 'Свободен' : 'Взял заказ'}
+                          </span>
+                          {courier.activeOrdersCount > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              {courier.activeOrdersCount} заказ{courier.activeOrdersCount === 1 ? '' : 'а'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { adminCouriersApi } from '@/features/admin/api';
 import { Courier } from '@/features/admin/types';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 interface CourierFormData {
   fullName: string;
@@ -45,6 +46,8 @@ const isValidPhone = (phone: string): boolean => {
 };
 
 export default function AdminCouriersPage() {
+  const { isAuthenticated, isLoading: isAuthLoading } = useAdmin();
+  
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -63,25 +66,38 @@ export default function AdminCouriersPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [courierToDelete, setCourierToDelete] = useState<Courier | null>(null);
+  
+  // Состояние ошибки загрузки
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const limit = 20;
 
   const fetchCouriers = useCallback(async () => {
+    // Не загружаем данные пока не авторизованы
+    if (!isAuthenticated) return;
+    
     try {
       setIsLoading(true);
+      setFetchError(null);
       const response = await adminCouriersApi.getCouriers(page, limit, searchQuery || undefined);
       setCouriers(response.data);
       setTotal(response.pagination.total);
     } catch (error) {
-      console.error('Failed to fetch couriers:', error);
+      const err = error as { message?: string; details?: string };
+      const errorMessage = err.message || 'Неизвестная ошибка';
+      console.error('Failed to fetch couriers:', errorMessage, err.details || '');
+      setFetchError(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [page, searchQuery]);
+  }, [page, searchQuery, isAuthenticated]);
 
   useEffect(() => {
-    fetchCouriers();
-  }, [fetchCouriers]);
+    // Загружаем только когда авторизация проверена и пользователь авторизован
+    if (!isAuthLoading && isAuthenticated) {
+      fetchCouriers();
+    }
+  }, [fetchCouriers, isAuthLoading, isAuthenticated]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,12 +211,17 @@ export default function AdminCouriersPage() {
       handleCloseForm();
       fetchCouriers();
     } catch (error: unknown) {
-      console.error('Failed to save courier:', error);
-      const err = error as { message?: string };
-      if (err.message?.includes('логин')) {
+      const err = error as { message?: string; details?: string; status?: number };
+      console.error('Failed to save courier:', err.message, err.details || '');
+      
+      if (err.message?.includes('логин') || err.details?.includes('логин')) {
         setFormErrors({ login: 'Курьер с таким логином уже существует' });
+      } else if (err.status === 401 || err.message?.includes('Unauthorized') || err.message?.includes('token')) {
+        setFormErrors({ general: 'Ошибка авторизации. Пожалуйста, перезайдите в систему.' });
+      } else if (err.status === 0 || err.message?.includes('недоступен')) {
+        setFormErrors({ general: 'Сервер недоступен. Проверьте подключение.' });
       } else {
-        setFormErrors({ general: 'Ошибка при сохранении курьера' });
+        setFormErrors({ general: err.message || 'Ошибка при сохранении курьера' });
       }
     } finally {
       setIsSaving(false);
@@ -293,7 +314,19 @@ export default function AdminCouriersPage() {
 
       {/* Таблица курьеров */}
       <div className="admin-card">
-        {isLoading ? (
+        {fetchError ? (
+          <div className="admin-empty-state">
+            <div className="admin-empty-icon">⚠️</div>
+            <div className="admin-empty-title text-red-600">Ошибка загрузки</div>
+            <div className="admin-empty-text text-red-500">{fetchError}</div>
+            <button
+              onClick={() => fetchCouriers()}
+              className="admin-btn admin-btn-secondary mt-4"
+            >
+              Повторить
+            </button>
+          </div>
+        ) : isLoading ? (
           <div className="admin-loading">
             <div className="admin-spinner" />
           </div>

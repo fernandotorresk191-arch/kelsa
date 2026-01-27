@@ -1,0 +1,25 @@
+import { NextResponse } from "next/server";
+
+export async function GET() {
+  const manifest = {
+    name: "Kelsa Курьер",
+    short_name: "Курьер",
+    description: "Приложение курьера для доставки заказов",
+    start_url: "/courier",
+    scope: "/courier",
+    display: "standalone",
+    background_color: "#000000",
+    theme_color: "#3b82f6",
+    icons: [
+      { src: "/cur192.png", sizes: "192x192", type: "image/png" },
+      { src: "/cur512.png", sizes: "512x512", type: "image/png" },
+      { src: "/cur512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+  };
+
+  return NextResponse.json(manifest, {
+    headers: {
+      "Content-Type": "application/manifest+json",
+    },
+  });
+}

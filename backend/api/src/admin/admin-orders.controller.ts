@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   UnauthorizedException,
+  BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
@@ -18,6 +19,8 @@ enum OrderStatus {
   NEW = 'NEW',
   CONFIRMED = 'CONFIRMED',
   ASSEMBLING = 'ASSEMBLING',
+  ASSIGNED_TO_COURIER = 'ASSIGNED_TO_COURIER',
+  ACCEPTED_BY_COURIER = 'ACCEPTED_BY_COURIER',
   ON_THE_WAY = 'ON_THE_WAY',
   DELIVERED = 'DELIVERED',
   CANCELED = 'CANCELED',
@@ -30,6 +33,11 @@ class UpdateOrderStatusDto {
   @IsOptional()
   @IsString()
   comment?: string;
+}
+
+class AssignCourierDto {
+  @IsString()
+  courierId: string;
 }
 
 interface AuthRequest {
@@ -124,6 +132,47 @@ export class AdminOrdersController {
     };
   }
 
+  // Получить список доступных курьеров для назначения
+  // ВАЖНО: Этот маршрут должен быть ПЕРЕД @Get(':id'), иначе 'available-couriers' будет интерпретирован как :id
+  @Get('available-couriers')
+  async getAvailableCouriers(@Req() req: AuthRequest) {
+    this.checkAdminRole(req);
+
+    const couriers = await this.prisma.courier.findMany({
+      where: {
+        isActive: true,
+        status: { in: ['AVAILABLE', 'ACCEPTED'] },
+      },
+      select: {
+        id: true,
+        fullName: true,
+        phone: true,
+        carBrand: true,
+        carNumber: true,
+        status: true,
+        _count: {
+          select: {
+            orders: {
+              where: {
+                status: {
+                  in: ['ASSIGNED_TO_COURIER', 'ACCEPTED_BY_COURIER'],
+                },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { fullName: 'asc' },
+    });
+
+    return {
+      data: couriers.map((c) => ({
+        ...c,
+        activeOrdersCount: c._count.orders,
+      })),
+    };
+  }
+
   @Get(':id')
   async getOrderById(@Param('id') id: string, @Req() req: AuthRequest) {
     this.checkAdminRole(req);
@@ -200,6 +249,105 @@ export class AdminOrdersController {
     });
 
     return { success: true };
+  }
+
+  // Назначить курьера на заказ
+  @Patch(':id/assign-courier')
+  async assignCourier(
+    @Param('id') id: string,
+    @Body() dto: AssignCourierDto,
+    @Req() req: AuthRequest,
+  ) {
+    this.checkAdminRole(req);
+
+    const order = await this.prisma.order.findUnique({ where: { id } });
+    if (!order) {
+      throw new BadRequestException('Заказ не найден');
+    }
+
+    // Проверяем, что заказ в статусе ASSEMBLING
+    if (order.status !== 'ASSEMBLING') {
+      throw new BadRequestException(
+        'Заказ должен быть в статусе "Собирается" для назначения курьера',
+      );
+    }
+
+    // Проверяем, что курьер существует и доступен
+    const courier = await this.prisma.courier.findUnique({
+      where: { id: dto.courierId },
+    });
+
+    if (!courier) {
+      throw new BadRequestException('Курьер не найден');
+    }
+
+    if (!courier.isActive) {
+      throw new BadRequestException('Курьер деактивирован');
+    }
+
+    if (courier.status === 'DELIVERING') {
+      throw new BadRequestException('Курьер сейчас на доставке');
+    }
+
+    const adminLogin = req.user?.login || 'manager';
+
+    // Назначаем курьера и меняем статус заказа
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      // Обновляем заказ
+      const updated = await tx.order.update({
+        where: { id },
+        data: {
+          courierId: dto.courierId,
+          status: 'ASSIGNED_TO_COURIER',
+        },
+      });
+
+      // Записываем в историю
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: id,
+          status: 'ASSIGNED_TO_COURIER',
+          comment: `Назначен курьер: ${courier.fullName}`,
+          changedBy: adminLogin,
+        },
+      });
+
+      return updated;
+    });
+
+    // Отправляем SSE событие для админов
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_UPDATED',
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerName: updatedOrder.customerName,
+        phone: updatedOrder.phone,
+        totalAmount: updatedOrder.totalAmount,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+        addressLine: updatedOrder.addressLine,
+      },
+      userId: updatedOrder.userId,
+    });
+
+    // Отправляем SSE событие для курьера
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_ASSIGNED_TO_COURIER',
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerName: updatedOrder.customerName,
+        phone: updatedOrder.phone,
+        totalAmount: updatedOrder.totalAmount,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+        addressLine: updatedOrder.addressLine,
+      },
+      courierId: dto.courierId,
+    });
+
+    return { success: true, order: updatedOrder };
   }
 
   @Get(':id/print/invoice')

@@ -9,6 +9,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { CartModule } from './cart/cart.module';
 import { OrdersModule } from './orders/order.module';
 import { AdminModule } from './admin/admin.module';
+import { CourierModule } from './courier/courier.module';
 import { EventsModule } from './events/events.module';
 import { UploadModule } from './upload/upload.module';
 import { JwtModule } from '@nestjs/jwt';
@@ -30,6 +31,7 @@ import { JwtGuard } from './auth/jwt.guard';
     CartModule,
     OrdersModule,
     AdminModule,
+    CourierModule,
     EventsModule,
     UploadModule,
     JwtModule.registerAsync({

@@ -1,7 +1,17 @@
+"use client";
+
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { FiPhone, FiMail } from 'react-icons/fi';
 
 const Footer = () => {
+  const pathname = usePathname();
+
+  // Не показывать footer на страницах курьера и админа
+  if (pathname.startsWith('/courier') || pathname.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <footer className="bg-white border-t py-8">
       <div className="kelsa-container">

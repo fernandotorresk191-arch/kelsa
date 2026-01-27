@@ -2,11 +2,21 @@ import { API_URL } from "./config";
 import { getStoredAccessToken } from "../auth/token";
 
 const ADMIN_TOKEN_KEY = "admin_token";
+const COURIER_TOKEN_KEY = "courier_token";
 
 function getAdminToken(): string | null {
   if (typeof window === "undefined") return null;
   try {
     return window.localStorage.getItem(ADMIN_TOKEN_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function getCourierToken(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(COURIER_TOKEN_KEY);
   } catch {
     return null;
   }
@@ -35,9 +45,16 @@ async function apiRequest<T>(
     "Content-Type": "application/json",
   });
 
+  // Для courier API используем курьерский токен
   // Для admin/upload API используем admin токен, иначе пользовательский
+  // Важно: /v1/admin/couriers - это админский путь, а /v1/courier/ - курьерский
+  const isCourierPath = path.includes('/courier/') || path.includes('/courier-auth');
   const isAdminPath = path.includes('/admin') || path.includes('/upload');
-  const token = isAdminPath ? getAdminToken() : getStoredAccessToken();
+  const token = isCourierPath 
+    ? getCourierToken() 
+    : isAdminPath 
+      ? getAdminToken() 
+      : getStoredAccessToken();
   
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -48,10 +65,23 @@ async function apiRequest<T>(
     override.forEach((value, key) => headers.set(key, value));
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers,
+    });
+  } catch (networkError) {
+    // Сетевая ошибка (сервер недоступен, CORS и т.д.)
+    const errorMessage = networkError instanceof Error 
+      ? networkError.message 
+      : 'Ошибка сети';
+    throw {
+      status: 0,
+      message: `Сервер недоступен: ${errorMessage}`,
+      details: `Не удалось подключиться к ${API_URL}${path}`,
+    } satisfies ApiError;
+  }
 
   if (!res.ok) throw await parseError(res);
 
@@ -122,9 +152,16 @@ export async function apiUpload<T>(
 ): Promise<T> {
   const headers = new Headers();
 
+  // Для courier API используем курьерский токен
   // Для admin/upload API используем admin токен
+  // Важно: /v1/admin/couriers - это админский путь, а /v1/courier/ - курьерский
+  const isCourierPath = path.includes('/courier/') || path.includes('/courier-auth');
   const isAdminPath = path.includes('/admin') || path.includes('/upload');
-  const token = isAdminPath ? getAdminToken() : getStoredAccessToken();
+  const token = isCourierPath 
+    ? getCourierToken() 
+    : isAdminPath 
+      ? getAdminToken() 
+      : getStoredAccessToken();
   
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
@@ -135,12 +172,25 @@ export async function apiUpload<T>(
     override.forEach((value, key) => headers.set(key, value));
   }
 
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    method: "POST",
-    headers,
-    body: formData,
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      method: "POST",
+      headers,
+      body: formData,
+    });
+  } catch (networkError) {
+    // Сетевая ошибка (сервер недоступен, CORS и т.д.)
+    const errorMessage = networkError instanceof Error 
+      ? networkError.message 
+      : 'Ошибка сети';
+    throw {
+      status: 0,
+      message: `Сервер недоступен: ${errorMessage}`,
+      details: `Не удалось подключиться к ${API_URL}${path}`,
+    } satisfies ApiError;
+  }
 
   if (!res.ok) throw await parseError(res);
 

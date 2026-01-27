@@ -11,6 +11,8 @@ const StatusStyles: Record<OrderStatus, string> = {
   NEW: 'admin-status-new',
   CONFIRMED: 'admin-status-confirmed',
   ASSEMBLING: 'admin-status-assembling',
+  ASSIGNED_TO_COURIER: 'admin-status-assigned',
+  ACCEPTED_BY_COURIER: 'admin-status-accepted',
   ON_THE_WAY: 'admin-status-delivering',
   DELIVERED: 'admin-status-completed',
   CANCELED: 'admin-status-cancelled',
