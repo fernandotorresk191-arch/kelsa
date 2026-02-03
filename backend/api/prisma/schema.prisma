@@ -284,6 +284,7 @@ model WriteOff {
 
 // Статус курьера
 enum CourierStatus {
+  OFF_DUTY        // Не работаю - курьер недоступен для заказов
   AVAILABLE       // Свободен - менеджер может отправлять заказы
   ACCEPTED        // Взял заказ(ы) - ожидает ещё или готовится к выезду
   DELIVERING      // Везу заказы - недоступен для новых заказов
@@ -298,6 +299,8 @@ model Courier {
   
   carBrand      String?       // Марка автомобиля (необязательно)
   carNumber     String?       // Номер автомобиля (необязательно)
+  
+  deliveryRate  Int           @default(0) // Тариф за доставку (в копейках)
   
   isActive      Boolean       @default(true) // Активен или нет
   status        CourierStatus @default(AVAILABLE) // Текущий статус курьера

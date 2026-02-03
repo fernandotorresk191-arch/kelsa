@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { Courier, CourierOrder } from './types';
+import { Courier, CourierOrder, CourierProfileStats, CourierDeliveryHistory } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -20,6 +20,17 @@ interface ActionResponse {
   order?: CourierOrder;
   message?: string;
   count?: number;
+}
+
+interface ToggleAvailabilityResponse {
+  success: boolean;
+  status: string;
+  message: string;
+}
+
+interface ProfileStatsResponse {
+  stats: CourierProfileStats;
+  recentDeliveries: CourierDeliveryHistory[];
 }
 
 // API авторизации курьера
@@ -48,6 +59,16 @@ export const courierOrdersApi = {
   // Получить текущий статус курьера
   getStatus: async (): Promise<StatusResponse> => {
     return http.get<StatusResponse>('/v1/courier/orders/status');
+  },
+
+  // Переключить доступность (Не работаю <-> Свободен)
+  toggleAvailability: async (): Promise<ToggleAvailabilityResponse> => {
+    return http.patch<ToggleAvailabilityResponse>('/v1/courier/orders/toggle-availability');
+  },
+
+  // Получить статистику профиля (заработок, доставки)
+  getProfileStats: async (): Promise<ProfileStatsResponse> => {
+    return http.get<ProfileStatsResponse>('/v1/courier/orders/profile-stats');
   },
 
   // Принять заказ

@@ -8,7 +8,7 @@ import './courier.css';
 function CourierLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { courier, isLoading, isAuthenticated, logout } = useCourier();
+  const { isLoading, isAuthenticated, logout } = useCourier();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !pathname.includes('/courier/login')) {
@@ -42,11 +42,10 @@ function CourierLayoutContent({ children }: { children: ReactNode }) {
       <header className="courier-header">
         <div className="courier-header-content">
           <div className="courier-header-left">
-            <span className="courier-logo">🚚</span>
-            <span className="courier-title">Kelsa Курьер</span>
+            <img src="/icons/courier-192.png" alt="Kelsa Курьер" className="courier-logo" />
+            <span className="courier-title">Kelsa.Курьер</span>
           </div>
           <div className="courier-header-right">
-            <span className="courier-name">{courier?.fullName}</span>
             <button onClick={logout} className="courier-logout-btn">
               Выйти
             </button>

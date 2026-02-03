@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier } from './types';
+import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -512,6 +512,7 @@ interface CreateCourierInput {
   carBrand?: string;
   carNumber?: string;
   isActive?: boolean;
+  deliveryRate?: number;
 }
 
 interface UpdateCourierInput {
@@ -522,6 +523,7 @@ interface UpdateCourierInput {
   carBrand?: string;
   carNumber?: string;
   isActive?: boolean;
+  deliveryRate?: number;
 }
 
 export const adminCouriersApi = {
@@ -558,5 +560,10 @@ export const adminCouriersApi = {
     return http.get<{ available: boolean; existingId: string | null }>(
       `/v1/admin/couriers/check-login/${encodeURIComponent(login)}${params}`
     );
+  },
+
+  // Получить профиль курьера со статистикой
+  getCourierProfile: async (id: string): Promise<CourierProfile> => {
+    return http.get<CourierProfile>(`/v1/admin/couriers/${id}/profile`);
   },
 };

@@ -17,6 +17,7 @@ interface CourierRequest {
   user: {
     sub: string;
     login: string;
+    fullName: string;
     role: string;
   };
 }
@@ -97,7 +98,7 @@ export class CourierOrdersController {
   @Patch(':id/accept')
   async acceptOrder(@Param('id') orderId: string, @Req() req: CourierRequest) {
     const courierId = req.user.sub;
-    const courierLogin = req.user.login;
+    const courierName = req.user.fullName;
 
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -126,7 +127,7 @@ export class CourierOrdersController {
           orderId,
           status: 'ACCEPTED_BY_COURIER',
           comment: 'Курьер принял заказ',
-          changedBy: `courier:${courierLogin}`,
+          changedBy: `Курьер: ${courierName}`,
         },
       }),
       this.prisma.courier.update({
@@ -157,7 +158,7 @@ export class CourierOrdersController {
   @Patch('start-delivery')
   async startDelivery(@Req() req: CourierRequest) {
     const courierId = req.user.sub;
-    const courierLogin = req.user.login;
+    const courierName = req.user.fullName;
 
     // Находим все принятые заказы курьера
     const acceptedOrders = await this.prisma.order.findMany({
@@ -185,7 +186,7 @@ export class CourierOrdersController {
             orderId: order.id,
             status: 'ON_THE_WAY',
             comment: 'Курьер выехал',
-            changedBy: `courier:${courierLogin}`,
+            changedBy: `Курьер: ${courierName}`,
           },
         });
 
@@ -223,7 +224,7 @@ export class CourierOrdersController {
   @Patch(':id/deliver')
   async deliverOrder(@Param('id') orderId: string, @Req() req: CourierRequest) {
     const courierId = req.user.sub;
-    const courierLogin = req.user.login;
+    const courierName = req.user.fullName;
 
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -253,7 +254,7 @@ export class CourierOrdersController {
           orderId,
           status: 'DELIVERED',
           comment: 'Заказ доставлен',
-          changedBy: `courier:${courierLogin}`,
+          changedBy: `Курьер: ${courierName}`,
         },
       });
 
@@ -302,7 +303,7 @@ export class CourierOrdersController {
     @Req() req: CourierRequest,
   ) {
     const courierId = req.user.sub;
-    const courierLogin = req.user.login;
+    const courierName = req.user.fullName;
 
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
@@ -343,7 +344,7 @@ export class CourierOrdersController {
           orderId,
           status: 'CANCELED',
           comment: dto.reason || 'Отменено курьером',
-          changedBy: `courier:${courierLogin}`,
+          changedBy: `Курьер: ${courierName}`,
         },
       });
 
@@ -420,10 +421,147 @@ export class CourierOrdersController {
     }
 
     return {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       status: courier.status,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       activeOrdersCount: courier._count.orders,
+    };
+  }
+
+  // Переключить статус курьера (Не работаю <-> Свободен)
+  @Patch('toggle-availability')
+  async toggleAvailability(@Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+
+    const courier = await this.prisma.courier.findUnique({
+      where: { id: courierId },
+      select: { status: true },
+    });
+
+    if (!courier) {
+      throw new BadRequestException('Курьер не найден');
+    }
+
+    // Можно переключаться только между OFF_DUTY и AVAILABLE
+    // Если курьер ACCEPTED или DELIVERING - нельзя перейти в OFF_DUTY
+    const currentStatus = courier.status as string;
+    if (currentStatus === 'ACCEPTED' || currentStatus === 'DELIVERING') {
+      throw new BadRequestException(
+        'Нельзя выключить режим работы пока есть активные заказы. Сначала завершите все доставки.',
+      );
+    }
+
+    const newStatus = currentStatus === 'OFF_DUTY' ? 'AVAILABLE' : 'OFF_DUTY';
+
+    // Используем $executeRaw для обновления статуса, т.к. OFF_DUTY может быть ещё не в Prisma Client
+    await this.prisma
+      .$executeRaw`UPDATE "Courier" SET "status" = ${newStatus}::"CourierStatus" WHERE "id" = ${courierId}`;
+
+    const updated = await this.prisma.courier.findUnique({
+      where: { id: courierId },
+      select: { status: true },
+    });
+
+    return {
+      success: true,
+      status: updated?.status ?? newStatus,
+      message:
+        newStatus === 'AVAILABLE'
+          ? 'Вы начали рабочий день. Теперь вам могут назначать заказы.'
+          : 'Вы завершили рабочий день. Новые заказы поступать не будут.',
+    };
+  }
+
+  // Получить статистику профиля курьера (заработок, доставки)
+  @Get('profile-stats')
+  async getProfileStats(@Req() req: CourierRequest) {
+    const courierId = req.user.sub;
+
+    const courier = await this.prisma.courier.findUnique({
+      where: { id: courierId },
+      select: { deliveryRate: true },
+    });
+
+    if (!courier) {
+      throw new BadRequestException('Курьер не найден');
+    }
+
+    // Даты для фильтрации
+    const now = new Date();
+    const startOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
+    const startOfWeek = new Date(now);
+    startOfWeek.setDate(now.getDate() - now.getDay() + 1); // Понедельник
+    startOfWeek.setHours(0, 0, 0, 0);
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Получаем все доставленные заказы курьера
+    const deliveredOrders = await this.prisma.order.findMany({
+      where: {
+        courierId,
+        status: 'DELIVERED',
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        customerName: true,
+        addressLine: true,
+        totalAmount: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    // Считаем статистику
+    const totalDeliveries = deliveredOrders.length;
+
+    // Доставки за день
+    const deliveriesToday = deliveredOrders.filter(
+      (o) => new Date(o.updatedAt) >= startOfDay,
+    ).length;
+
+    // Доставки за неделю
+    const deliveriesThisWeek = deliveredOrders.filter(
+      (o) => new Date(o.updatedAt) >= startOfWeek,
+    ).length;
+
+    // Доставки за месяц
+    const deliveriesThisMonth = deliveredOrders.filter(
+      (o) => new Date(o.updatedAt) >= startOfMonth,
+    ).length;
+
+    // Заработок
+    const deliveryRate = Number(courier.deliveryRate) || 0;
+    const earningsToday = deliveriesToday * deliveryRate;
+    const earningsThisWeek = deliveriesThisWeek * deliveryRate;
+    const earningsThisMonth = deliveriesThisMonth * deliveryRate;
+    const totalEarnings = totalDeliveries * deliveryRate;
+
+    // Последние 20 доставок для истории
+    const recentDeliveries = deliveredOrders.slice(0, 20).map((o) => ({
+      id: o.id,
+      orderNumber: o.orderNumber,
+      customerName: o.customerName,
+      addressLine: o.addressLine,
+      totalAmount: o.totalAmount,
+      deliveredAt: o.updatedAt,
+      earnings: deliveryRate,
+    }));
+
+    return {
+      stats: {
+        deliveryRate,
+        totalDeliveries,
+        deliveriesToday,
+        deliveriesThisWeek,
+        deliveriesThisMonth,
+        earningsToday,
+        earningsThisWeek,
+        earningsThisMonth,
+        totalEarnings,
+      },
+      recentDeliveries,
     };
   }
 }

@@ -59,6 +59,7 @@ export class CourierAuthController {
     const accessToken = this.jwt.sign({
       sub: courier.id,
       login: courier.login,
+      fullName: courier.fullName,
       role: 'courier',
     });
 
@@ -68,7 +69,6 @@ export class CourierAuthController {
         fullName: courier.fullName,
         login: courier.login,
         phone: courier.phone,
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         status: courier.status,
       },
       accessToken,
@@ -76,7 +76,6 @@ export class CourierAuthController {
   }
 
   @Get('me')
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   @UseGuards(CourierJwtGuard)
   async getProfile(@Req() req: CourierRequest) {
     const courierId = req.user.sub;

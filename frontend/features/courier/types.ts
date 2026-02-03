@@ -1,8 +1,9 @@
 // ==================== COURIER TYPES ====================
 
-export type CourierStatus = 'AVAILABLE' | 'ACCEPTED' | 'DELIVERING';
+export type CourierStatus = 'OFF_DUTY' | 'AVAILABLE' | 'ACCEPTED' | 'DELIVERING';
 
 export const CourierStatusLabels: Record<CourierStatus, string> = {
+  OFF_DUTY: 'Не работаю',
   AVAILABLE: 'Свободен',
   ACCEPTED: 'Взял заказ',
   DELIVERING: 'В доставке',
@@ -73,4 +74,27 @@ export type CourierOrder = {
     name: string;
     phone: string;
   };
+};
+
+// Статистика курьера для профиля
+export type CourierProfileStats = {
+  deliveryRate: number;
+  totalDeliveries: number;
+  deliveriesToday: number;
+  deliveriesThisWeek: number;
+  deliveriesThisMonth: number;
+  earningsToday: number;
+  earningsThisWeek: number;
+  earningsThisMonth: number;
+  totalEarnings: number;
+};
+
+export type CourierDeliveryHistory = {
+  id: string;
+  orderNumber: number;
+  customerName: string;
+  addressLine: string;
+  totalAmount: number;
+  deliveredAt: string;
+  earnings: number;
 };

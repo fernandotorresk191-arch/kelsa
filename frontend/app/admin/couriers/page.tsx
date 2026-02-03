@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { adminCouriersApi } from '@/features/admin/api';
 import { Courier } from '@/features/admin/types';
 import { useAdmin } from '@/components/admin/AdminProvider';
@@ -13,6 +14,7 @@ interface CourierFormData {
   carBrand: string;
   carNumber: string;
   isActive: boolean;
+  deliveryRate: string;
 }
 
 const initialFormData: CourierFormData = {
@@ -23,6 +25,7 @@ const initialFormData: CourierFormData = {
   carBrand: '',
   carNumber: '',
   isActive: true,
+  deliveryRate: '',
 };
 
 // Функция форматирования телефона в российский формат
@@ -47,6 +50,7 @@ const isValidPhone = (phone: string): boolean => {
 
 export default function AdminCouriersPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAdmin();
+  const router = useRouter();
   
   const [couriers, setCouriers] = useState<Courier[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,6 +120,7 @@ export default function AdminCouriersPage() {
         carBrand: courier.carBrand || '',
         carNumber: courier.carNumber || '',
         isActive: courier.isActive,
+        deliveryRate: courier.deliveryRate ? String(courier.deliveryRate) : '',
       });
     } else {
       setEditingCourier(null);
@@ -172,6 +177,7 @@ export default function AdminCouriersPage() {
     try {
       const phoneDigits = formData.phone.replace(/\D/g, '');
       const normalizedPhone = phoneDigits.startsWith('8') ? '7' + phoneDigits.slice(1) : phoneDigits;
+      const deliveryRateValue = formData.deliveryRate ? parseInt(formData.deliveryRate, 10) : 0;
 
       if (editingCourier) {
         const updateData: {
@@ -182,6 +188,7 @@ export default function AdminCouriersPage() {
           carBrand?: string;
           carNumber?: string;
           isActive?: boolean;
+          deliveryRate?: number;
         } = {
           fullName: formData.fullName.trim(),
           login: formData.login.trim(),
@@ -189,6 +196,7 @@ export default function AdminCouriersPage() {
           carBrand: formData.carBrand.trim() || undefined,
           carNumber: formData.carNumber.trim() || undefined,
           isActive: formData.isActive,
+          deliveryRate: deliveryRateValue,
         };
 
         if (formData.password) {
@@ -205,6 +213,7 @@ export default function AdminCouriersPage() {
           carBrand: formData.carBrand.trim() || undefined,
           carNumber: formData.carNumber.trim() || undefined,
           isActive: formData.isActive,
+          deliveryRate: deliveryRateValue,
         });
       }
 
@@ -388,6 +397,17 @@ export default function AdminCouriersPage() {
                       <td>
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            onClick={() => router.push(`/admin/couriers/${courier.id}`)}
+                            className="admin-btn admin-btn-primary admin-btn-sm"
+                            title="Открыть профиль"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                            Открыть
+                          </button>
+                          <button
                             onClick={() => handleOpenForm(courier)}
                             className="admin-btn admin-btn-secondary admin-btn-sm"
                             title="Редактировать"
@@ -567,6 +587,27 @@ export default function AdminCouriersPage() {
                     placeholder="А123БВ95"
                   />
                 </div>
+              </div>
+
+              {/* Тариф за доставку */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Тариф за доставку (₽)
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={formData.deliveryRate}
+                    onChange={(e) => setFormData({ ...formData, deliveryRate: e.target.value })}
+                    className="admin-input pl-10"
+                    placeholder="100"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  Сумма, начисляемая курьеру за каждый доставленный заказ
+                </p>
               </div>
 
               {/* Статус */}

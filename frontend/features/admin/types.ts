@@ -239,7 +239,40 @@ export type Courier = {
   phone: string;
   carBrand?: string;
   carNumber?: string;
+  deliveryRate: number;
   isActive: boolean;
+  status?: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type CourierProfileStats = {
+  totalDeliveries: number;
+  deliveriesToday: number;
+  deliveriesThisWeek: number;
+  deliveriesThisMonth: number;
+  earningsToday: number;
+  earningsThisWeek: number;
+  earningsThisMonth: number;
+  totalEarnings: number;
+  activeOrdersCount: number;
+};
+
+export type CourierDelivery = {
+  id: string;
+  orderNumber: number;
+  customerName: string;
+  addressLine: string;
+  phone: string;
+  totalAmount: number;
+  createdAt: string;
+  updatedAt: string;
+  status?: string;
+};
+
+export type CourierProfile = {
+  courier: Courier;
+  stats: CourierProfileStats;
+  activeOrders: CourierDelivery[];
+  recentDeliveries: CourierDelivery[];
 };
