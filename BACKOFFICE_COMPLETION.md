@@ -16,6 +16,7 @@
 
 #### 2. Админ-модуль с 4 контроллерами
 
+
 **admin-auth.controller.ts**
 ```
 POST /v1/admin-auth/login      — Логин администратора
