@@ -1,14 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { FiArrowLeft } from "react-icons/fi";
 
 import { Badge } from "../../../components/ui/badge";
-import { Button } from "../../../components/ui/button";
 import { catalogApi } from "../../../features/catalog/api";
 import { resolveMediaUrl } from "../../../shared/api/media";
 import { ProductActions } from "../../../components/product/ProductActions";
 import { ProductImage } from "../../../components/product/ProductImage";
+import { BackButton } from "../../../components/product/BackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -46,12 +45,7 @@ export default async function ProductPage({
     <div className="kelsa-container py-6">
       {/* Breadcrumb / back */}
       <div className="flex items-center mb-6">
-        <Link href={product.category?.slug ? `/category/${product.category.slug}` : "/"}>
-          <Button variant="ghost" size="sm" className="text-muted-foreground">
-            <FiArrowLeft className="mr-2" />
-            Назад
-          </Button>
-        </Link>
+        <BackButton />
       </div>
 
       {/* Product details */}

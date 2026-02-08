@@ -128,7 +128,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               src={imageUrl}
               alt={product.title}
               fill
-              className="object-contain p-4 transition-transform duration-500 ease-out group-hover:scale-110"
+              className="object-cover transition-transform duration-500 ease-out group-hover:scale-110"
               sizes="(max-width: 768px) 50vw, 33vw"
             />
           ) : (
