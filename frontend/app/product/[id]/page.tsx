@@ -8,6 +8,7 @@ import { Button } from "../../../components/ui/button";
 import { catalogApi } from "../../../features/catalog/api";
 import { resolveMediaUrl } from "../../../shared/api/media";
 import { ProductActions } from "../../../components/product/ProductActions";
+import { ProductImage } from "../../../components/product/ProductImage";
 
 export const dynamic = "force-dynamic";
 
@@ -55,27 +56,13 @@ export default async function ProductPage({
 
       {/* Product details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Product image */}
-        <div className="relative aspect-square rounded-lg overflow-hidden bg-white border p-4">
-          {discountPercent && (
-            <Badge className="absolute top-4 left-4 z-10 bg-primary text-white font-medium px-2">
-              -{discountPercent}%
-            </Badge>
-          )}
-          {imageUrl ? (
-            <Image
-              src={imageUrl}
-              alt={product.title}
-              fill
-              style={{ objectFit: "contain" }}
-              className="p-4"
-            />
-          ) : (
-            <div className="flex items-center justify-center w-full h-full text-gray-300">
-              <span className="text-xs">Нет фото</span>
-            </div>
-          )}
-        </div>
+        {/* Product image with cart badge */}
+        <ProductImage
+          productId={product.id}
+          imageUrl={imageUrl}
+          title={product.title}
+          discountPercent={discountPercent}
+        />
 
         {/* Product info */}
         <div>
