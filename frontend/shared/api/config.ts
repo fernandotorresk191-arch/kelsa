@@ -1,5 +1,16 @@
 const DEFAULT_API_URL = "http://localhost:3001";
 
+/**
+ * Статичный URL для медиа-файлов (изображений).
+ * Используется при SSR и клиентском рендере — должен быть одинаковым
+ * чтобы избежать hydration mismatch.
+ */
+export const MEDIA_BASE_URL = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL;
+
+/**
+ * Динамический URL для API-запросов.
+ * Может отличаться на клиенте (например, при доступе с телефона по IP).
+ */
 function resolveApiUrl() {
   const envUrl = process.env.NEXT_PUBLIC_API_URL;
   const hasWindow = typeof window !== "undefined";
