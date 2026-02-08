@@ -98,7 +98,7 @@ export default async function ProductPage({
 
       {/* Related products */}
       <div className="mt-16">
-        <h2 className="text-xl font-semibold mb-6">Похожие товары</h2>
+        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 mb-6">Похожие товары</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {relatedProducts.map((relatedProduct) => {
             const relatedImg = resolveMediaUrl(relatedProduct.imageUrl);

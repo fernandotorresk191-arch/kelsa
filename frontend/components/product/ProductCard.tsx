@@ -228,9 +228,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 onClick={handleAddToCart}
                 disabled={isDisabled}
                 className="flex items-center justify-center w-10 h-10 rounded-full
-                          bg-gradient-to-br from-[#6206c7] to-[#8b2fd9] text-white 
-                          shadow-[0_4px_12px_rgba(98,6,199,0.35)]
-                          hover:shadow-[0_6px_20px_rgba(98,6,199,0.45)] hover:scale-105
+                          border-2 border-[#6206c7]/30 text-[#6206c7] bg-white
+                          hover:border-[#6206c7]/50 hover:bg-[#6206c7]/5 hover:scale-105
                           active:scale-95
                           transition-all duration-200 ease-out
                           disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
