@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 
 import CategoryFilters from "../../../components/category/CategoryFilters";
 import { catalogApi } from "../../../features/catalog/api";
+import { BackButton } from "../../../components/product/BackButton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,10 @@ export default async function CategoryPage({
 
   return (
     <div className="kelsa-container py-8">
-      <h1 className="text-2xl font-semibold mb-6">{title}</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <BackButton />
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">{title}</h1>
+      </div>
 
       <CategoryFilters 
         initialProducts={categoryProducts}
