@@ -6,6 +6,7 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Body,
   Param,
   UseGuards,
@@ -15,6 +16,7 @@ import {
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
 import { IsString, IsNumber, IsOptional } from 'class-validator';
+import { AdminPurchasesController } from './admin-purchases.controller';
 
 class WriteOffDto {
   @IsString()
@@ -28,10 +30,18 @@ class WriteOffDto {
   reason?: string;
 }
 
+class SetDiscountDto {
+  @IsNumber()
+  discountPercent: number; // 0–100
+}
+
 @Controller('admin/expiry')
 @UseGuards(JwtGuard)
 export class AdminExpiryController {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private purchasesController: AdminPurchasesController,
+  ) {}
 
   // Получить партии с истекающим сроком годности (в течение 7 дней)
   @Get('expiring')
@@ -124,6 +134,47 @@ export class AdminExpiryController {
     };
   }
 
+  // Установить скидку на партию (для товаров с истекающим сроком)
+  @Patch('batch/:batchId/discount')
+  async setDiscount(
+    @Param('batchId') batchId: string,
+    @Body() dto: SetDiscountDto,
+  ) {
+    if (dto.discountPercent < 0 || dto.discountPercent > 100) {
+      throw new BadRequestException('Скидка должна быть от 0 до 100%');
+    }
+
+    const batch = await this.prisma.batch.findUnique({
+      where: { id: batchId },
+      include: {
+        product: { select: { id: true, title: true } },
+      },
+    });
+
+    if (!batch) {
+      throw new BadRequestException('Партия не найдена');
+    }
+
+    if (batch.status !== 'ACTIVE') {
+      throw new BadRequestException('Скидку можно установить только на активную партию');
+    }
+
+    // Обновляем скидку в партии
+    await this.prisma.batch.update({
+      where: { id: batchId },
+      data: { discountPercent: dto.discountPercent },
+    });
+
+    // Пересчитываем цену товара (если эта партия — активная FIFO)
+    await this.purchasesController.recalculateProductPrice(batch.productId);
+
+    return {
+      success: true,
+      message: `Скидка ${dto.discountPercent}% установлена на партию товара "${batch.product.title}"`,
+      discountPercent: dto.discountPercent,
+    };
+  }
+
   // Списать товар
   @Post('write-off')
   async writeOff(@Body() dto: WriteOffDto) {
@@ -172,6 +223,14 @@ export class AdminExpiryController {
           stock: { decrement: dto.quantity },
         },
       });
+
+      // Если партия полностью списана, пересчитываем цену товара
+      if (newRemainingQty === 0) {
+        await this.purchasesController.recalculateProductPrice(
+          batch.productId,
+          tx,
+        );
+      }
     });
 
     return {

@@ -16,6 +16,9 @@ model Category {
   updatedAt DateTime @updatedAt
   imageUrl    String?
   
+  // Торговая наценка по умолчанию для товаров этой категории (%)
+  markupPercent Float  @default(0)
+  
   // Поддержка подкатегорий (иерархическая структура)
   parentId    String?
   parent      Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: Cascade)
@@ -34,9 +37,9 @@ model Product {
   weightGr    Int?
   isActive    Boolean  @default(true)
 
-  price         Int      // в копейках/центах — лучше так
-  oldPrice      Int?
-  purchasePrice Int?     // закупочная цена в копейках
+  price         Int      // Цена продажи (целые рубли) — определяется активной партией
+  oldPrice      Int?     // Старая цена для отображения скидки (целые рубли)
+  purchasePrice Int?     // Закупочная цена последней партии (целые рубли)
   stock         Int      @default(0) // остатки товара на складе
   cellNumber    String?  // номер ячейки на складе (например: A1, B2, C3)
 
@@ -121,7 +124,8 @@ model Order {
   phone         String
   addressLine   String
   comment       String?
-  totalAmount   Int
+  totalAmount   Int      // Сумма за товары (целые рубли)
+  deliveryFee   Int      @default(0)  // Стоимость доставки (целые рубли)
   
   // Курьер
   courierId    String?
@@ -248,7 +252,10 @@ model Batch {
   
   quantity        Int         // Закупленное количество
   remainingQty    Int         // Оставшееся количество
-  purchasePrice   Int         // Закупочная цена за единицу (копейки)
+  purchasePrice   Int         // Закупочная цена за единицу (целые рубли)
+  markupPercent   Float       @default(0)  // Торговая наценка (%)
+  sellingPrice    Int         @default(0)  // Цена продажи = purchasePrice * (1 + markup/100) (целые рубли)
+  discountPercent Float       @default(0)  // Скидка за истекающий срок годности (%)
   
   expiryDate      DateTime?   // Срок годности
   cellNumber      String      // Номер ячейки хранения
@@ -300,7 +307,7 @@ model Courier {
   carBrand      String?       // Марка автомобиля (необязательно)
   carNumber     String?       // Номер автомобиля (необязательно)
   
-  deliveryRate  Int           @default(0) // Тариф за доставку (в копейках)
+  deliveryRate  Int           @default(0) // Тариф за одну доставку (целые рубли)
   
   isActive      Boolean       @default(true) // Активен или нет
   status        CourierStatus @default(AVAILABLE) // Текущий статус курьера
@@ -312,4 +319,14 @@ model Courier {
   updatedAt     DateTime      @updatedAt
   
   orders        Order[]       // Заказы курьера
+}
+
+// ==================== НАСТРОЙКИ ДОСТАВКИ ====================
+
+model DeliverySettings {
+  id                String   @id @default(cuid())
+  deliveryFee       Int      @default(150)    // Стоимость доставки (целые рубли)
+  freeDeliveryFrom  Int      @default(1500)   // Бесплатная доставка от суммы (целые рубли)
+  isActive          Boolean  @default(true)   // Включена ли доставка
+  updatedAt         DateTime @updatedAt
 }

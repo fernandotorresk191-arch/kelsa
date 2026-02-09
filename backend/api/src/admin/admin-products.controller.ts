@@ -39,7 +39,7 @@ class CreateProductDto {
   weightGr?: number;
 
   @IsNumber()
-  price: number; // в копейках
+  price: number; // в целых рублях
 
   @IsOptional()
   @IsNumber()

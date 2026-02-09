@@ -14,6 +14,8 @@ interface BatchItem {
   productTitle: string;
   quantity: number;
   purchasePrice: number;
+  markupPercent: number;
+  sellingPrice: number;
   cellNumber: string;
   expiryDate: string;
 }
@@ -45,6 +47,7 @@ export default function AdminPurchasesPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [purchasePrice, setPurchasePrice] = useState(0);
+  const [markupPercent, setMarkupPercent] = useState(0);
   const [cellNumber, setCellNumber] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
 
@@ -143,6 +146,12 @@ export default function AdminPurchasesPage() {
     setProductSearch(product.title);
     setCellNumber(product.cellNumber || '');
     setShowProductDropdown(false);
+
+    // Автозаполнение наценки из категории/подкатегории
+    const cat = categories.find(c => c.id === product.categoryId);
+    const sub = cat?.subcategories?.find(s => s.id === product.subcategoryId);
+    const defaultMarkup = sub?.markupPercent ?? cat?.markupPercent ?? 0;
+    setMarkupPercent(defaultMarkup);
   };
 
   const handleAddItem = () => {
@@ -160,11 +169,15 @@ export default function AdminPurchasesPage() {
       return;
     }
 
+    const sellingPrice = Math.round(purchasePrice * (1 + markupPercent / 100));
+
     const newItem: BatchItem = {
       productId: selectedProduct.id,
       productTitle: selectedProduct.title,
       quantity,
-      purchasePrice: Math.round(purchasePrice * 100), // Конвертируем в копейки
+      purchasePrice,
+      markupPercent,
+      sellingPrice,
       cellNumber,
       expiryDate,
     };
@@ -176,6 +189,7 @@ export default function AdminPurchasesPage() {
     setProductSearch('');
     setQuantity(1);
     setPurchasePrice(0);
+    setMarkupPercent(0);
     setCellNumber('');
     setExpiryDate('');
     setSelectedCategory('');
@@ -200,6 +214,7 @@ export default function AdminPurchasesPage() {
           productId: item.productId,
           quantity: item.quantity,
           purchasePrice: item.purchasePrice,
+          markupPercent: item.markupPercent,
           cellNumber: item.cellNumber,
           expiryDate: item.expiryDate || undefined,
         })),
@@ -217,8 +232,8 @@ export default function AdminPurchasesPage() {
     }
   };
 
-  const formatPrice = (kopecks: number) => {
-    return (kopecks / 100).toFixed(2) + ' ₽';
+  const formatPrice = (rubles: number) => {
+    return rubles.toLocaleString('ru-RU') + ' ₽';
   };
 
   const formatDate = (dateString: string) => {
@@ -365,7 +380,7 @@ export default function AdminPurchasesPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-5 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Ячейка хранения *
@@ -389,15 +404,32 @@ export default function AdminPurchasesPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Закупочная цена за шт. (₽) *
+                      Закупочная цена (₽) *
                     </label>
                     <Input
                       type="number"
-                      step="0.01"
+                      step="1"
                       min="0"
                       value={purchasePrice}
-                      onChange={(e) => setPurchasePrice(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => setPurchasePrice(parseInt(e.target.value) || 0)}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Наценка (%)
+                    </label>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="0"
+                      value={markupPercent}
+                      onChange={(e) => setMarkupPercent(parseFloat(e.target.value) || 0)}
+                    />
+                    {purchasePrice > 0 && (
+                      <div className="text-xs text-green-600 mt-1">
+                        Цена продажи: {Math.round(purchasePrice * (1 + markupPercent / 100))} ₽
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -428,8 +460,10 @@ export default function AdminPurchasesPage() {
                     <th className="px-4 py-2 text-left">Товар</th>
                     <th className="px-4 py-2 text-center">Ячейка</th>
                     <th className="px-4 py-2 text-center">Кол-во</th>
-                    <th className="px-4 py-2 text-right">Цена за шт.</th>
-                    <th className="px-4 py-2 text-right">Сумма</th>
+                    <th className="px-4 py-2 text-right">Закуп.</th>
+                    <th className="px-4 py-2 text-center">Наценка</th>
+                    <th className="px-4 py-2 text-right">Продажа</th>
+                    <th className="px-4 py-2 text-right">Сумма закуп.</th>
                     <th className="px-4 py-2 text-center">Срок годности</th>
                     <th className="px-4 py-2"></th>
                   </tr>
@@ -441,6 +475,12 @@ export default function AdminPurchasesPage() {
                       <td className="px-4 py-2 text-center font-mono">{item.cellNumber}</td>
                       <td className="px-4 py-2 text-center">{item.quantity}</td>
                       <td className="px-4 py-2 text-right">{formatPrice(item.purchasePrice)}</td>
+                      <td className="px-4 py-2 text-center">
+                        <span className="admin-badge admin-badge-gray">{item.markupPercent}%</span>
+                      </td>
+                      <td className="px-4 py-2 text-right text-green-700 font-medium">
+                        {formatPrice(item.sellingPrice)}
+                      </td>
                       <td className="px-4 py-2 text-right font-medium">
                         {formatPrice(item.purchasePrice * item.quantity)}
                       </td>
@@ -460,8 +500,8 @@ export default function AdminPurchasesPage() {
                 </tbody>
                 <tfoot className="bg-gray-50">
                   <tr>
-                    <td colSpan={4} className="px-4 py-2 text-right font-medium">
-                      Итого:
+                    <td colSpan={6} className="px-4 py-2 text-right font-medium">
+                      Итого закуп.:
                     </td>
                     <td className="px-4 py-2 text-right font-bold">
                       {formatPrice(items.reduce((sum, item) => sum + item.purchasePrice * item.quantity, 0))}

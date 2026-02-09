@@ -34,7 +34,7 @@ class BatchItemDto {
   quantity: number;
 
   @IsNumber()
-  purchasePrice: number; // Закупочная цена за единицу (копейки)
+  purchasePrice: number; // Закупочная цена за единицу (целые рубли)
 
   @IsString()
   cellNumber: string; // Номер ячейки хранения
@@ -42,6 +42,10 @@ class BatchItemDto {
   @IsOptional()
   @IsDateString()
   expiryDate?: string; // Срок годности
+
+  @IsOptional()
+  @IsNumber()
+  markupPercent?: number; // Наценка в %, если не указана — берётся из категории
 }
 
 // DTO для создания закупки
@@ -90,6 +94,49 @@ export class AdminPurchasesController {
       where: { createdAt: { lte: product.createdAt } },
     });
     return count;
+  }
+
+  // Пересчёт цены товара по активной партии (FIFO: ближайший срок годности)
+  // Вызывается после создания закупки, изменения скидки, списания
+  async recalculateProductPrice(
+    productId: string,
+    tx?: any,
+  ): Promise<void> {
+    const db = tx || this.prisma;
+
+    // Находим активную партию (FIFO — ближайший срок годности, затем по дате создания)
+    const activeBatch = await db.batch.findFirst({
+      where: {
+        productId,
+        status: 'ACTIVE',
+        remainingQty: { gt: 0 },
+      },
+      orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
+    });
+
+    if (!activeBatch || activeBatch.sellingPrice === 0) {
+      // Нет активной партии с ценой — не меняем цену товара
+      return;
+    }
+
+    // Рассчитываем эффективную цену с учётом скидки
+    let effectivePrice = activeBatch.sellingPrice;
+    let oldPrice: number | null = null;
+
+    if (activeBatch.discountPercent > 0) {
+      effectivePrice = Math.round(
+        activeBatch.sellingPrice * (1 - activeBatch.discountPercent / 100),
+      );
+      oldPrice = activeBatch.sellingPrice;
+    }
+
+    await db.product.update({
+      where: { id: productId },
+      data: {
+        price: effectivePrice,
+        oldPrice,
+      },
+    });
   }
 
   // Получить список закупок
@@ -168,11 +215,18 @@ export class AdminPurchasesController {
     const productIds = dto.items.map((item) => item.productId);
     const products = await this.prisma.product.findMany({
       where: { id: { in: productIds } },
+      include: {
+        category: { select: { id: true, markupPercent: true } },
+        subcategory: { select: { id: true, markupPercent: true } },
+      },
     });
 
     if (products.length !== productIds.length) {
       throw new BadRequestException('Некоторые товары не найдены');
     }
+
+    // Строим карту товаров для быстрого доступа к наценке категории
+    const productMap = new Map(products.map((p) => [p.id, p]));
 
     // Считаем общую сумму закупки
     const totalAmount = dto.items.reduce(
@@ -192,7 +246,23 @@ export class AdminPurchasesController {
       });
 
       // Создаём партии для каждого товара
+      const affectedProductIds: string[] = [];
+
       for (const item of dto.items) {
+        const product = productMap.get(item.productId);
+
+        // Определяем наценку: из позиции → подкатегория → категория → 0
+        const markupPercent =
+          item.markupPercent ??
+          product?.subcategory?.markupPercent ??
+          product?.category?.markupPercent ??
+          0;
+
+        // Рассчитываем цену продажи с наценкой
+        const sellingPrice = Math.round(
+          item.purchasePrice * (1 + markupPercent / 100),
+        );
+
         const productNumber = await this.getProductNumber(item.productId);
         const batchCode = this.generateBatchCode(
           item.cellNumber,
@@ -208,6 +278,8 @@ export class AdminPurchasesController {
             quantity: item.quantity,
             remainingQty: item.quantity,
             purchasePrice: item.purchasePrice,
+            markupPercent,
+            sellingPrice,
             cellNumber: item.cellNumber,
             expiryDate: item.expiryDate ? new Date(item.expiryDate) : null,
           },
@@ -222,6 +294,15 @@ export class AdminPurchasesController {
             cellNumber: item.cellNumber, // Обновляем номер ячейки
           },
         });
+
+        if (!affectedProductIds.includes(item.productId)) {
+          affectedProductIds.push(item.productId);
+        }
+      }
+
+      // Пересчитываем цену продажи для каждого затронутого товара
+      for (const productId of affectedProductIds) {
+        await this.recalculateProductPrice(productId, tx);
       }
 
       return newPurchase;
@@ -390,6 +471,8 @@ export class AdminPurchasesController {
 
     // Удаляем с откатом остатков
     await this.prisma.$transaction(async (tx) => {
+      const affectedProductIds: string[] = [];
+
       for (const batch of purchase.batches) {
         await tx.product.update({
           where: { id: batch.productId },
@@ -397,11 +480,19 @@ export class AdminPurchasesController {
             stock: { decrement: batch.remainingQty },
           },
         });
+        if (!affectedProductIds.includes(batch.productId)) {
+          affectedProductIds.push(batch.productId);
+        }
       }
 
       await tx.purchase.delete({
         where: { id },
       });
+
+      // Пересчитываем цены затронутых товаров
+      for (const productId of affectedProductIds) {
+        await this.recalculateProductPrice(productId, tx);
+      }
     });
 
     return { success: true };

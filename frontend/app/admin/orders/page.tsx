@@ -61,6 +61,7 @@ export default function AdminOrdersPage() {
           items: [],
           userId: '',
           addressLine: '',
+          deliveryFee: 0,
           updatedAt: orderData.createdAt,
           user: {
             id: '',

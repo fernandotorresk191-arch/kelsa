@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile } from './types';
+import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile, DeliverySettings } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -368,6 +368,7 @@ interface BatchItemInput {
   purchasePrice: number;
   cellNumber: string;
   expiryDate?: string;
+  markupPercent?: number;
 }
 
 interface CreatePurchaseInput {
@@ -490,6 +491,14 @@ export const adminExpiryApi = {
     if (to) params.append('to', to);
     return http.get<ExpiryStats>(`/admin/expiry/stats?${params.toString()}`);
   },
+
+  // Установить скидку на партию
+  setDiscount: async (batchId: string, discountPercent: number): Promise<{ success: boolean; message: string; discountPercent: number }> => {
+    return http.patch<{ success: boolean; message: string; discountPercent: number }>(
+      `/admin/expiry/batch/${batchId}/discount`,
+      { discountPercent },
+    );
+  },
 };
 
 // ==================== КУРЬЕРЫ ====================
@@ -565,5 +574,15 @@ export const adminCouriersApi = {
   // Получить профиль курьера со статистикой
   getCourierProfile: async (id: string): Promise<CourierProfile> => {
     return http.get<CourierProfile>(`/v1/admin/couriers/${id}/profile`);
+  },
+
+  // Получить настройки доставки
+  getDeliverySettings: async (): Promise<DeliverySettings> => {
+    return http.get<DeliverySettings>('/v1/admin/couriers/delivery-settings/current');
+  },
+
+  // Обновить настройки доставки
+  updateDeliverySettings: async (data: Partial<DeliverySettings>): Promise<DeliverySettings> => {
+    return http.put<DeliverySettings>('/v1/admin/couriers/delivery-settings/current', data);
   },
 };

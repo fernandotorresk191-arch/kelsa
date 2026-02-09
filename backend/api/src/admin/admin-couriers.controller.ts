@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
-import { IsString, IsOptional, IsBoolean, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumber, MinLength } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 
 class CreateCourierDto {
@@ -88,6 +88,20 @@ class UpdateCourierDto {
 
   @IsOptional()
   deliveryRate?: number;
+}
+
+class UpdateDeliverySettingsDto {
+  @IsOptional()
+  @IsNumber()
+  deliveryFee?: number;
+
+  @IsOptional()
+  @IsNumber()
+  freeDeliveryFrom?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 interface AuthRequest {
@@ -458,5 +472,57 @@ export class AdminCouriersController {
       activeOrders,
       recentDeliveries: deliveredOrders.slice(0, 50), // Последние 50 доставок
     };
+  }
+
+  // === Настройки доставки ===
+
+  @Get('delivery-settings/current')
+  async getDeliverySettings(@Req() req: AuthRequest) {
+    this.checkAdminRole(req);
+
+    let settings = await this.prisma.deliverySettings.findUnique({
+      where: { id: 'default' },
+    });
+
+    // Создаём настройки по умолчанию если не существуют
+    if (!settings) {
+      settings = await this.prisma.deliverySettings.create({
+        data: {
+          id: 'default',
+          deliveryFee: 150,
+          freeDeliveryFrom: 1500,
+          isActive: true,
+        },
+      });
+    }
+
+    return settings;
+  }
+
+  @Put('delivery-settings/current')
+  async updateDeliverySettings(
+    @Body() dto: UpdateDeliverySettingsDto,
+    @Req() req: AuthRequest,
+  ) {
+    this.checkAdminRole(req);
+
+    const settings = await this.prisma.deliverySettings.upsert({
+      where: { id: 'default' },
+      update: {
+        ...(dto.deliveryFee !== undefined && { deliveryFee: dto.deliveryFee }),
+        ...(dto.freeDeliveryFrom !== undefined && {
+          freeDeliveryFrom: dto.freeDeliveryFrom,
+        }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+      create: {
+        id: 'default',
+        deliveryFee: dto.deliveryFee ?? 150,
+        freeDeliveryFrom: dto.freeDeliveryFrom ?? 1500,
+        isActive: dto.isActive ?? true,
+      },
+    });
+
+    return settings;
   }
 }

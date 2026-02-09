@@ -25,5 +25,6 @@ import { EventsModule } from '../events/events.module';
     AdminExpiryController,
     AdminCouriersController,
   ],
+  providers: [AdminPurchasesController],
 })
 export class AdminModule {}

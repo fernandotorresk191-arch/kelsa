@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { adminProductsApi, adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
-import { Product, Category } from '@/features/admin/types';
+import Link from 'next/link';
+import { adminProductsApi, adminCategoriesApi, adminUploadApi, adminPurchasesApi } from '@/features/admin/api';
+import { Product, Category, Batch } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 
 type CategoryWithCount = Category & { _count: { products: number } };
@@ -27,6 +28,7 @@ export default function AdminProductDetailPage() {
     cellNumber: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [batches, setBatches] = useState<Batch[]>([]);
 
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
@@ -73,7 +75,17 @@ export default function AdminProductDetailPage() {
       }
     };
 
+    const fetchBatches = async () => {
+      try {
+        const data = await adminPurchasesApi.getProductBatches(productId);
+        setBatches(data);
+      } catch (error) {
+        console.error('Failed to fetch batches:', error);
+      }
+    };
+
     fetchProduct();
+    fetchBatches();
   }, [productId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -347,6 +359,221 @@ export default function AdminProductDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Блок «Поставки» — партии товара (FIFO) */}
+      <ProductBatchesBlock batches={batches} />
+    </div>
+  );
+}
+
+/* ======================================================= */
+/* Блок «Поставки» — визуализация партий товара (FIFO)     */
+/* ======================================================= */
+
+function ProductBatchesBlock({ batches }: { batches: Batch[] }) {
+  // Фильтруем только релевантные партии (ACTIVE с остатком)
+  const activeBatches = batches.filter(
+    (b) => b.status === 'ACTIVE' && b.remainingQty > 0,
+  );
+
+  // Первая активная — это FIFO-активная (уже отсортированы по expiryDate ASC на бэкенде)
+  const activeBatchId = activeBatches.length > 0 ? activeBatches[0].id : null;
+
+  // Показываем ACTIVE + SOLD_OUT (последние 3), скрываем WRITTEN_OFF/EXPIRED
+  const visibleBatches = batches.filter(
+    (b) => b.status === 'ACTIVE' || b.status === 'SOLD_OUT',
+  );
+
+  if (visibleBatches.length === 0) {
+    return (
+      <div className="admin-card">
+        <div className="admin-card-header flex items-center justify-between">
+          <h3 className="admin-card-title flex items-center gap-2">
+            <span>📦</span> Поставки
+          </h3>
+        </div>
+        <div className="admin-card-body">
+          <p className="text-sm text-gray-400 text-center py-6">
+            У этого товара нет партий. Создайте закупку, чтобы добавить партии.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-card">
+      <div className="admin-card-header flex items-center justify-between">
+        <h3 className="admin-card-title flex items-center gap-2">
+          <span>📦</span> Поставки
+        </h3>
+        <Link
+          href="/admin/purchases"
+          className="text-sm font-medium hover:underline"
+          style={{ color: 'var(--admin-primary)' }}
+        >
+          Все →
+        </Link>
+      </div>
+      <div className="divide-y" style={{ borderColor: 'var(--admin-border)' }}>
+        {visibleBatches.map((batch) => (
+          <BatchRow
+            key={batch.id}
+            batch={batch}
+            isActive={batch.id === activeBatchId}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ============ Строка одной партии ============ */
+
+function BatchRow({ batch, isActive }: { batch: Batch; isActive: boolean }) {
+  const percent = batch.quantity > 0
+    ? Math.round((batch.remainingQty / batch.quantity) * 100)
+    : 0;
+
+  // Цвет прогресс-бара: зелёный > 50%, жёлтый 20-50%, красный < 20%
+  const barColor =
+    percent > 50
+      ? 'var(--admin-success)'
+      : percent > 20
+        ? 'var(--admin-warning)'
+        : 'var(--admin-danger)';
+
+  // Проверяем срок годности < 7 дней
+  const daysUntilExpiry = batch.expiryDate
+    ? Math.ceil(
+        (new Date(batch.expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      )
+    : null;
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry < 7 && daysUntilExpiry > 0;
+  const isExpired = daysUntilExpiry !== null && daysUntilExpiry <= 0;
+
+  // Форматирование даты
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+
+  const statusLabel = batch.status === 'SOLD_OUT' ? 'РАСПРОДАНА' : isActive ? 'АКТИВНАЯ' : 'ОЖИДАЕТ';
+  const statusBadgeClass =
+    batch.status === 'SOLD_OUT'
+      ? 'admin-badge admin-badge-gray'
+      : isActive
+        ? 'admin-badge admin-badge-success'
+        : 'admin-badge admin-badge-warning';
+
+  return (
+    <div
+      className="px-6 py-4"
+      style={isActive ? { backgroundColor: 'rgba(16, 185, 129, 0.03)' } : undefined}
+    >
+      {/* Заголовок партии */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          {isActive && (
+            <span style={{ color: 'var(--admin-success)', fontSize: 14 }}>▶</span>
+          )}
+          <Link
+            href={`/admin/purchases`}
+            className="font-mono text-sm font-semibold hover:underline"
+            style={{ color: 'var(--admin-text-primary)' }}
+          >
+            Партия {batch.batchCode}
+          </Link>
+          <span className={statusBadgeClass}>{statusLabel}</span>
+          {isExpiringSoon && (
+            <span className="admin-badge admin-badge-danger">
+              ⚠ Годен {daysUntilExpiry} дн.
+            </span>
+          )}
+          {isExpired && (
+            <span className="admin-badge admin-badge-danger">
+              Просрочен
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Информация о закупке */}
+      {batch.purchase && (
+        <p className="text-xs mb-2" style={{ color: 'var(--admin-text-muted)' }}>
+          Закупка #{batch.purchase.purchaseNumber} · {formatDate(batch.purchase.createdAt)}
+        </p>
+      )}
+
+      {/* Цены */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-3">
+        <span style={{ color: 'var(--admin-text-secondary)' }}>
+          Закупочная:{' '}
+          <span className="font-semibold" style={{ color: 'var(--admin-text-primary)' }}>
+            {batch.purchasePrice} ₽
+          </span>
+        </span>
+        <span style={{ color: 'var(--admin-text-secondary)' }}>
+          Наценка:{' '}
+          <span className="font-semibold" style={{ color: 'var(--admin-text-primary)' }}>
+            {batch.markupPercent}%
+          </span>
+        </span>
+        <span style={{ color: 'var(--admin-text-secondary)' }}>
+          Продажа:{' '}
+          <span className="font-semibold" style={{ color: 'var(--admin-primary)' }}>
+            {batch.sellingPrice} ₽
+          </span>
+        </span>
+        {batch.discountPercent > 0 && (
+          <span style={{ color: 'var(--admin-danger)' }}>
+            Скидка: {batch.discountPercent}%
+          </span>
+        )}
+      </div>
+
+      {/* Остаток + Срок годности */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm mb-2">
+        <span style={{ color: 'var(--admin-text-secondary)' }}>
+          Остаток:{' '}
+          <span className="font-semibold" style={{ color: 'var(--admin-text-primary)' }}>
+            {batch.remainingQty} из {batch.quantity}
+          </span>
+        </span>
+        {batch.expiryDate && (
+          <span style={{ color: 'var(--admin-text-secondary)' }}>
+            Годен до:{' '}
+            <span
+              className="font-semibold"
+              style={{
+                color: isExpired
+                  ? 'var(--admin-danger)'
+                  : isExpiringSoon
+                    ? 'var(--admin-warning)'
+                    : 'var(--admin-text-primary)',
+              }}
+            >
+              {formatDate(batch.expiryDate)}
+            </span>
+          </span>
+        )}
+      </div>
+
+      {/* Прогресс-бар */}
+      <div className="w-full rounded-full overflow-hidden" style={{ height: 6, backgroundColor: 'var(--admin-border)' }}>
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{
+            width: `${percent}%`,
+            backgroundColor: barColor,
+          }}
+        />
+      </div>
+      <p className="text-xs mt-1" style={{ color: 'var(--admin-text-muted)' }}>
+        {percent}%
+      </p>
     </div>
   );
 }

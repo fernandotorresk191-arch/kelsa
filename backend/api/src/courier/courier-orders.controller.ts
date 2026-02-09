@@ -247,6 +247,7 @@ export class CourierOrdersController {
       const updated = await tx.order.update({
         where: { id: orderId },
         data: { status: 'DELIVERED' },
+        include: { items: true },
       });
 
       await tx.orderStatusHistory.create({
@@ -257,6 +258,69 @@ export class CourierOrdersController {
           changedBy: `Курьер: ${courierName}`,
         },
       });
+
+      // Списываем товар со склада по FIFO-партиям
+      const affectedProductIds: string[] = [];
+      for (const item of updated.items) {
+        // Уменьшаем общий остаток товара
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.qty } },
+        });
+
+        // FIFO-списание из партий: находим активные партии по сроку годности
+        let remaining = item.qty;
+        const fifoBatches = await tx.batch.findMany({
+          where: {
+            productId: item.productId,
+            status: 'ACTIVE',
+            remainingQty: { gt: 0 },
+          },
+          orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
+        });
+
+        for (const batch of fifoBatches) {
+          if (remaining <= 0) break;
+          const deduct = Math.min(remaining, batch.remainingQty);
+          const updatedBatch = await tx.batch.update({
+            where: { id: batch.id },
+            data: { remainingQty: { decrement: deduct } },
+          });
+          if (updatedBatch.remainingQty <= 0) {
+            await tx.batch.update({
+              where: { id: batch.id },
+              data: { status: 'SOLD_OUT' },
+            });
+          }
+          remaining -= deduct;
+        }
+
+        if (!affectedProductIds.includes(item.productId)) {
+          affectedProductIds.push(item.productId);
+        }
+      }
+
+      // Пересчитываем цену товара по активной партии (FIFO)
+      for (const productId of affectedProductIds) {
+        const activeBatch = await tx.batch.findFirst({
+          where: { productId, status: 'ACTIVE', remainingQty: { gt: 0 } },
+          orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
+        });
+        if (activeBatch && activeBatch.sellingPrice > 0) {
+          let effectivePrice = activeBatch.sellingPrice;
+          let oldPriceVal: number | null = null;
+          if (activeBatch.discountPercent > 0) {
+            effectivePrice = Math.round(
+              activeBatch.sellingPrice * (1 - activeBatch.discountPercent / 100),
+            );
+            oldPriceVal = activeBatch.sellingPrice;
+          }
+          await tx.product.update({
+            where: { id: productId },
+            data: { price: effectivePrice, oldPrice: oldPriceVal },
+          });
+        }
+      }
 
       // Проверяем, остались ли ещё заказы в доставке
       const remainingOrders = await tx.order.count({

@@ -22,6 +22,10 @@ export default function AdminExpiryPage() {
   const [writeOffQuantity, setWriteOffQuantity] = useState(0);
   const [writeOffReason, setWriteOffReason] = useState('Просрочка');
 
+  // Скидка
+  const [discountBatchId, setDiscountBatchId] = useState<string | null>(null);
+  const [discountValue, setDiscountValue] = useState(0);
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
@@ -47,8 +51,8 @@ export default function AdminExpiryPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [daysThreshold]);
 
-  const formatPrice = (kopecks: number) => {
-    return (kopecks / 100).toFixed(2) + ' ₽';
+  const formatPrice = (rubles: number) => {
+    return rubles.toLocaleString('ru-RU') + ' ₽';
   };
 
   const formatDate = (dateString: string) => {
@@ -101,6 +105,23 @@ export default function AdminExpiryPage() {
     }
   };
 
+  const handleSetDiscount = async (batchId: string) => {
+    if (discountValue < 0 || discountValue > 100) {
+      alert('Скидка должна быть от 0 до 100%');
+      return;
+    }
+
+    try {
+      await adminExpiryApi.setDiscount(batchId, discountValue);
+      setDiscountBatchId(null);
+      setDiscountValue(0);
+      fetchData();
+    } catch (error) {
+      console.error('Failed to set discount:', error);
+      alert('Ошибка при установке скидки');
+    }
+  };
+
   const renderBatchesTable = (batches: Batch[], showDaysColumn = false) => (
     <table className="admin-table">
       <thead>
@@ -111,6 +132,7 @@ export default function AdminExpiryPage() {
           <th className="text-center">Остаток</th>
           <th className="text-center">Срок годности</th>
           {showDaysColumn && <th className="text-center">Дней</th>}
+          <th className="text-center">Скидка</th>
           <th className="text-right">Стоимость</th>
           <th className="admin-th-actions-lg">Действия</th>
         </tr>
@@ -118,7 +140,7 @@ export default function AdminExpiryPage() {
       <tbody>
         {batches.length === 0 ? (
           <tr>
-            <td colSpan={showDaysColumn ? 8 : 7} className="text-center py-12">
+            <td colSpan={showDaysColumn ? 9 : 8} className="text-center py-12">
               <div className="admin-empty-state">
                 <div className="admin-empty-icon">✓</div>
                 <div className="admin-empty-title">Всё в порядке</div>
@@ -159,6 +181,50 @@ export default function AdminExpiryPage() {
                     </span>
                   </td>
                 )}
+                <td className="text-center">
+                  {discountBatchId === batch.id ? (
+                    <div className="flex items-center gap-1 justify-center">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(parseInt(e.target.value) || 0)}
+                        className="w-16 text-center border rounded px-1 py-0.5 text-sm"
+                        title="Скидка %"
+                      />
+                      <button
+                        className="text-green-600 hover:text-green-800 text-sm font-bold"
+                        onClick={() => handleSetDiscount(batch.id)}
+                        title="Применить"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        className="text-gray-400 hover:text-gray-600 text-sm"
+                        onClick={() => setDiscountBatchId(null)}
+                        title="Отмена"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      className={`text-sm px-2 py-1 rounded cursor-pointer hover:opacity-80 ${
+                        batch.discountPercent > 0
+                          ? 'bg-red-100 text-red-700 font-semibold'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                      onClick={() => {
+                        setDiscountBatchId(batch.id);
+                        setDiscountValue(batch.discountPercent);
+                      }}
+                      title="Установить скидку"
+                    >
+                      {batch.discountPercent > 0 ? `-${batch.discountPercent}%` : 'Скидка'}
+                    </button>
+                  )}
+                </td>
                 <td className="text-right font-medium text-slate-800">
                   {formatPrice(value)}
                 </td>

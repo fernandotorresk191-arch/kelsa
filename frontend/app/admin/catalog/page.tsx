@@ -428,6 +428,7 @@ function CategoryForm({
     imageUrl: category?.imageUrl || '',
     isActive: category?.isActive ?? true,
     parentId: category?.parentId || parentCategory?.id || '',
+    markupPercent: category?.markupPercent?.toString() || '0',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -481,6 +482,7 @@ function CategoryForm({
         imageUrl: formData.imageUrl || undefined,
         isActive: formData.isActive,
         parentId: formData.parentId || undefined,
+        markupPercent: parseFloat(formData.markupPercent) || 0,
       };
 
       if (category) {
@@ -627,7 +629,7 @@ function CategoryForm({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label htmlFor="category-sort" className="block text-sm font-medium text-gray-700 mb-1">
               Порядок сортировки
@@ -639,6 +641,24 @@ function CategoryForm({
               onChange={(e) => setFormData({ ...formData, sort: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
+          </div>
+          <div>
+            <label htmlFor="category-markup" className="block text-sm font-medium text-gray-700 mb-1">
+              Наценка по умолчанию (%)
+            </label>
+            <input
+              id="category-markup"
+              type="number"
+              step="1"
+              min="0"
+              value={formData.markupPercent}
+              onChange={(e) => setFormData({ ...formData, markupPercent: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+              placeholder="0"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Применяется к новым закупкам по умолчанию
+            </p>
           </div>
           <div>
             {category ? (

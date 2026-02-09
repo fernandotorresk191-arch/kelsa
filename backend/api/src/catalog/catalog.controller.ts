@@ -41,6 +41,23 @@ export class CatalogController {
     });
   }
 
+  @Get('delivery-settings')
+  async deliverySettings() {
+    const settings = await this.prisma.deliverySettings.findUnique({
+      where: { id: 'default' },
+    });
+
+    if (!settings || !settings.isActive) {
+      return { deliveryFee: 0, freeDeliveryFrom: 0, isActive: false };
+    }
+
+    return {
+      deliveryFee: settings.deliveryFee,
+      freeDeliveryFrom: settings.freeDeliveryFrom,
+      isActive: settings.isActive,
+    };
+  }
+
   @Get('products')
   products(
     @Query('categorySlug') categorySlug?: string,

@@ -51,6 +51,14 @@ export type OrderItem = {
   };
 };
 
+export type DeliverySettings = {
+  id: string;
+  deliveryFee: number;
+  freeDeliveryFrom: number;
+  isActive: boolean;
+  updatedAt: string;
+};
+
 export type Order = {
   id: string;
   orderNumber: number;
@@ -61,6 +69,7 @@ export type Order = {
   addressLine: string;
   comment?: string;
   totalAmount: number;
+  deliveryFee: number;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
@@ -117,6 +126,7 @@ export type Category = {
   isActive: boolean;
   imageUrl?: string;
   parentId?: string;
+  markupPercent: number;
   parent?: {
     id: string;
     name: string;
@@ -173,6 +183,9 @@ export type Batch = {
   quantity: number;
   remainingQty: number;
   purchasePrice: number;
+  markupPercent: number;
+  sellingPrice: number;
+  discountPercent: number;
   cellNumber: string;
   expiryDate?: string;
   status: BatchStatus;

@@ -18,6 +18,7 @@ import { AuthDialog } from "../auth/AuthDialog";
 import { formatRuPhone } from "../../shared/phone/format";
 import { useSettlement } from "../settlement/SettlementProvider";
 import { resolveMediaUrl } from "../../shared/api/media";
+import { http } from "../../shared/api/http";
 
 const currency = (value: number) => `${value} ₽`;
 
@@ -44,6 +45,21 @@ export function CartDialog() {
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const lastUserIdRef = useRef<string | null>(null);
 
+  // Delivery settings
+  const [deliveryFee, setDeliveryFee] = useState(0);
+  const [freeDeliveryFrom, setFreeDeliveryFrom] = useState(0);
+
+  useEffect(() => {
+    http.get<{ deliveryFee: number; freeDeliveryFrom: number; isActive: boolean }>('/v1/delivery-settings')
+      .then(settings => {
+        if (settings.isActive) {
+          setDeliveryFee(settings.deliveryFee);
+          setFreeDeliveryFrom(settings.freeDeliveryFrom);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const totalAmount = useMemo(
     () =>
       cart?.items.reduce(
@@ -52,6 +68,9 @@ export function CartDialog() {
       ) ?? 0,
     [cart]
   );
+
+  const calculatedDeliveryFee = totalAmount >= freeDeliveryFrom && freeDeliveryFrom > 0 ? 0 : deliveryFee;
+  const totalWithDelivery = totalAmount + calculatedDeliveryFee;
 
   const isEmpty = !cart?.items.length;
 
@@ -269,9 +288,30 @@ export function CartDialog() {
             )}
           </div>
 
-          <div className="flex items-center justify-between rounded-lg border px-4 py-3 bg-accent/30">
-            <span className="text-sm text-muted-foreground">Сумма</span>
-            <span className="text-lg font-semibold">{currency(totalAmount)}</span>
+          <div className="rounded-lg border px-4 py-3 bg-accent/30 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Товары</span>
+              <span className="text-sm font-medium">{currency(totalAmount)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Доставка</span>
+              <span className="text-sm font-medium">
+                {calculatedDeliveryFee === 0 ? (
+                  <span className="text-green-600">Бесплатно</span>
+                ) : (
+                  currency(calculatedDeliveryFee)
+                )}
+              </span>
+            </div>
+            {calculatedDeliveryFee > 0 && freeDeliveryFrom > 0 && (
+              <div className="text-xs text-muted-foreground">
+                Бесплатная доставка от {currency(freeDeliveryFrom)} (ещё {currency(freeDeliveryFrom - totalAmount)})
+              </div>
+            )}
+            <div className="flex items-center justify-between pt-1 border-t">
+              <span className="text-sm font-medium">Итого</span>
+              <span className="text-lg font-semibold">{currency(totalWithDelivery)}</span>
+            </div>
           </div>
         </div>
 

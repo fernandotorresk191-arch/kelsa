@@ -44,13 +44,27 @@ export class OrdersController {
       throw new BadRequestException('Cart is empty');
     }
 
-    // 3. Считаем общую сумму
-    const total = cart.items.reduce(
+    // 3. Считаем сумму товаров
+    const subtotal = cart.items.reduce(
       (sum, it) => sum + (it.product.price ?? 0) * it.qty,
       0,
     );
 
-    // 4. Выполняем транзакцию: создаем заказ и обновляем статус корзины
+    // 4. Рассчитываем стоимость доставки
+    let deliveryFee = 0;
+    const deliverySettings = await this.prisma.deliverySettings.findUnique({
+      where: { id: 'default' },
+    });
+
+    if (deliverySettings && deliverySettings.isActive) {
+      if (subtotal < deliverySettings.freeDeliveryFrom) {
+        deliveryFee = deliverySettings.deliveryFee;
+      }
+    }
+
+    const total = subtotal + deliveryFee;
+
+    // 5. Выполняем транзакцию: создаем заказ и обновляем статус корзины
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
@@ -62,6 +76,7 @@ export class OrdersController {
           addressLine: dto.addressLine,
           comment: dto.comment,
           totalAmount: total,
+          deliveryFee,
           items: {
             create: cart.items.map((it) => ({
               productId: it.productId,

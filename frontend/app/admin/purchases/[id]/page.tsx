@@ -33,8 +33,8 @@ export default function PurchaseDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.id]);
 
-  const formatPrice = (kopecks: number) => {
-    return (kopecks / 100).toFixed(2) + ' ₽';
+  const formatPrice = (rubles: number) => {
+    return rubles.toLocaleString('ru-RU') + ' ₽';
   };
 
   const formatDate = (dateString: string) => {
@@ -312,7 +312,9 @@ export default function PurchaseDetailPage() {
               <th className="px-4 py-3 text-center">Ячейка</th>
               <th className="px-4 py-3 text-center">Кол-во</th>
               <th className="px-4 py-3 text-center">Остаток</th>
-              <th className="px-4 py-3 text-right">Цена за шт.</th>
+              <th className="px-4 py-3 text-right">Закуп. цена</th>
+              <th className="px-4 py-3 text-center">Наценка</th>
+              <th className="px-4 py-3 text-right">Цена продажи</th>
               <th className="px-4 py-3 text-center">Срок годности</th>
               <th className="px-4 py-3 text-center">Статус</th>
               <th className="px-4 py-3 text-center">Этикетка</th>
@@ -356,6 +358,17 @@ export default function PurchaseDetailPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">{formatPrice(batch.purchasePrice)}</td>
+                  <td className="px-4 py-3 text-center">
+                    <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                      {batch.markupPercent}%
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-green-700">
+                    {batch.sellingPrice > 0 ? formatPrice(batch.sellingPrice) : '—'}
+                    {batch.discountPercent > 0 && (
+                      <span className="ml-1 text-xs text-red-500">-{batch.discountPercent}%</span>
+                    )}
+                  </td>
                   <td className={`px-4 py-3 text-center ${isExpired ? 'text-red-600 font-bold' : isExpiringSoon ? 'text-orange-600' : ''}`}>
                     {batch.expiryDate ? formatDate(batch.expiryDate) : '—'}
                     {isExpired && ' ⚠️'}

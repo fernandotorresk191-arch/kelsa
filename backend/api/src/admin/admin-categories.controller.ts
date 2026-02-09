@@ -38,6 +38,10 @@ class CreateCategoryDto {
   @IsOptional()
   @IsString()
   parentId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  markupPercent?: number;
 }
 
 class UpdateCategoryDto {
@@ -64,6 +68,10 @@ class UpdateCategoryDto {
   @IsOptional()
   @IsString()
   parentId?: string;
+
+  @IsOptional()
+  @IsNumber()
+  markupPercent?: number;
 }
 
 @Controller('v1/admin/categories')
@@ -103,6 +111,7 @@ export class AdminCategoriesController {
         orderBy: { sort: 'asc' },
         include: {
           parent: true,
+          subcategories: true,
           _count: {
             select: { 
               products: true,
@@ -214,6 +223,7 @@ export class AdminCategoriesController {
         isActive: dto.isActive ?? true,
         imageUrl: dto.imageUrl,
         parentId: dto.parentId || null,
+        markupPercent: dto.markupPercent ?? 0,
       },
     });
   }
@@ -287,6 +297,7 @@ export class AdminCategoriesController {
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.imageUrl !== undefined && { imageUrl: dto.imageUrl }),
         ...(dto.parentId !== undefined && { parentId: parentId || null }),
+        ...(dto.markupPercent !== undefined && { markupPercent: dto.markupPercent }),
       },
     });
   }
