@@ -24,6 +24,10 @@ export default function AdminProductsPage() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [searchInput, setSearchInput] = useState<string>('');
   
+  // Состояние сортировки
+  const [sortBy, setSortBy] = useState<'title' | 'category' | 'price' | 'stock' | 'isActive'>('title');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  
   // Состояние удаления
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -51,7 +55,44 @@ export default function AdminProductsPage() {
         categoryToFilter || undefined,
         searchQuery || undefined
       );
-      setProducts(response.data as unknown as Product[]);
+      
+      // Применяем сортировку на клиентской стороне
+      const sortedProducts = [...(response.data as unknown as Product[])];
+      
+      sortedProducts.sort((a, b) => {
+        let aValue: string | number, bValue: string | number;
+        
+        switch (sortBy) {
+          case 'title':
+            aValue = a.title.toLowerCase();
+            bValue = b.title.toLowerCase();
+            break;
+          case 'category':
+            aValue = a.category?.name?.toLowerCase() || '';
+            bValue = b.category?.name?.toLowerCase() || '';
+            break;
+          case 'price':
+            aValue = a.price;
+            bValue = b.price;
+            break;
+          case 'stock':
+            aValue = a.stock;
+            bValue = b.stock;
+            break;
+          case 'isActive':
+            aValue = a.isActive ? 1 : 0;
+            bValue = b.isActive ? 1 : 0;
+            break;
+          default:
+            return 0;
+        }
+        
+        if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+        return 0;
+      });
+      
+      setProducts(sortedProducts);
       setTotal(response.pagination.total);
     } catch (error) {
       console.error('Failed to fetch products:', error);
@@ -90,7 +131,44 @@ export default function AdminProductsPage() {
           categoryToFilter || undefined,
           newSearch || undefined
         );
-        setProducts(response.data as unknown as Product[]);
+        
+        // Применяем сортировку на клиентской стороне
+        const sortedProducts = [...(response.data as unknown as Product[])];
+        
+        sortedProducts.sort((a, b) => {
+          let aValue: string | number, bValue: string | number;
+          
+          switch (sortBy) {
+            case 'title':
+              aValue = a.title.toLowerCase();
+              bValue = b.title.toLowerCase();
+              break;
+            case 'category':
+              aValue = a.category?.name?.toLowerCase() || '';
+              bValue = b.category?.name?.toLowerCase() || '';
+              break;
+            case 'price':
+              aValue = a.price;
+              bValue = b.price;
+              break;
+            case 'stock':
+              aValue = a.stock;
+              bValue = b.stock;
+              break;
+            case 'isActive':
+              aValue = a.isActive ? 1 : 0;
+              bValue = b.isActive ? 1 : 0;
+              break;
+            default:
+              return 0;
+          }
+          
+          if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
+          if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
+          return 0;
+        });
+        
+        setProducts(sortedProducts);
         setTotal(response.pagination.total);
       } catch (error) {
         console.error('Failed to fetch products:', error);
@@ -100,7 +178,19 @@ export default function AdminProductsPage() {
     };
     
     loadProducts();
-  }, [searchParams, page]);
+  }, [searchParams, page, sortBy, sortOrder]);
+
+  // Обработчик сортировки
+  const handleSort = (column: 'title' | 'category' | 'price' | 'stock' | 'isActive') => {
+    if (sortBy === column) {
+      // Если кликнули по той же колонке, меняем направление сортировки
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Если кликнули по новой колонке, сортируем по возрастанию
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
 
   const handleSearch = () => {
     setSearchQuery(searchInput);
@@ -172,8 +262,94 @@ export default function AdminProductsPage() {
 
   const totalPages = Math.ceil(total / limit);
 
+  // Компонент сортируемого заголовка
+  const SortableHeader = ({ 
+    column, 
+    children, 
+    className = "px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase",
+    align = "left"
+  }: {
+    column: 'title' | 'category' | 'price' | 'stock' | 'isActive';
+    children: React.ReactNode;
+    className?: string;
+    align?: 'left' | 'center' | 'right';
+  }) => {
+    const isActive = sortBy === column;
+    const isAsc = sortOrder === 'asc';
+    
+    return (
+      <th 
+        className={`${className} cursor-pointer select-none hover:bg-gray-100 transition-colors duration-200 group relative`}
+        onClick={() => handleSort(column)}
+        role="columnheader"
+        aria-sort={isActive ? (isAsc ? 'ascending' : 'descending') : 'none'}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSort(column);
+          }
+        }}
+      >
+        <div className={`flex items-center min-w-0 ${
+          align === 'center' ? 'justify-center' : 
+          align === 'right' ? 'justify-end' : 'justify-between'
+        }`}>
+          <span className="truncate">{children}</span>
+          <div className="ml-2 flex-shrink-0 flex flex-col">
+            {/* Иконка сортировки с анимацией */}
+            <div className={`w-3 h-3 flex items-center justify-center transition-all duration-200 ${
+              isActive ? 'opacity-100 scale-110' : 'opacity-40 scale-100 group-hover:opacity-60'
+            }`}>
+              {isActive && isAsc ? (
+                // Стрелка вверх (активная)
+                <svg className="w-3 h-3 text-blue-600 transform transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+              ) : isActive && !isAsc ? (
+                // Стрелка вниз (активная)
+                <svg className="w-3 h-3 text-blue-600 transform transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                // Двойная стрелка (неактивная)
+                <div className="flex flex-col -space-y-1">
+                  <svg className="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                  </svg>
+                  <svg className="w-2.5 h-2.5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Подсветка активной колонки */}
+        {isActive && (
+          <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 transition-all duration-200"></div>
+        )}
+      </th>
+    );
+  };
+
   return (
-    <div className="space-y-6">
+    <>
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+      
+      <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Управление товарами</h1>
         <button
@@ -227,6 +403,29 @@ export default function AdminProductsPage() {
               Найдено: {total}
             </span>
           )}
+          
+          {/* Индикатор активной сортировки */}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span>Сортировка:</span>
+            <div className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded">
+              <span className="capitalize">
+                {sortBy === 'title' && 'название'}
+                {sortBy === 'category' && 'категория'}
+                {sortBy === 'price' && 'цена'}
+                {sortBy === 'stock' && 'остаток'}
+                {sortBy === 'isActive' && 'статус'}
+              </span>
+              {sortOrder === 'asc' ? (
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M14.707 12.707a1 1 0 01-1.414 0L10 9.414l-3.293 3.293a1 1 0 01-1.414-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 010 1.414z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -298,6 +497,16 @@ export default function AdminProductsPage() {
 
       {/* Таблица товаров */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Подсказка о сортировке */}
+        <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
+          <p className="text-sm text-blue-700 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            Нажмите на заголовок колонки для сортировки товаров
+          </p>
+        </div>
+        
         {isLoading ? (
           <div className="p-6 text-center">Загрузка...</div>
         ) : products.length === 0 ? (
@@ -308,29 +517,48 @@ export default function AdminProductsPage() {
               <table className="w-full">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                    <SortableHeader column="title">
                       Товар
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                    </SortableHeader>
+                    <SortableHeader column="category">
                       Категория
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">
+                    </SortableHeader>
+                    <SortableHeader 
+                      column="price" 
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase"
+                      align="right"
+                    >
                       Цена
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase">
+                    </SortableHeader>
+                    <SortableHeader 
+                      column="stock" 
+                      className="px-6 py-3 text-right text-xs font-medium text-gray-700 uppercase"
+                      align="right"
+                    >
                       Остаток
-                    </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">
+                    </SortableHeader>
+                    <SortableHeader 
+                      column="isActive" 
+                      className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase"
+                      align="center"
+                    >
                       Статус
-                    </th>
+                    </SortableHeader>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                       Действия
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {products.map((product) => (
-                    <tr key={product.id} className="hover:bg-gray-50">
+                  {products.map((product, index) => (
+                    <tr 
+                      key={product.id} 
+                      className="hover:bg-gray-50 transition-colors duration-150"
+                      style={{ 
+                        animationDelay: `${index * 50}ms`,
+                        animation: 'fadeInUp 0.3s ease-out forwards'
+                      }}
+                    >
                       <td className="px-6 py-4">
                         <div className="font-medium text-gray-900">{product.title}</div>
                         <div className="text-xs text-gray-500">{product.slug}</div>
@@ -473,7 +701,8 @@ export default function AdminProductsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
 
