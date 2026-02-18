@@ -21,9 +21,10 @@ import MobileSearch from "./MobileSearch";
 
 type MobileMenuProps = {
   onClose: () => void;
+  onOpenCart?: () => void;
 };
 
-const MobileMenu = ({ onClose }: MobileMenuProps) => {
+const MobileMenu = ({ onClose, onOpenCart }: MobileMenuProps) => {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [authOpen, setAuthOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -97,6 +98,7 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
               key={category.id}
               href={`/category/${category.slug}`}
               className="text-sm px-3 py-2 rounded-md bg-accent/60 hover:bg-accent/80 transition-colors"
+              onClick={onClose} // Close the menu when a category is selected
             >
               {category.name}
             </Link>
@@ -117,6 +119,10 @@ const MobileMenu = ({ onClose }: MobileMenuProps) => {
             type="button"
             className="flex items-center gap-2 text-sm"
             aria-label="Корзина"
+            onClick={() => {
+              onClose();
+              onOpenCart?.();
+            }}
           >
             <FiShoppingBag size={18} />
             <span>Корзина</span>

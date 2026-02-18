@@ -162,7 +162,13 @@ const Header = () => {
 
       {/* Mobile menu */}
       {mobileMenuOpen && (
-        <MobileMenu onClose={() => setMobileMenuOpen(false)} />
+        <MobileMenu
+          onClose={() => setMobileMenuOpen(false)}
+          onOpenCart={() => {
+            setMobileMenuOpen(false);
+            setCartOpen(true);
+          }}
+        />
       )}
 
       <AuthDialog
