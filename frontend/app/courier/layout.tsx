@@ -8,8 +8,8 @@ export const metadata: Metadata = {
   applicationName: "Kelsa Курьер",
   manifest: "/courier-manifest.json",
   icons: {
-    icon: "/icons/courier-192.png",
-    apple: "/icons/courier-192.png",
+    icon: "/icons/cour192.png",
+    apple: "/icons/cour192.png",
   },
   appleWebApp: {
     capable: true,

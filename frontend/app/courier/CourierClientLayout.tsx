@@ -42,7 +42,7 @@ function CourierLayoutContent({ children }: { children: ReactNode }) {
       <header className="courier-header">
         <div className="courier-header-content">
           <div className="courier-header-left">
-            <img src="/icons/courier-192.png" alt="Kelsa Курьер" className="courier-logo" />
+            <img src="/icons/cour192.png" alt="Kelsa Курьер" className="courier-logo" />
             <span className="courier-title">Kelsa.Курьер</span>
           </div>
           <div className="courier-header-right">

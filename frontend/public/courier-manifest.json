@@ -4,23 +4,24 @@
   "description": "Приложение курьера для доставки заказов",
   "start_url": "/courier",
   "scope": "/courier",
+  "id": "/courier",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#3b82f6",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/icons/courier-192.png",
+      "src": "/icons/cour192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/icons/courier-512.png",
+      "src": "/icons/cour512.png",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "/icons/courier-512.png",
+      "src": "/icons/cour512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
