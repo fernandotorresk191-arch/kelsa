@@ -27,6 +27,9 @@ yarn-error.log*
 .vscode/
 .idea/
 
+# Deploy
+deploy.sh
+
 # next-pwa generated (do not commit)
 frontend/public/sw.js
 frontend/public/workbox-*.js
