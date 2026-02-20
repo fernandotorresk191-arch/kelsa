@@ -30,7 +30,7 @@ const CategoryButtons: React.FC<CategoryButtonsProps> = ({ categories }) => {
               <div className="relative h-52 rounded-2xl bg-gray-100 overflow-hidden transition hover:brightness-95">
                 {/* Название */}
                 <div className="relative z-10 p-4">
-                  <span className="text-sm font-semibold text-gray-800">
+                  <span className="text-sm font-semibold text-gray-900">
                     {category.name}
                   </span>
                 </div>
