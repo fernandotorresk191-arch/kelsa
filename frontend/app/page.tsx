@@ -46,7 +46,7 @@ export default async function Home() {
 
         {/* Milk and cheese */}
         <ProductSection
-          title="Молочное и сыр"
+          title="Молочное, яйца и сыр"
           products={milkProducts}
           viewAllLink="/category/molochnoe-i-yaytsa-i-sir"
         />
