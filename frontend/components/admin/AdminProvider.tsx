@@ -11,6 +11,7 @@ type AdminContextType = {
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
+  hasPermission: (section: string) => boolean;
 };
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -58,8 +59,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     setAdmin(null);
   }, []);
 
+  const hasPermission = useCallback((section: string) => {
+    if (!admin) return false;
+    // Админ имеет доступ ко всему
+    if (admin.role === 'admin') return true;
+    // Менеджер — только к разрешённым разделам
+    if (!admin.permissions || admin.permissions.length === 0) return false;
+    return admin.permissions.includes(section);
+  }, [admin]);
+
   return (
-    <AdminContext.Provider value={{ admin, isLoading, isAuthenticated: !!admin, login, logout, checkAuth }}>
+    <AdminContext.Provider value={{ admin, isLoading, isAuthenticated: !!admin, login, logout, checkAuth, hasPermission }}>
       {children}
     </AdminContext.Provider>
   );

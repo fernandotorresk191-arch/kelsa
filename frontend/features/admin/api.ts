@@ -62,16 +62,37 @@ export const adminAuthApi = {
     return http.get<AdminUser>('/v1/admin-auth/me');
   },
 
-  createAdmin: async (
-    email: string,
-    password: string,
-    role: 'admin' | 'manager'
-  ): Promise<AdminUser> => {
-    return http.post<AdminUser>('/v1/admin-auth/create', {
-      email,
-      password,
-      role,
-    });
+  // === Управление пользователями ===
+
+  listUsers: async (): Promise<AdminUser[]> => {
+    return http.get<AdminUser[]>('/v1/admin-auth/users');
+  },
+
+  createUser: async (data: {
+    email: string;
+    password: string;
+    role: 'admin' | 'manager';
+    name?: string;
+    phone?: string;
+    permissions?: string[];
+  }): Promise<AdminUser> => {
+    return http.post<AdminUser>('/v1/admin-auth/create', data);
+  },
+
+  updateUser: async (id: string, data: {
+    email?: string;
+    password?: string;
+    role?: 'admin' | 'manager';
+    name?: string;
+    phone?: string;
+    permissions?: string[];
+    isActive?: boolean;
+  }): Promise<AdminUser> => {
+    return http.patch<AdminUser>(`/v1/admin-auth/users/${id}`, data);
+  },
+
+  deleteUser: async (id: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/admin-auth/users/${id}`);
   },
 };
 

@@ -60,6 +60,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
     </svg>
   ),
+  users: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+    </svg>
+  ),
 };
 
 interface NavItem {
@@ -68,6 +73,7 @@ interface NavItem {
   icon: React.ReactNode;
   match?: (pathname: string) => boolean;
   section?: string;
+  permission?: string; // ключ для проверки доступа менеджера
 }
 
 const navItems: NavItem[] = [
@@ -75,65 +81,95 @@ const navItems: NavItem[] = [
     href: '/admin', 
     label: 'Дашборд', 
     icon: Icons.dashboard,
-    match: (p) => p === '/admin'
+    match: (p) => p === '/admin',
+    permission: 'dashboard'
   },
   { 
     href: '/admin/orders', 
     label: 'Заказы', 
     icon: Icons.orders,
-    match: (p) => p.startsWith('/admin/orders')
+    match: (p) => p.startsWith('/admin/orders'),
+    permission: 'orders'
   },
   { 
     href: '/admin/catalog', 
     label: 'Каталог', 
     icon: Icons.catalog,
-    match: (p) => p.startsWith('/admin/catalog')
+    match: (p) => p.startsWith('/admin/catalog'),
+    permission: 'catalog'
   },
   { 
     href: '/admin/products', 
     label: 'Товары', 
     icon: Icons.products,
-    match: (p) => p.startsWith('/admin/products')
+    match: (p) => p.startsWith('/admin/products'),
+    permission: 'products'
   },
   { 
     href: '/admin/promotions', 
     label: 'Баннеры', 
     icon: Icons.banners,
-    match: (p) => p.startsWith('/admin/promotions')
+    match: (p) => p.startsWith('/admin/promotions'),
+    permission: 'promotions'
   },
   { 
     href: '/admin/purchases', 
     label: 'Закупки', 
     icon: Icons.purchases,
     match: (p) => p.startsWith('/admin/purchases'),
-    section: 'Склад'
+    section: 'Склад',
+    permission: 'purchases'
   },
   { 
     href: '/admin/expiry', 
     label: 'Просрочка', 
     icon: Icons.expiry,
-    match: (p) => p.startsWith('/admin/expiry')
+    match: (p) => p.startsWith('/admin/expiry'),
+    permission: 'expiry'
   },
   { 
     href: '/admin/analytics', 
     label: 'Аналитика', 
     icon: Icons.analytics,
     match: (p) => p.startsWith('/admin/analytics'),
-    section: 'Отчёты'
+    section: 'Отчёты',
+    permission: 'analytics'
   },
   { 
     href: '/admin/couriers', 
     label: 'Курьеры', 
     icon: Icons.couriers,
     match: (p) => p.startsWith('/admin/couriers'),
-    section: 'Доставка'
+    section: 'Доставка',
+    permission: 'couriers'
   },
+  { 
+    href: '/admin/users', 
+    label: 'Пользователи', 
+    icon: Icons.users,
+    match: (p) => p.startsWith('/admin/users'),
+    section: 'Система',
+    permission: 'users'
+  },
+];
+
+// Все доступные разделы для назначения менеджерам
+export const ALL_SECTIONS = [
+  { key: 'dashboard', label: 'Дашборд' },
+  { key: 'orders', label: 'Заказы' },
+  { key: 'catalog', label: 'Каталог' },
+  { key: 'products', label: 'Товары' },
+  { key: 'promotions', label: 'Баннеры' },
+  { key: 'purchases', label: 'Закупки' },
+  { key: 'expiry', label: 'Просрочка' },
+  { key: 'analytics', label: 'Аналитика' },
+  { key: 'couriers', label: 'Курьеры' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { admin, isLoading, isAuthenticated, logout } = useAdmin();
+  const { admin, isLoading, isAuthenticated, logout, hasPermission } = useAdmin();
 
   const isLoginPage = pathname === '/admin/login';
 
@@ -160,6 +196,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  // Проверка доступа менеджера к текущему разделу
+  const currentNavItem = navItems.find(item => item.match ? item.match(pathname) : pathname === item.href);
+  const currentPermission = currentNavItem?.permission;
+  if (currentPermission && !hasPermission(currentPermission)) {
+    // Найти первый доступный раздел для редиректа
+    const firstAllowed = navItems.find(item => item.permission && hasPermission(item.permission));
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900">
+        <div className="text-center">
+          <p className="text-white text-lg mb-4">Доступ к этому разделу закрыт</p>
+          <button
+            onClick={() => router.push(firstAllowed?.href || '/admin')}
+            className="admin-btn admin-btn-primary"
+          >
+            Перейти в доступный раздел
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const handleLogout = () => {
@@ -194,7 +251,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
         {/* Навигация */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => !item.permission || hasPermission(item.permission))
+            .map((item) => {
             const showSection = item.section && item.section !== currentSection;
             if (item.section) currentSection = item.section;
             
@@ -225,10 +284,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
-                {admin?.email}
+                {admin?.name || admin?.email}
               </p>
               <p className="text-xs text-slate-400 capitalize">
-                {admin?.role?.toLowerCase()}
+                {admin?.role === 'admin' ? 'Администратор' : 'Менеджер'}
               </p>
             </div>
           </div>

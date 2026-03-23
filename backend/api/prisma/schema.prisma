@@ -75,6 +75,9 @@ model AdminUser {
   email        String   @unique
   passwordHash String
   role         String   @default("admin") // admin | manager
+  name         String?  // ФИО
+  phone        String?  // Номер телефона
+  permissions  String?  // JSON: разрешённые разделы для менеджера, например ["orders","products"]
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt

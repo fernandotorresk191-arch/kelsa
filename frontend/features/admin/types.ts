@@ -2,6 +2,11 @@ export type AdminUser = {
   id: string;
   email: string;
   role: 'admin' | 'manager';
+  name?: string | null;
+  phone?: string | null;
+  permissions?: string[] | null;
+  isActive?: boolean;
+  createdAt?: string;
 };
 
 export enum OrderStatus {
