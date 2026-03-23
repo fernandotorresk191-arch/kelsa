@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminAuthApi } from '@/features/admin/api';
 import { AdminUser } from '@/features/admin/types';
+import { ApiError } from '@/shared/api/http';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { ALL_SECTIONS } from '../layout';
 
@@ -116,8 +117,9 @@ export default function UsersPage() {
       }
       setShowModal(false);
       loadUsers();
-    } catch (err: any) {
-      setError(err?.details || err?.message || 'Ошибка при сохранении');
+    } catch (err: unknown) {
+      const e = err as ApiError;
+      setError(e?.details || e?.message || 'Ошибка при сохранении');
     } finally {
       setSaving(false);
     }
@@ -128,8 +130,9 @@ export default function UsersPage() {
       await adminAuthApi.deleteUser(id);
       setDeleteConfirm(null);
       loadUsers();
-    } catch (err: any) {
-      setError(err?.details || err?.message || 'Ошибка при удалении');
+    } catch (err: unknown) {
+      const e = err as ApiError;
+      setError(e?.details || e?.message || 'Ошибка при удалении');
     }
   };
 
