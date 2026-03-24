@@ -234,8 +234,16 @@ export class AdminOrdersController {
         include: { items: true },
       });
 
-      // Списываем товар со склада при переводе в статус DELIVERED
+      // При доставке: рассчитываем прибыль и списываем товар со склада
       if (dto.status === OrderStatus.DELIVERED && order.status !== 'DELIVERED') {
+        // Рассчитываем прибыль: subtotal (сумма товаров) - себестоимость - расходы на курьера
+        const subtotal = updated.items.reduce((sum, item) => sum + item.amount, 0);
+        const realProfit = subtotal - (order.purchaseCost || 0) - (order.courierCost || 0);
+        await tx.order.update({
+          where: { id },
+          data: { profit: realProfit },
+        });
+
         const affectedProductIds: string[] = [];
         for (const item of updated.items) {
           // Уменьшаем общий остаток товара
@@ -297,6 +305,14 @@ export class AdminOrdersController {
             });
           }
         }
+      }
+
+      // При отмене доставленного заказа — обнуляем прибыль
+      if (dto.status === OrderStatus.CANCELED && order.status === 'DELIVERED') {
+        await tx.order.update({
+          where: { id },
+          data: { profit: 0 },
+        });
       }
 
       return updated;

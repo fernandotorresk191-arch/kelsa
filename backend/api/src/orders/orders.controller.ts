@@ -77,9 +77,8 @@ export class OrdersController {
 
     const total = subtotal + deliveryFee;
 
-    // 6. Рассчитываем прибыль
-    // Прибыль = Выручка за товары - Себестоимость товаров - Расходы на курьера
-    const profit = subtotal - purchaseCost - courierCost;
+    // 6. Прибыль = 0 при создании заказа. Реальная прибыль рассчитывается только после доставки (DELIVERED)
+    const profit = 0;
 
     // 7. Выполняем транзакцию: создаем заказ и обновляем статус корзины
     const createdOrder = await this.prisma.$transaction(async (tx) => {

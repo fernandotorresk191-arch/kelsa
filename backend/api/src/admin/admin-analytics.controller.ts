@@ -25,9 +25,12 @@ export class AdminAnalyticsController {
   async getDashboard(@Req() req: any) {
     this.checkAdminRole(req);
 
-    // Общая статистика
+    // Общая статистика — только доставленные заказы для финансовых показателей
+    const deliveredFilter = { status: 'DELIVERED' as const };
     const totalOrders = await this.prisma.order.count();
+    const totalDelivered = await this.prisma.order.count({ where: deliveredFilter });
     const aggregates = await this.prisma.order.aggregate({
+      where: deliveredFilter,
       _sum: { totalAmount: true, purchaseCost: true, courierCost: true, profit: true },
     });
 
@@ -37,16 +40,17 @@ export class AdminAnalyticsController {
       _count: true,
     });
 
-    // Продажи за последние 7 дней
+    // Продажи за последние 7 дней (только доставленные)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentOrders = await this.prisma.order.findMany({
-      where: { createdAt: { gte: sevenDaysAgo } },
+      where: { createdAt: { gte: sevenDaysAgo }, status: 'DELIVERED' },
       select: { totalAmount: true, createdAt: true },
     });
 
-    // Топ товаров по продажам
+    // Топ товаров по продажам (только доставленные заказы)
     const topProducts = await this.prisma.orderItem.groupBy({
       by: ['productId', 'title'],
+      where: { order: { status: 'DELIVERED' } },
       _sum: { qty: true, amount: true },
       orderBy: { _sum: { amount: 'desc' } },
       take: 10,
@@ -54,7 +58,7 @@ export class AdminAnalyticsController {
 
     const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
     const todayOrders = await this.prisma.order.findMany({
-      where: { createdAt: { gte: todayStart } },
+      where: { createdAt: { gte: todayStart }, status: 'DELIVERED' },
       select: { totalAmount: true, profit: true },
     });
 
@@ -76,9 +80,10 @@ export class AdminAnalyticsController {
         totalCourierCost: aggregates._sum.courierCost || 0,
         totalProfit: aggregates._sum.profit || 0,
         totalProfitToday,
+        totalDelivered,
         averageOrderValue:
-          totalOrders > 0
-            ? (aggregates._sum.totalAmount || 0) / totalOrders
+          totalDelivered > 0
+            ? (aggregates._sum.totalAmount || 0) / totalDelivered
             : 0,
       },
       ordersByStatus,
@@ -109,6 +114,7 @@ export class AdminAnalyticsController {
           gte: start,
           lte: end,
         },
+        status: 'DELIVERED',
       },
       select: {
         id: true,
@@ -120,7 +126,7 @@ export class AdminAnalyticsController {
       },
     });
 
-    // Группируем по дням
+    // Группируем по дням (только доставленные заказы)
     const ordersByDate: Record<string, any> = {};
     orders.forEach((order) => {
       const date = order.createdAt.toISOString().split('T')[0];
@@ -162,6 +168,7 @@ export class AdminAnalyticsController {
 
     const sales = await this.prisma.orderItem.groupBy({
       by: ['productId', 'title'],
+      where: { order: { status: 'DELIVERED' } },
       _sum: { qty: true, amount: true },
       _count: { id: true },
       orderBy: { _sum: { amount: 'desc' } },
@@ -205,6 +212,7 @@ export class AdminAnalyticsController {
     const orders = await this.prisma.order.findMany({
       where: {
         createdAt: { gte: start },
+        status: 'DELIVERED',
       },
       select: {
         createdAt: true,
@@ -215,7 +223,7 @@ export class AdminAnalyticsController {
       },
     });
 
-    // Группируем по дням
+    // Группируем по дням (только доставленные заказы)
     const byDate: Record<string, { revenue: number; profit: number; purchaseCost: number; courierCost: number }> = {};
     orders.forEach((order) => {
       const date = order.createdAt.toISOString().split('T')[0];

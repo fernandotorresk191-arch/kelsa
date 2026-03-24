@@ -259,6 +259,14 @@ export class CourierOrdersController {
         },
       });
 
+      // Рассчитываем прибыль при доставке: subtotal - себестоимость - расходы на курьера
+      const subtotal = updated.items.reduce((sum, item) => sum + item.amount, 0);
+      const realProfit = subtotal - (order.purchaseCost || 0) - (order.courierCost || 0);
+      await tx.order.update({
+        where: { id: orderId },
+        data: { profit: realProfit },
+      });
+
       // Списываем товар со склада по FIFO-партиям
       const affectedProductIds: string[] = [];
       for (const item of updated.items) {
