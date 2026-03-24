@@ -306,12 +306,21 @@ export default function AdminOrderDetailPage() {
                     {(order.courierCost ?? 0).toLocaleString('ru-RU')} ₽
                   </div>
                 </div>
-                <div className={`p-3 rounded-lg ${(order.profit ?? 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
-                  <div className={`text-sm ${(order.profit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>Прибыль</div>
-                  <div className={`text-xl font-bold ${(order.profit ?? 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
-                    {(order.profit ?? 0).toLocaleString('ru-RU')} ₽
-                  </div>
-                </div>
+                {(() => {
+                  const isDelivered = order.status === OrderStatus.DELIVERED;
+                  const profitValue = isDelivered
+                    ? (order.profit ?? 0)
+                    : order.items.reduce((sum, item) => sum + item.amount, 0) - (order.purchaseCost ?? 0) - (order.courierCost ?? 0);
+                  const profitLabel = isDelivered ? 'Прибыль' : 'Возможная прибыль';
+                  return (
+                    <div className={`p-3 rounded-lg ${profitValue >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <div className={`text-sm ${profitValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>{profitLabel}</div>
+                      <div className={`text-xl font-bold ${profitValue >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                        {profitValue.toLocaleString('ru-RU')} ₽
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
               {order.settlement && (
                 <div className="mt-3 text-sm text-slate-500">
