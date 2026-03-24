@@ -604,12 +604,14 @@ export const adminCouriersApi = {
 export const adminDeliveryZonesApi = {
   // Получить все зоны
   getZones: async (): Promise<DeliveryZone[]> => {
-    return http.get<DeliveryZone[]>('/v1/admin/delivery-zones');
+    const res = await http.get<{ data: DeliveryZone[] }>('/v1/admin/delivery-zones');
+    return res.data;
   },
 
   // Получить доступные населённые пункты
   getAvailableSettlements: async (): Promise<Array<{ code: string; title: string }>> => {
-    return http.get<Array<{ code: string; title: string }>>('/v1/admin/delivery-zones/available-settlements');
+    const res = await http.get<{ data: Array<{ code: string; title: string }> }>('/v1/admin/delivery-zones/available-settlements');
+    return res.data;
   },
 
   // Создать зону
