@@ -10,7 +10,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { Observable, map, interval, merge } from 'rxjs';
-import { EventsService, OrderEvent } from './events.service';
+import { EventsService, OrderEvent, ChatEvent } from './events.service';
 import { JwtGuard } from '../auth/jwt.guard';
 
 interface MessageEvent {
@@ -87,6 +87,48 @@ export class EventsController {
       })),
     );
 
-    return merge(heartbeat$, orders$);
+    // Chat events stream filtered by user
+    const chat$ = this.eventsService.getChatEventsForUser(userId).pipe(
+      map((event: ChatEvent) => ({
+        data: JSON.stringify({
+          type: event.type,
+          message: event.message,
+        }),
+        type: 'chat',
+      })),
+    );
+
+    return merge(heartbeat$, orders$, chat$);
+  }
+
+  // SSE для чата админов — все сообщения
+  @Sse('chat')
+  @UseGuards(JwtGuard)
+  chatStream(@Req() req: AuthRequest): Observable<MessageEvent> {
+    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+      throw new UnauthorizedException('Admin access required');
+    }
+
+    const heartbeat$ = interval(30000).pipe(
+      map(() => ({
+        data: JSON.stringify({
+          type: 'heartbeat',
+          timestamp: new Date().toISOString(),
+        }),
+        type: 'heartbeat',
+      })),
+    );
+
+    const chat$ = this.eventsService.getChatEvents().pipe(
+      map((event: ChatEvent) => ({
+        data: JSON.stringify({
+          type: event.type,
+          message: event.message,
+        }),
+        type: 'chat',
+      })),
+    );
+
+    return merge(heartbeat$, chat$);
   }
 }

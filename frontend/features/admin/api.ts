@@ -162,6 +162,44 @@ export const adminOrdersApi = {
   },
 };
 
+// ==================== Chat API ====================
+
+export interface ChatMessage {
+  id: string;
+  orderId: string;
+  sender: 'MANAGER' | 'CLIENT';
+  text?: string | null;
+  imageUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export const adminChatApi = {
+  getMessages: async (orderId: string): Promise<{ orderNumber: number; messages: ChatMessage[] }> => {
+    return http.get(`/v1/admin/orders/${orderId}/chat`);
+  },
+
+  sendText: async (orderId: string, text: string): Promise<ChatMessage> => {
+    return http.post(`/v1/admin/orders/${orderId}/chat`, { text });
+  },
+
+  sendImage: async (orderId: string, file: File): Promise<ChatMessage> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return http.upload(`/v1/admin/orders/${orderId}/chat/image`, formData);
+  },
+
+  markRead: async (orderId: string): Promise<{ ok: boolean }> => {
+    return http.patch(`/v1/admin/orders/${orderId}/chat/read`);
+  },
+
+  getUnreadCounts: async (): Promise<Record<string, number>> => {
+    return http.get('/v1/admin/orders/unread-counts');
+  },
+};
+
 export const adminProductsApi = {
   getProducts: async (
     page = 1,

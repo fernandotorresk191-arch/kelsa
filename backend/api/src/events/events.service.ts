@@ -19,12 +19,33 @@ export interface OrderEvent {
   courierId?: string;
 }
 
+export interface ChatEvent {
+  type: 'NEW_MESSAGE';
+  message: {
+    id: string;
+    orderId: string;
+    orderNumber: number;
+    sender: 'MANAGER' | 'CLIENT';
+    text?: string | null;
+    imageUrl?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    createdAt: Date;
+  };
+  userId?: string;     // Для фильтрации — владелец заказа
+}
+
 @Injectable()
 export class EventsService {
   private orderEvents$ = new Subject<OrderEvent>();
+  private chatEvents$ = new Subject<ChatEvent>();
 
   emitOrderEvent(event: OrderEvent): void {
     this.orderEvents$.next(event);
+  }
+
+  emitChatEvent(event: ChatEvent): void {
+    this.chatEvents$.next(event);
   }
 
   // Для админов — все события
@@ -43,6 +64,18 @@ export class EventsService {
   getOrderEventsForCourier(courierId: string): Observable<OrderEvent> {
     return this.orderEvents$.asObservable().pipe(
       filter((event) => event.courierId === courierId),
+    );
+  }
+
+  // Чат для админов — все сообщения
+  getChatEvents(): Observable<ChatEvent> {
+    return this.chatEvents$.asObservable();
+  }
+
+  // Чат для клиентов — только их сообщения
+  getChatEventsForUser(userId: string): Observable<ChatEvent> {
+    return this.chatEvents$.asObservable().pipe(
+      filter((event) => event.userId === userId),
     );
   }
 }

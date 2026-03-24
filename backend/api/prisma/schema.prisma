@@ -149,6 +149,7 @@ model Order {
 
   items        OrderItem[]
   statusHistory OrderStatusHistory[]
+  chatMessages  ChatMessage[]
 }
 
 model OrderItem {
@@ -235,8 +236,31 @@ model User {
   email        String   @unique
   phone         String
   addressLine   String
+  pushSubscription String?  // JSON подписки для Web Push
   orders       Order[]
   favorites    Favorite[]
+}
+
+// ==================== ЧАТ ПО ЗАКАЗАМ ====================
+
+enum ChatSender {
+  MANAGER
+  CLIENT
+}
+
+model ChatMessage {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sender    ChatSender
+  text      String?
+  imageUrl  String?    // Путь к загруженному изображению
+  latitude  Float?     // Геопозиция
+  longitude Float?     // Геопозиция
+  isRead    Boolean    @default(false)
+  createdAt DateTime   @default(now())
+
+  @@index([orderId, createdAt])
 }
 
 // ==================== ЗАКУПКИ И ПАРТИИ ====================

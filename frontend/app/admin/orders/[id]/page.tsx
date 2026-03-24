@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { adminOrdersApi } from '@/features/admin/api';
 import { Order, OrderStatus, OrderStatusLabels, OrderStatusColors } from '@/features/admin/types';
 import { useOrdersSSE } from '@/features/admin/useOrdersSSE';
+import AdminChatPanel from '@/components/admin/AdminChatPanel';
 
 interface AvailableCourier {
   id: string;
@@ -292,6 +293,9 @@ export default function AdminOrderDetailPage() {
               )}
             </div>
           )}
+
+          {/* Чат с клиентом */}
+          <AdminChatPanel orderId={order.id} orderNumber={order.orderNumber} />
 
           {/* История статусов */}
           <div className="bg-white rounded-lg shadow p-6">

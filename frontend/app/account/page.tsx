@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/button";
 import { AuthDialog } from "../../components/auth/AuthDialog";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { authApi } from "features/auth/api";
+import OrderChatModal from "@/components/orders/OrderChatModal";
 import type { UserOrder } from "features/auth/types";
 import type { OrderStatus } from "features/orders/types";
 import { useFavorites } from "../../components/favorites/FavoritesProvider";
@@ -56,6 +57,19 @@ function AccountPageContent() {
   const [error, setError] = useState<string | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
   const [updatedOrderIds, setUpdatedOrderIds] = useState<Set<number>>(new Set());
+  const [chatOrderNumber, setChatOrderNumber] = useState<number | null>(null);
+
+  // Listen for push notification clicks to open chat
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { orderNumber: number };
+      if (detail?.orderNumber) {
+        setChatOrderNumber(detail.orderNumber);
+      }
+    };
+    window.addEventListener('open-order-chat', handler);
+    return () => window.removeEventListener('open-order-chat', handler);
+  }, []);
 
   // Обработчик обновления статуса заказа через SSE
   const handleOrderUpdated = useCallback((orderData: OrderStatusEvent['order']) => {
@@ -173,6 +187,18 @@ function AccountPageContent() {
                   <span className="font-medium">{item.amount} ₽</span>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-3 pt-3 border-t">
+              <button
+                onClick={() => setChatOrderNumber(order.orderNumber)}
+                className="inline-flex items-center gap-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                Открыть чат
+              </button>
             </div>
           </div>
         ))}
@@ -296,6 +322,15 @@ function AccountPageContent() {
         </div>
         {activeTab === "favorites" ? favoritesContent : ordersContent}
       </div>
+
+      {/* Chat modal */}
+      {chatOrderNumber !== null && (
+        <OrderChatModal
+          orderNumber={chatOrderNumber}
+          open={true}
+          onClose={() => setChatOrderNumber(null)}
+        />
+      )}
     </div>
   );
 }

@@ -17,6 +17,19 @@ export interface OrderStatusEvent {
   };
 }
 
+export interface ChatMessageEvent {
+  type: 'NEW_MESSAGE';
+  message: {
+    id: string;
+    orderId: string;
+    orderNumber: number;
+    sender: 'MANAGER' | 'CLIENT';
+    text?: string | null;
+    imageUrl?: string | null;
+    createdAt: string;
+  };
+}
+
 const STATUS_LABELS: Record<string, string> = {
   NEW: 'Новый',
   CONFIRMED: 'Подтверждён',
@@ -28,11 +41,13 @@ const STATUS_LABELS: Record<string, string> = {
 
 interface UseMyOrdersSSEOptions {
   onOrderUpdated?: (order: OrderStatusEvent['order']) => void;
+  onChatMessage?: (message: ChatMessageEvent['message']) => void;
   enabled?: boolean;
 }
 
 export function useMyOrdersSSE({
   onOrderUpdated,
+  onChatMessage,
   enabled = true,
 }: UseMyOrdersSSEOptions) {
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -70,6 +85,24 @@ export function useMyOrdersSSE({
       }
     });
 
+    eventSource.addEventListener('chat', (event) => {
+      try {
+        const data = JSON.parse(event.data) as ChatMessageEvent;
+        
+        if (data.type === 'NEW_MESSAGE') {
+          // Only notify for manager messages (not own messages)
+          if (data.message.sender === 'MANAGER') {
+            showChatNotification(data.message);
+          }
+          if (onChatMessage) {
+            onChatMessage(data.message);
+          }
+        }
+      } catch (error) {
+        console.error('[SSE] Failed to parse chat event:', error);
+      }
+    });
+
     eventSource.addEventListener('heartbeat', () => {
       // Heartbeat received, connection is alive
     });
@@ -88,7 +121,7 @@ export function useMyOrdersSSE({
     };
 
     eventSourceRef.current = eventSource;
-  }, [enabled, onOrderUpdated]);
+  }, [enabled, onOrderUpdated, onChatMessage]);
 
   useEffect(() => {
     connect();
@@ -122,6 +155,27 @@ function showNotification(order: OrderStatusEvent['order']) {
       icon: '/icons/icon-192x192.png',
       tag: `order-${order.id}`,
     });
+  }
+}
+
+function showChatNotification(message: ChatMessageEvent['message']) {
+  if (typeof window === 'undefined') return;
+  if (!('Notification' in window)) return;
+  
+  if (Notification.permission === 'granted') {
+    const body = message.text || (message.imageUrl ? '📷 Фото' : 'Новое сообщение');
+    const notif = new Notification(`Чат по заказу #${message.orderNumber}`, {
+      body,
+      icon: '/icons/icon-192x192.png',
+      tag: `chat-${message.orderId}`,
+      data: { type: 'CHAT_MESSAGE', orderNumber: message.orderNumber },
+    });
+    notif.onclick = () => {
+      window.focus();
+      // Dispatch custom event so the account page can open the chat
+      window.dispatchEvent(new CustomEvent('open-order-chat', { detail: { orderNumber: message.orderNumber } }));
+      notif.close();
+    };
   }
 }
 
