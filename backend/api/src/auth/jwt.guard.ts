@@ -13,23 +13,13 @@ export class JwtGuard implements CanActivate {
     const queryToken = req.query?.token as string | undefined
     const token = auth?.startsWith('Bearer ') ? auth.slice(7) : queryToken || null
     
-    console.log('=== JWT Guard Debug ===')
-    console.log('Authorization header:', auth)
-    console.log('Query token:', queryToken ? 'present' : 'absent')
-    console.log('Extracted token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN')
-    
     if (!token) throw new UnauthorizedException('No token')
 
     try {
       const payload = this.jwt.verify(token)
-      console.log('JWT Payload:', JSON.stringify(payload, null, 2))
-      console.log('Payload keys:', Object.keys(payload))
-      console.log('Payload.sub:', payload.sub)
       req.user = payload
-      console.log('req.user set to:', JSON.stringify(req.user, null, 2))
       return true
-    } catch (error) {
-      console.error('JWT Verification Error:', error instanceof Error ? error.message : String(error))
+    } catch {
       throw new UnauthorizedException('Invalid token')
     }
   }

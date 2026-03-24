@@ -3,12 +3,13 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { adminChatApi, ChatMessage } from '@/features/admin/api';
 import { resolveMediaUrl } from '@/shared/api/media';
-import { API_URL } from '@/shared/api/config';
 import { compressImage } from '@/lib/compressImage';
+import type { ChatEventData } from '@/features/admin/useOrdersSSE';
 
 interface AdminChatPanelProps {
   orderId: string;
   orderNumber: number;
+  chatEvent?: ChatEventData | null;
 }
 
 /* ───────── WhatsApp-style checkmarks ───────── */
@@ -28,7 +29,7 @@ function CheckIcon({ read }: { read: boolean }) {
   );
 }
 
-export default function AdminChatPanel({ orderId, orderNumber }: AdminChatPanelProps) {
+export default function AdminChatPanel({ orderId, orderNumber, chatEvent }: AdminChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -37,7 +38,6 @@ export default function AdminChatPanel({ orderId, orderNumber }: AdminChatPanelP
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -62,51 +62,29 @@ export default function AdminChatPanel({ orderId, orderNumber }: AdminChatPanelP
     return () => { cancelled = true; };
   }, [orderId, scrollToBottom]);
 
-  // SSE for real-time messages + read status
+  // Handle chat events from parent SSE
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('admin_token') : null;
-    if (!token) return;
+    if (!chatEvent) return;
 
-    const url = `${API_URL}/v1/events/chat?token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-    eventSourceRef.current = es;
+    if (chatEvent.type === 'NEW_MESSAGE' && chatEvent.message?.orderId === orderId) {
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === chatEvent.message!.id)) return prev;
+        return [...prev, chatEvent.message as ChatMessage];
+      });
+      scrollToBottom();
+      if (chatEvent.message.sender === 'CLIENT') {
+        adminChatApi.markRead(orderId).catch(() => {});
+      }
+    }
 
-    es.addEventListener('chat', (event) => {
-      try {
-        const data = JSON.parse(event.data);
-
-        if (data.type === 'NEW_MESSAGE' && data.message?.orderId === orderId) {
-          setMessages((prev) => {
-            if (prev.some((m) => m.id === data.message.id)) return prev;
-            return [...prev, data.message as ChatMessage];
-          });
-          scrollToBottom();
-          if (data.message.sender === 'CLIENT') {
-            adminChatApi.markRead(orderId).catch(() => {});
-          }
-        }
-
-        // Client read our messages → update checkmarks
-        if (data.type === 'MESSAGES_READ' && data.readBy === 'CLIENT' && data.orderId === orderId) {
-          setMessages((prev) =>
-            prev.map((m) =>
-              m.sender === 'MANAGER' && !m.isRead ? { ...m, isRead: true } : m,
-            ),
-          );
-        }
-      } catch { /* ignore */ }
-    });
-
-    es.onerror = () => {
-      es.close();
-      setTimeout(() => {}, 5000);
-    };
-
-    return () => {
-      es.close();
-      eventSourceRef.current = null;
-    };
-  }, [orderId, scrollToBottom]);
+    if (chatEvent.type === 'MESSAGES_READ' && chatEvent.readBy === 'CLIENT' && chatEvent.orderId === orderId) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.sender === 'MANAGER' && !m.isRead ? { ...m, isRead: true } : m,
+        ),
+      );
+    }
+  }, [chatEvent, orderId, scrollToBottom]);
 
   const handleSend = async () => {
     const trimmed = text.trim();

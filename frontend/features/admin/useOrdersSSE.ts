@@ -27,9 +27,28 @@ export interface OrderEventData {
   };
 }
 
+export interface ChatEventData {
+  type: 'NEW_MESSAGE' | 'MESSAGES_READ';
+  message?: {
+    id: string;
+    orderId: string;
+    orderNumber: number;
+    sender: 'MANAGER' | 'CLIENT';
+    text?: string | null;
+    imageUrl?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    isRead?: boolean;
+    createdAt: string;
+  };
+  orderId?: string;
+  readBy?: 'MANAGER' | 'CLIENT';
+}
+
 interface UseOrdersSSEOptions {
   onNewOrder?: (order: OrderEventData['order']) => void;
   onOrderUpdated?: (order: OrderEventData['order']) => void;
+  onChatEvent?: (event: ChatEventData) => void;
   enabled?: boolean;
   playSound?: boolean;
 }
@@ -61,6 +80,7 @@ function playNotificationSound() {
 export function useOrdersSSE({
   onNewOrder,
   onOrderUpdated,
+  onChatEvent,
   enabled = true,
   playSound = true,
 }: UseOrdersSSEOptions) {
@@ -103,6 +123,17 @@ export function useOrdersSSE({
       }
     });
 
+    eventSource.addEventListener('chat', (event) => {
+      try {
+        const data = JSON.parse(event.data) as ChatEventData;
+        if (onChatEvent) {
+          onChatEvent(data);
+        }
+      } catch (error) {
+        console.error('[SSE] Failed to parse chat event:', error);
+      }
+    });
+
     eventSource.addEventListener('heartbeat', () => {
       // Heartbeat received, connection is alive
     });
@@ -121,7 +152,7 @@ export function useOrdersSSE({
     };
 
     eventSourceRef.current = eventSource;
-  }, [enabled, onNewOrder, onOrderUpdated, playSound]);
+  }, [enabled, onNewOrder, onOrderUpdated, onChatEvent, playSound]);
 
   useEffect(() => {
     connect();

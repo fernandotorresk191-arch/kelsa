@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminOrdersApi } from '@/features/admin/api';
 import { Order, OrderStatus, OrderStatusLabels, OrderStatusColors } from '@/features/admin/types';
-import { useOrdersSSE } from '@/features/admin/useOrdersSSE';
+import { useOrdersSSE, ChatEventData } from '@/features/admin/useOrdersSSE';
 import AdminChatPanel from '@/components/admin/AdminChatPanel';
 
 interface AvailableCourier {
@@ -31,6 +31,7 @@ export default function AdminOrderDetailPage() {
   const [availableCouriers, setAvailableCouriers] = useState<AvailableCourier[]>([]);
   const [loadingCouriers, setLoadingCouriers] = useState(false);
   const [assigningCourier, setAssigningCourier] = useState(false);
+  const [lastChatEvent, setLastChatEvent] = useState<ChatEventData | null>(null);
 
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
@@ -49,8 +50,13 @@ export default function AdminOrderDetailPage() {
     }
   }, [orderId]);
 
+  const handleChatEvent = useCallback((event: ChatEventData) => {
+    setLastChatEvent(event);
+  }, []);
+
   useOrdersSSE({
     onOrderUpdated: handleOrderUpdated,
+    onChatEvent: handleChatEvent,
     enabled: !!orderId,
     playSound: false,
   });
@@ -312,7 +318,7 @@ export default function AdminOrderDetailPage() {
           )}
 
           {/* Чат с клиентом */}
-          <AdminChatPanel orderId={order.id} orderNumber={order.orderNumber} />
+          <AdminChatPanel orderId={order.id} orderNumber={order.orderNumber} chatEvent={lastChatEvent} />
 
           {/* История статусов */}
           <div className="bg-white rounded-lg shadow p-6">

@@ -56,7 +56,20 @@ export class EventsController {
       })),
     );
 
-    return merge(heartbeat$, orders$);
+    // Chat events stream (so admin needs only one SSE connection)
+    const chat$ = this.eventsService.getChatEvents().pipe(
+      map((event: ChatEvent) => ({
+        data: JSON.stringify({
+          type: event.type,
+          message: event.message,
+          orderId: event.orderId,
+          readBy: event.readBy,
+        }),
+        type: 'chat',
+      })),
+    );
+
+    return merge(heartbeat$, orders$, chat$);
   }
 
   // SSE для клиентов — только их заказы
@@ -93,6 +106,8 @@ export class EventsController {
         data: JSON.stringify({
           type: event.type,
           message: event.message,
+          orderId: event.orderId,
+          readBy: event.readBy,
         }),
         type: 'chat',
       })),

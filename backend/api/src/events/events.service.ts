@@ -30,6 +30,7 @@ export interface ChatEvent {
     imageUrl?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    isRead?: boolean;
     createdAt: Date;
   };
   // Для MESSAGES_READ
