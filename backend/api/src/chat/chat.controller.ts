@@ -277,7 +277,7 @@ export class ChatController {
 
     const order = await this.prisma.order.findUnique({
       where: { id: orderId },
-      select: { id: true },
+      select: { id: true, orderNumber: true, userId: true, status: true, totalAmount: true, createdAt: true },
     });
     if (!order) throw new BadRequestException('Заказ не найден');
 
@@ -287,6 +287,26 @@ export class ChatController {
         customerLatitude: body.latitude,
         customerLongitude: body.longitude,
       },
+    });
+
+    // Уведомляем через SSE об обновлении заказа (геопозиция добавлена)
+    const user = await this.prisma.user.findUnique({
+      where: { id: order.userId },
+      select: { name: true, phone: true },
+    });
+
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_UPDATED',
+      order: {
+        id: orderId,
+        orderNumber: order.orderNumber,
+        customerName: user?.name || '',
+        phone: user?.phone || '',
+        totalAmount: order.totalAmount,
+        status: order.status,
+        createdAt: order.createdAt,
+      },
+      userId: order.userId,
     });
 
     return { ok: true };

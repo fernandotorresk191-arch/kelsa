@@ -54,6 +54,10 @@ export default function AdminOrderDetailPage() {
     setLastChatEvent(event);
   }, []);
 
+  const handleGeoSaved = useCallback((latitude: number, longitude: number) => {
+    setOrder((prev) => prev ? { ...prev, customerLatitude: latitude, customerLongitude: longitude } : prev);
+  }, []);
+
   useOrdersSSE({
     onOrderUpdated: handleOrderUpdated,
     onChatEvent: handleChatEvent,
@@ -318,7 +322,7 @@ export default function AdminOrderDetailPage() {
           )}
 
           {/* Чат с клиентом */}
-          <AdminChatPanel orderId={order.id} orderNumber={order.orderNumber} chatEvent={lastChatEvent} />
+          <AdminChatPanel orderId={order.id} orderNumber={order.orderNumber} chatEvent={lastChatEvent} onGeoSaved={handleGeoSaved} />
 
           {/* История статусов */}
           <div className="bg-white rounded-lg shadow p-6">

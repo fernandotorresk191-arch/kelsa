@@ -10,6 +10,7 @@ interface AdminChatPanelProps {
   orderId: string;
   orderNumber: number;
   chatEvent?: ChatEventData | null;
+  onGeoSaved?: (latitude: number, longitude: number) => void;
 }
 
 /* ───────── WhatsApp-style checkmarks ───────── */
@@ -29,7 +30,7 @@ function CheckIcon({ read }: { read: boolean }) {
   );
 }
 
-export default function AdminChatPanel({ orderId, orderNumber, chatEvent }: AdminChatPanelProps) {
+export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoSaved }: AdminChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -123,7 +124,7 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent }: Admi
     setSavingGeo(msgId);
     try {
       await adminChatApi.setOrderGeolocation(orderId, lat, lng);
-      alert('Геопозиция добавлена к заказу!');
+      onGeoSaved?.(lat, lng);
     } catch (err) {
       console.error('[AdminChat] setOrderGeolocation error:', err);
       alert('Ошибка при сохранении геопозиции');
