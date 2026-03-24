@@ -10,6 +10,8 @@ import { AdminPurchasesController } from './admin-purchases.controller';
 import { AdminExpiryController } from './admin-expiry.controller';
 import { AdminCouriersController } from './admin-couriers.controller';
 import { AdminDeliveryZonesController } from './admin-delivery-zones.controller';
+import { AdminServerController } from './admin-server.controller';
+import { CronRegistryService } from './cron-registry.service';
 import { PushModule } from '../push/push.module';
 import { EventsModule } from '../events/events.module';
 
@@ -26,7 +28,9 @@ import { EventsModule } from '../events/events.module';
     AdminExpiryController,
     AdminCouriersController,
     AdminDeliveryZonesController,
+    AdminServerController,
   ],
-  providers: [AdminPurchasesController],
+  providers: [AdminPurchasesController, CronRegistryService],
+  exports: [CronRegistryService],
 })
 export class AdminModule {}

@@ -665,3 +665,39 @@ export const adminDeliveryZonesApi = {
     return http.delete<{ success: boolean }>(`/v1/admin/delivery-zones/${id}`);
   },
 };
+
+// ==================== СЕРВЕР ====================
+
+export interface CronJobLog {
+  name: string;
+  description: string;
+  schedule: string;
+  lastRun: string | null;
+  lastStatus: 'success' | 'error' | 'never';
+  lastMessage: string | null;
+  lastDuration: number | null;
+}
+
+export interface UploadDirStats {
+  name: string;
+  files: number;
+  sizeBytes: number;
+}
+
+export interface ServerInfo {
+  disk: { total: number; used: number; available: number; usagePercent: number } | null;
+  uploads: UploadDirStats[];
+  cronJobs: CronJobLog[];
+  process: {
+    uptime: number;
+    memoryUsage: { rss: number; heapTotal: number; heapUsed: number };
+    nodeVersion: string;
+    platform: string;
+  };
+}
+
+export const adminServerApi = {
+  getInfo: async (): Promise<ServerInfo> => {
+    return http.get<ServerInfo>('/v1/admin/server/info');
+  },
+};
