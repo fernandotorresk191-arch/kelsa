@@ -37,17 +37,57 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   const [loading, setLoading] = useState(true);
   const [showActions, setShowActions] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  const scrollToBottom = useCallback(() => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 50);
+  const scrollToBottom = useCallback((instant?: boolean) => {
+    const doScroll = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth', block: 'end' });
+    };
+    // Double rAF ensures DOM is painted before scrolling
+    requestAnimationFrame(() => requestAnimationFrame(doScroll));
   }, []);
+
+  // iOS visual viewport tracking — properly handles keyboard open/close
+  useEffect(() => {
+    if (!open) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    const update = () => {
+      setViewportHeight(vv.height);
+      // Keep modal anchored to top of visual viewport on iOS
+      if (modalRef.current) {
+        modalRef.current.style.height = `${vv.height}px`;
+        modalRef.current.style.top = `${vv.offsetTop}px`;
+      }
+    };
+
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      if (modalRef.current) {
+        modalRef.current.style.height = '';
+        modalRef.current.style.top = '';
+      }
+    };
+  }, [open]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (!open) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = original; };
+  }, [open]);
 
   // Auto-resize textarea
   const autoResize = useCallback(() => {
@@ -66,7 +106,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
       if (!cancelled) {
         setMessages(data.messages);
         setLoading(false);
-        scrollToBottom();
+        scrollToBottom(true); // instant scroll on initial load
         chatApi.markRead(orderNumber).catch(() => {});
       }
     }).catch((err) => {
@@ -264,10 +304,13 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] animate-[fadeIn_150ms_ease-out]" />
 
-      {/* Modal — full screen on mobile, centered card on desktop */}
-      <div className="relative w-full h-[100dvh] sm:h-[85vh] sm:max-h-[720px] sm:max-w-lg sm:rounded-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out] bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
+      {/* Modal — uses visualViewport height on mobile to handle iOS keyboard */}
+      <div
+        ref={modalRef}
+        className="relative w-full h-full sm:h-[85vh] sm:max-h-[720px] sm:max-w-lg sm:rounded-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out] bg-white shadow-2xl"
+      >
+        {/* Header — fixed at top, never scrolls */}
+        <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0 z-10" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
           <button
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors -ml-1"
@@ -461,9 +504,10 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
               value={text}
               onChange={(e) => { setText(e.target.value); setShowActions(false); autoResize(); }}
               onKeyDown={handleKeyDown}
+              onFocus={() => scrollToBottom()}
               placeholder="Сообщение"
               rows={1}
-              className="flex-1 resize-none px-3 py-2 text-[15px] leading-[20px] focus:outline-none max-h-[120px] bg-transparent"
+              className="flex-1 resize-none px-3 py-2 text-[16px] leading-[20px] focus:outline-none max-h-[120px] bg-transparent"
               style={{ minHeight: 40 }}
             />
           </div>
@@ -513,6 +557,11 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
+        }
+        /* Prevent iOS overscroll bounce on the modal */
+        .chat-modal-root {
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: none;
         }
       `}</style>
     </div>
