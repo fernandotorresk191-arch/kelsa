@@ -37,7 +37,6 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   const [loading, setLoading] = useState(true);
   const [showActions, setShowActions] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -59,12 +58,12 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
     const vv = window.visualViewport;
     if (!vv) return;
 
+    const modal = modalRef.current;
     const update = () => {
-      setViewportHeight(vv.height);
       // Keep modal anchored to top of visual viewport on iOS
-      if (modalRef.current) {
-        modalRef.current.style.height = `${vv.height}px`;
-        modalRef.current.style.top = `${vv.offsetTop}px`;
+      if (modal) {
+        modal.style.height = `${vv.height}px`;
+        modal.style.top = `${vv.offsetTop}px`;
       }
     };
 
@@ -74,9 +73,9 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
     return () => {
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
-      if (modalRef.current) {
-        modalRef.current.style.height = '';
-        modalRef.current.style.top = '';
+      if (modal) {
+        modal.style.height = '';
+        modal.style.top = '';
       }
     };
   }, [open]);
