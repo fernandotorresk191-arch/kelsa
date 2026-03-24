@@ -32,6 +32,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#d14b57",
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

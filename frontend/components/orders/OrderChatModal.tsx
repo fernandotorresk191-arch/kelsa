@@ -42,50 +42,31 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   const eventSourceRef = useRef<EventSource | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback((instant?: boolean) => {
     const doScroll = () => {
       messagesEndRef.current?.scrollIntoView({ behavior: instant ? 'instant' : 'smooth', block: 'end' });
     };
-    // Double rAF ensures DOM is painted before scrolling
     requestAnimationFrame(() => requestAnimationFrame(doScroll));
   }, []);
-
-  // iOS visual viewport tracking — properly handles keyboard open/close
-  useEffect(() => {
-    if (!open) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const modal = modalRef.current;
-    const update = () => {
-      // Keep modal anchored to top of visual viewport on iOS
-      if (modal) {
-        modal.style.height = `${vv.height}px`;
-        modal.style.top = `${vv.offsetTop}px`;
-      }
-    };
-
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-      if (modal) {
-        modal.style.height = '';
-        modal.style.top = '';
-      }
-    };
-  }, [open]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
     if (!open) return;
-    const original = document.body.style.overflow;
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = original; };
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+      window.scrollTo(0, scrollY);
+    };
   }, [open]);
 
   // Auto-resize textarea
@@ -297,19 +278,17 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   return (
     <div
       ref={backdropRef}
-      className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-[100]"
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] animate-[fadeIn_150ms_ease-out]" />
+      <div className="absolute inset-0 bg-black/50 animate-[fadeIn_150ms_ease-out]" />
 
-      {/* Modal — uses visualViewport height on mobile to handle iOS keyboard */}
-      <div
-        ref={modalRef}
-        className="relative w-full h-full sm:h-[85vh] sm:max-h-[720px] sm:max-w-lg sm:rounded-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out] bg-white shadow-2xl"
-      >
-        {/* Header — fixed at top, never scrolls */}
-        <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0 z-10" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
+      {/* Modal — full screen on mobile, centered card on desktop */}
+      <div className="absolute inset-0 sm:static sm:h-full sm:flex sm:items-center sm:justify-center">
+        <div className="flex flex-col w-full h-full sm:h-[85vh] sm:max-h-[720px] sm:max-w-lg sm:rounded-2xl overflow-hidden animate-[slideUp_200ms_ease-out] bg-white sm:shadow-2xl">
+          {/* Header */}
+          <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
           <button
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors -ml-1"
@@ -503,7 +482,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
               value={text}
               onChange={(e) => { setText(e.target.value); setShowActions(false); autoResize(); }}
               onKeyDown={handleKeyDown}
-              onFocus={() => scrollToBottom()}
+              onFocus={() => { setTimeout(() => scrollToBottom(), 300); }}
               placeholder="Сообщение"
               rows={1}
               className="flex-1 resize-none px-3 py-2 text-[16px] leading-[20px] focus:outline-none max-h-[120px] bg-transparent"
@@ -520,6 +499,8 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
               <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
           </button>
+        </div>
+
         </div>
       </div>
 
