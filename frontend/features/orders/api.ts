@@ -35,6 +35,9 @@ export const chatApi = {
 
   markRead: (orderNumber: number) =>
     apiPatch<{ ok: boolean }>(`/v1/orders/${orderNumber}/chat/read`),
+
+  getUnreadCounts: () =>
+    apiGet<Record<number, number>>('/v1/me/unread-counts'),
 };
 
 export const pushApi = {

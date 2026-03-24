@@ -477,6 +477,37 @@ export class ChatController {
     return { ok: true };
   }
 
+  // GET /v1/me/unread-counts — количество непрочитанных сообщений от менеджера по заказам клиента
+  @Get('me/unread-counts')
+  async getMyUnreadCounts(@Req() req: AuthRequest) {
+    const userId = req.user.sub;
+
+    const orders = await this.prisma.order.findMany({
+      where: { userId },
+      select: { id: true, orderNumber: true },
+    });
+
+    if (!orders.length) return {};
+
+    const orderIds = orders.map((o) => o.id);
+
+    const counts = await this.prisma.chatMessage.groupBy({
+      by: ['orderId'],
+      where: { orderId: { in: orderIds }, sender: 'MANAGER', isRead: false },
+      _count: { id: true },
+    });
+
+    const result: Record<number, number> = {};
+    const idToNumber = new Map(orders.map((o) => [o.id, o.orderNumber]));
+    for (const c of counts) {
+      const orderNumber = idToNumber.get(c.orderId);
+      if (orderNumber != null) {
+        result[orderNumber] = c._count.id;
+      }
+    }
+    return result;
+  }
+
   // ==================== PUSH-подписка клиента ====================
 
   // POST /v1/push/subscribe — подписка клиента на push-уведомления
