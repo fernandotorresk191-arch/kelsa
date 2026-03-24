@@ -144,19 +144,19 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
   };
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col" style={{ height: 500 }}>
+    <div className="bg-white rounded-lg shadow overflow-hidden flex flex-col h-[60vh] min-h-[350px] max-h-[600px] sm:h-[500px] lg:h-[550px]">
       {/* Header */}
-      <div className="px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white flex items-center gap-3 shrink-0">
-        <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center text-lg">💬</div>
-        <div>
-          <div className="font-semibold text-sm">Чат по заказу #{orderNumber}</div>
-          <div className="text-xs text-emerald-100">{messages.length} сообщ.</div>
+      <div className="px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white flex items-center gap-2.5 sm:gap-3 shrink-0">
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/20 flex items-center justify-center text-base sm:text-lg">💬</div>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-[13px] sm:text-sm leading-tight truncate">Чат по заказу #{orderNumber}</div>
+          <div className="text-[11px] sm:text-xs text-emerald-100">{messages.length} сообщ.</div>
         </div>
       </div>
 
       {/* Messages area */}
       <div
-        className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
+        className="flex-1 overflow-y-auto overscroll-contain px-2 sm:px-3 py-2 sm:py-3"
         style={{
           backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.3\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
           backgroundColor: '#efeae2',
@@ -182,7 +182,7 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
                   className={`flex ${isManager ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`relative max-w-[80%] rounded-lg px-2.5 py-1.5 shadow-sm ${
+                    className={`relative max-w-[85%] sm:max-w-[80%] rounded-lg px-2 sm:px-2.5 py-1.5 shadow-sm ${
                       isManager
                         ? 'bg-[#d9fdd3] rounded-tr-none'
                         : 'bg-white rounded-tl-none'
@@ -202,30 +202,37 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
                       <img
                         src={resolveMediaUrl(msg.imageUrl) || ''}
                         alt="Фото"
-                        className="rounded-md max-w-full max-h-48 object-cover mb-1 cursor-pointer"
+                        className="rounded-lg max-w-full max-h-[35vh] sm:max-h-48 object-cover mb-1 cursor-pointer active:opacity-80 transition-opacity"
                         onClick={() => setImagePreview(resolveMediaUrl(msg.imageUrl) || null)}
                         loading="lazy"
                       />
                     )}
                     {msg.text && (
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
+                      <p className="text-[13px] sm:text-sm whitespace-pre-wrap break-words">{msg.text}</p>
                     )}
                     {hasGeo && (
-                      <div className="mt-1 space-y-1">
+                      <div className="mt-1.5 space-y-1.5">
                         <a
                           href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                          className="flex items-center gap-2 text-[13px] sm:text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 px-3 py-2 rounded-lg transition-colors"
                         >
-                          📍 Геопозиция
+                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span className="font-medium">📍 Геопозиция</span>
+                          <svg className="w-3.5 h-3.5 ml-auto text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
                         </a>
                         {/* Кнопка "Добавить к заказу" — только для сообщений клиента с геопозицией */}
                         {msg.sender === 'CLIENT' && (
                           <button
                             onClick={() => handleAddGeoToOrder(msg.id, msg.latitude!, msg.longitude!)}
                             disabled={savingGeo === msg.id}
-                            className="flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-600 hover:bg-indigo-100 active:bg-indigo-200 px-2.5 py-1.5 rounded-md transition-colors font-medium disabled:opacity-50"
+                            className="flex items-center gap-1.5 text-xs sm:text-[13px] bg-indigo-50 text-indigo-600 hover:bg-indigo-100 active:bg-indigo-200 px-3 py-2 sm:py-1.5 rounded-lg sm:rounded-md transition-colors font-medium disabled:opacity-50 w-full sm:w-auto justify-center sm:justify-start"
                           >
                             {savingGeo === msg.id ? (
                               <>
@@ -261,14 +268,14 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
       </div>
 
       {/* Input area */}
-      <div className="border-t border-gray-200 bg-[#f0f0f0] px-3 py-2 flex items-end gap-2 shrink-0">
+      <div className="border-t border-gray-200 bg-[#f0f0f0] px-2 sm:px-3 py-1.5 sm:py-2 flex items-end gap-1.5 sm:gap-2 shrink-0">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-full transition-colors shrink-0"
+          className="p-2 sm:p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 rounded-full transition-colors shrink-0"
           title="Отправить фото"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5.5 h-5.5 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
         </button>
@@ -286,16 +293,16 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
             onKeyDown={handleKeyDown}
             placeholder="Введите сообщение..."
             rows={1}
-            className="flex-1 resize-none px-3 py-2 text-sm focus:outline-none max-h-24 bg-transparent"
-            style={{ minHeight: 38 }}
+            className="flex-1 resize-none px-3 py-2 text-[14px] sm:text-sm focus:outline-none max-h-24 bg-transparent"
+            style={{ minHeight: 40 }}
           />
         </div>
         <button
           onClick={handleSend}
           disabled={!text.trim() || sending}
-          className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          className="p-2 sm:p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 active:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0"
         >
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="w-5.5 h-5.5 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="currentColor">
             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
           </svg>
         </button>
@@ -304,18 +311,18 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
       {/* Image preview */}
       {imagePreview && (
         <div
-          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[200] bg-black flex items-center justify-center"
           onClick={() => setImagePreview(null)}
         >
           <button
-            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white z-10"
+            className="absolute top-4 right-4 w-11 h-11 bg-black/40 hover:bg-black/60 active:bg-black/80 backdrop-blur-sm rounded-full flex items-center justify-center text-white z-10 transition-colors"
             onClick={() => setImagePreview(null)}
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
-          <img src={imagePreview} alt="Просмотр" className="max-w-full max-h-full object-contain rounded-lg" />
+          <img src={imagePreview} alt="Просмотр" className="max-w-full max-h-full object-contain select-none" draggable={false} />
         </div>
       )}
     </div>
