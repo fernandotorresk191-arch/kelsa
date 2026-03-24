@@ -38,7 +38,9 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
   const [savingGeo, setSavingGeo] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const needsInitialScroll = useRef(true);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -53,7 +55,7 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
       if (!cancelled) {
         setMessages(data.messages);
         setLoading(false);
-        scrollToBottom();
+        needsInitialScroll.current = true;
         adminChatApi.markRead(orderId).catch(() => {});
       }
     }).catch((err) => {
@@ -62,6 +64,18 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
     });
     return () => { cancelled = true; };
   }, [orderId, scrollToBottom]);
+
+  // Scroll to bottom after messages are rendered on initial load
+  useEffect(() => {
+    if (!needsInitialScroll.current || loading || messages.length === 0) return;
+    needsInitialScroll.current = false;
+    const container = messagesContainerRef.current;
+    if (container) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
+    }
+  }, [messages, loading]);
 
   // Handle chat events from parent SSE
   useEffect(() => {
@@ -156,6 +170,7 @@ export default function AdminChatPanel({ orderId, orderNumber, chatEvent, onGeoS
 
       {/* Messages area */}
       <div
+        ref={messagesContainerRef}
         className="flex-1 overflow-y-auto overscroll-contain px-2 sm:px-3 py-2 sm:py-3"
         style={{
           backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.3\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
