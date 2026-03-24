@@ -36,7 +36,8 @@ export default function AdminChatPanel({ orderId, orderNumber }: AdminChatPanelP
         // Mark read
         adminChatApi.markRead(orderId).catch(() => {});
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('[AdminChat] getMessages error:', err);
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
@@ -91,9 +92,10 @@ export default function AdminChatPanel({ orderId, orderNumber }: AdminChatPanelP
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+      setLoading(false);
       setText('');
       scrollToBottom();
-    } catch { /* ignore */ }
+    } catch (err) { console.error('[AdminChat] sendText error:', err); }
     setSending(false);
   };
 
@@ -107,8 +109,9 @@ export default function AdminChatPanel({ orderId, orderNumber }: AdminChatPanelP
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+      setLoading(false);
       scrollToBottom();
-    } catch { /* ignore */ }
+    } catch (err) { console.error('[AdminChat] sendImage error:', err); }
     setSending(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -143,9 +146,9 @@ export default function AdminChatPanel({ orderId, orderNumber }: AdminChatPanelP
           backgroundColor: '#f0f2f5',
         }}
       >
-        {loading ? (
+        {loading && messages.length === 0 ? (
           <div className="text-center text-gray-400 py-8 text-sm">Загрузка...</div>
-        ) : messages.length === 0 ? (
+        ) : messages.length === 0 && !loading ? (
           <div className="text-center text-gray-400 py-8">
             <div className="text-4xl mb-2">💬</div>
             <div className="text-sm">Нет сообщений. Начните переписку!</div>

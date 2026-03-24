@@ -41,7 +41,8 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
         scrollToBottom();
         chatApi.markRead(orderNumber).catch(() => {});
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('[Chat] getMessages error:', err);
       if (!cancelled) setLoading(false);
     });
     return () => { cancelled = true; };
@@ -93,9 +94,10 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+      setLoading(false);
       setText('');
       scrollToBottom();
-    } catch { /* ignore */ }
+    } catch (err) { console.error('[Chat] sendText error:', err); }
     setSending(false);
   };
 
@@ -110,8 +112,9 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
+      setLoading(false);
       scrollToBottom();
-    } catch { /* ignore */ }
+    } catch (err) { console.error('[Chat] sendImage error:', err); }
     setSending(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -136,8 +139,9 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
+          setLoading(false);
           scrollToBottom();
-        } catch { /* ignore */ }
+        } catch (err) { console.error('[Chat] sendLocation error:', err); }
         setSending(false);
       },
       () => {
@@ -220,9 +224,9 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
             backgroundColor: '#f0f2f5',
           }}
         >
-          {loading ? (
+          {loading && messages.length === 0 ? (
             <div className="text-center text-gray-400 py-12 text-sm">Загрузка сообщений...</div>
-          ) : messages.length === 0 ? (
+          ) : messages.length === 0 && !loading ? (
             <div className="text-center text-gray-400 py-12">
               <div className="text-5xl mb-3">💬</div>
               <div className="text-sm font-medium">Нет сообщений</div>
