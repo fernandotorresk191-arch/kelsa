@@ -45,20 +45,26 @@ export function CartDialog() {
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const lastUserIdRef = useRef<string | null>(null);
 
-  // Delivery settings
+  // Delivery settings per zone
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [freeDeliveryFrom, setFreeDeliveryFrom] = useState(0);
 
   useEffect(() => {
-    http.get<{ deliveryFee: number; freeDeliveryFrom: number; isActive: boolean }>('/v1/delivery-settings')
+    http.get<{ zones?: Array<{ settlement: string; deliveryFee: number; freeDeliveryFrom: number }> }>('/v1/delivery-settings')
       .then(settings => {
-        if (settings.isActive) {
-          setDeliveryFee(settings.deliveryFee);
-          setFreeDeliveryFrom(settings.freeDeliveryFrom);
+        const zones = settings.zones || [];
+        const code = selectedSettlement?.code;
+        const zone = code ? zones.find(z => z.settlement === code) : zones[0];
+        if (zone) {
+          setDeliveryFee(zone.deliveryFee);
+          setFreeDeliveryFrom(zone.freeDeliveryFrom);
+        } else {
+          setDeliveryFee(0);
+          setFreeDeliveryFrom(0);
         }
       })
       .catch(() => {});
-  }, []);
+  }, [selectedSettlement]);
 
   const totalAmount = useMemo(
     () =>
@@ -116,6 +122,7 @@ export function CartDialog() {
         phone,
         addressLine: fullAddress,
         comment: comment || undefined,
+        settlement: selectedSettlement?.code || undefined,
       });
 
       if (user) {

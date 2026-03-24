@@ -38,4 +38,5 @@ export type CreateOrderPayload = {
   phone: string;
   addressLine: string;
   comment?: string;
+  settlement?: string;
 };

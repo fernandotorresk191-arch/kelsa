@@ -50,21 +50,38 @@ export class OrdersController {
       0,
     );
 
-    // 4. Рассчитываем стоимость доставки
+    // 4. Рассчитываем стоимость доставки по зоне доставки (населённый пункт)
     let deliveryFee = 0;
-    const deliverySettings = await this.prisma.deliverySettings.findUnique({
-      where: { id: 'default' },
-    });
+    let courierCost = 0;
+    const settlementCode = dto.settlement || null;
 
-    if (deliverySettings && deliverySettings.isActive) {
-      if (subtotal < deliverySettings.freeDeliveryFrom) {
-        deliveryFee = deliverySettings.deliveryFee;
+    if (settlementCode) {
+      const deliveryZone = await this.prisma.deliveryZone.findUnique({
+        where: { settlement: settlementCode as any },
+      });
+
+      if (deliveryZone && deliveryZone.isActive) {
+        courierCost = deliveryZone.deliveryFee; // Тариф курьера из зоны
+        if (subtotal < deliveryZone.freeDeliveryFrom) {
+          deliveryFee = deliveryZone.deliveryFee;
+        }
       }
+    }
+
+    // 5. Рассчитываем себестоимость товаров (закупочная цена)
+    let purchaseCost = 0;
+    for (const item of cart.items) {
+      const product = item.product;
+      purchaseCost += (product.purchasePrice ?? 0) * item.qty;
     }
 
     const total = subtotal + deliveryFee;
 
-    // 5. Выполняем транзакцию: создаем заказ и обновляем статус корзины
+    // 6. Рассчитываем прибыль
+    // Прибыль = Выручка за товары - Себестоимость товаров - Расходы на курьера
+    const profit = subtotal - purchaseCost - courierCost;
+
+    // 7. Выполняем транзакцию: создаем заказ и обновляем статус корзины
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
         data: {
@@ -77,6 +94,10 @@ export class OrdersController {
           comment: dto.comment,
           totalAmount: total,
           deliveryFee,
+          purchaseCost,
+          courierCost,
+          profit,
+          settlement: settlementCode,
           items: {
             create: cart.items.map((it) => ({
               productId: it.productId,

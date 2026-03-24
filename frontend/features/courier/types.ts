@@ -78,7 +78,6 @@ export type CourierOrder = {
 
 // Статистика курьера для профиля
 export type CourierProfileStats = {
-  deliveryRate: number;
   totalDeliveries: number;
   deliveriesToday: number;
   deliveriesThisWeek: number;

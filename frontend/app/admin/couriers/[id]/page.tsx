@@ -250,13 +250,6 @@ export default function CourierProfilePage() {
                 <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Дата регистрации</p>
                 <p className="text-slate-700">{formatDate(courier.createdAt)}</p>
               </div>
-              <div className="md:col-span-2">
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">Тариф за доставку</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatMoney(courier.deliveryRate)}
-                  <span className="text-sm font-normal text-slate-400 ml-2">за заказ</span>
-                </p>
-              </div>
             </div>
           </div>
         </div>
@@ -405,7 +398,7 @@ export default function CourierProfilePage() {
                           <span className="font-medium text-slate-700">{formatMoney(delivery.totalAmount)}</span>
                         </td>
                         <td>
-                          <span className="font-semibold text-green-600">{formatMoney(courier.deliveryRate)}</span>
+                          <span className="font-semibold text-green-600">{formatMoney(delivery.courierCost ?? 0)}</span>
                         </td>
                         <td>
                           <span className="text-slate-500 text-sm">{formatDateTime(delivery.updatedAt)}</span>

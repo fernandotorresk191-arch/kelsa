@@ -27,8 +27,8 @@ export class AdminAnalyticsController {
 
     // Общая статистика
     const totalOrders = await this.prisma.order.count();
-    const totalRevenue = await this.prisma.order.aggregate({
-      _sum: { totalAmount: true },
+    const aggregates = await this.prisma.order.aggregate({
+      _sum: { totalAmount: true, purchaseCost: true, courierCost: true, profit: true },
     });
 
     // Заказы по статусам
@@ -52,28 +52,33 @@ export class AdminAnalyticsController {
       take: 10,
     });
 
-    const totalRevenueTodayResult = await this.prisma.order.findMany({
-      where: {
-        createdAt: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-        },
-      },
-      select: { totalAmount: true },
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
+    const todayOrders = await this.prisma.order.findMany({
+      where: { createdAt: { gte: todayStart } },
+      select: { totalAmount: true, profit: true },
     });
 
-    const totalRevenueToday = totalRevenueTodayResult.reduce(
+    const totalRevenueToday = todayOrders.reduce(
       (sum, order) => sum + (order.totalAmount || 0),
+      0,
+    );
+    const totalProfitToday = todayOrders.reduce(
+      (sum, order) => sum + (order.profit || 0),
       0,
     );
 
     return {
       overview: {
         totalOrders,
-        totalRevenue: totalRevenue._sum.totalAmount || 0,
-        totalRevenueToday: totalRevenueToday,
+        totalRevenue: aggregates._sum.totalAmount || 0,
+        totalRevenueToday,
+        totalPurchaseCost: aggregates._sum.purchaseCost || 0,
+        totalCourierCost: aggregates._sum.courierCost || 0,
+        totalProfit: aggregates._sum.profit || 0,
+        totalProfitToday,
         averageOrderValue:
           totalOrders > 0
-            ? (totalRevenue._sum.totalAmount || 0) / totalOrders
+            ? (aggregates._sum.totalAmount || 0) / totalOrders
             : 0,
       },
       ordersByStatus,
@@ -110,6 +115,7 @@ export class AdminAnalyticsController {
         orderNumber: true,
         createdAt: true,
         totalAmount: true,
+        profit: true,
         status: true,
       },
     });
@@ -122,16 +128,19 @@ export class AdminAnalyticsController {
         ordersByDate[date] = {
           count: 0,
           revenue: 0,
+          profit: 0,
           orders: [],
         };
       }
       const orderData = ordersByDate[date] as {
         count: number;
         revenue: number;
+        profit: number;
         orders: any[];
       };
       orderData.count++;
       orderData.revenue += order.totalAmount || 0;
+      orderData.profit += order.profit || 0;
       orderData.orders.push(order);
     });
 
@@ -139,6 +148,7 @@ export class AdminAnalyticsController {
       period: { start, end },
       totalOrders: orders.length,
       totalRevenue: orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0),
+      totalProfit: orders.reduce((sum, o) => sum + (o.profit || 0), 0),
       byDate: ordersByDate,
     };
   }
@@ -199,22 +209,33 @@ export class AdminAnalyticsController {
       select: {
         createdAt: true,
         totalAmount: true,
+        profit: true,
+        purchaseCost: true,
+        courierCost: true,
       },
     });
 
     // Группируем по дням
-    const revenueByDate: Record<string, number> = {};
+    const byDate: Record<string, { revenue: number; profit: number; purchaseCost: number; courierCost: number }> = {};
     orders.forEach((order) => {
       const date = order.createdAt.toISOString().split('T')[0];
-      revenueByDate[date] =
-        (revenueByDate[date] || 0) + (order.totalAmount || 0);
+      if (!byDate[date]) {
+        byDate[date] = { revenue: 0, profit: 0, purchaseCost: 0, courierCost: 0 };
+      }
+      byDate[date].revenue += order.totalAmount || 0;
+      byDate[date].profit += order.profit || 0;
+      byDate[date].purchaseCost += order.purchaseCost || 0;
+      byDate[date].courierCost += order.courierCost || 0;
     });
 
     return {
       period,
-      data: Object.entries(revenueByDate).map(([date, revenue]) => ({
+      data: Object.entries(byDate).map(([date, vals]) => ({
         date,
-        revenue,
+        revenue: vals.revenue,
+        profit: vals.profit,
+        purchaseCost: vals.purchaseCost,
+        courierCost: vals.courierCost,
       })),
     };
   }

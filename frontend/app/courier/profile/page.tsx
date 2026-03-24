@@ -167,15 +167,6 @@ export default function CourierProfilePage() {
         </div>
       ) : stats && (
         <>
-          {/* Tariff Card */}
-          <div className="courier-tariff-card">
-            <div className="courier-tariff-icon">💰</div>
-            <div className="courier-tariff-info">
-              <span className="courier-tariff-label">Ваш тариф за доставку</span>
-              <span className="courier-tariff-value">{formatMoney(stats.deliveryRate)}</span>
-            </div>
-          </div>
-
           {/* Earnings Grid */}
           <div className="courier-earnings-grid">
             <div className="courier-earnings-card today">

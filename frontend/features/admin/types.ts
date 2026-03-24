@@ -56,11 +56,14 @@ export type OrderItem = {
   };
 };
 
-export type DeliverySettings = {
+export type DeliveryZone = {
   id: string;
+  settlement: string;
+  settlementTitle: string;
   deliveryFee: number;
   freeDeliveryFrom: number;
   isActive: boolean;
+  createdAt: string;
   updatedAt: string;
 };
 
@@ -75,6 +78,10 @@ export type Order = {
   comment?: string;
   totalAmount: number;
   deliveryFee: number;
+  purchaseCost?: number;
+  courierCost?: number;
+  profit?: number;
+  settlement?: string;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];
@@ -145,6 +152,10 @@ export type DashboardStats = {
     totalOrders: number;
     totalRevenue: number;
     totalRevenueToday: number;
+    totalPurchaseCost: number;
+    totalCourierCost: number;
+    totalProfit: number;
+    totalProfitToday: number;
     averageOrderValue: number;
   };
   ordersByStatus: Array<{
@@ -257,7 +268,6 @@ export type Courier = {
   phone: string;
   carBrand?: string;
   carNumber?: string;
-  deliveryRate: number;
   isActive: boolean;
   status?: string;
   createdAt: string;
@@ -283,6 +293,7 @@ export type CourierDelivery = {
   addressLine: string;
   phone: string;
   totalAmount: number;
+  courierCost?: number;
   createdAt: string;
   updatedAt: string;
   status?: string;

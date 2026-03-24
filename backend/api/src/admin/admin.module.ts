@@ -9,6 +9,7 @@ import { AdminPromotionsController } from './admin-promotions.controller';
 import { AdminPurchasesController } from './admin-purchases.controller';
 import { AdminExpiryController } from './admin-expiry.controller';
 import { AdminCouriersController } from './admin-couriers.controller';
+import { AdminDeliveryZonesController } from './admin-delivery-zones.controller';
 import { PushModule } from '../push/push.module';
 import { EventsModule } from '../events/events.module';
 
@@ -24,6 +25,7 @@ import { EventsModule } from '../events/events.module';
     AdminPurchasesController,
     AdminExpiryController,
     AdminCouriersController,
+    AdminDeliveryZonesController,
   ],
   providers: [AdminPurchasesController],
 })

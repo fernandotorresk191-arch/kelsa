@@ -541,7 +541,7 @@ export class CourierOrdersController {
 
     const courier = await this.prisma.courier.findUnique({
       where: { id: courierId },
-      select: { deliveryRate: true },
+      select: { id: true },
     });
 
     if (!courier) {
@@ -560,7 +560,7 @@ export class CourierOrdersController {
     startOfWeek.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Получаем все доставленные заказы курьера
+    // Получаем все доставленные заказы курьера с courierCost
     const deliveredOrders = await this.prisma.order.findMany({
       where: {
         courierId,
@@ -572,35 +572,30 @@ export class CourierOrdersController {
         customerName: true,
         addressLine: true,
         totalAmount: true,
+        courierCost: true,
         updatedAt: true,
       },
       orderBy: { updatedAt: 'desc' },
     });
 
-    // Считаем статистику
+    // Считаем статистику по периодам
     const totalDeliveries = deliveredOrders.length;
 
-    // Доставки за день
-    const deliveriesToday = deliveredOrders.filter(
+    const ordersToday = deliveredOrders.filter(
       (o) => new Date(o.updatedAt) >= startOfDay,
-    ).length;
-
-    // Доставки за неделю
-    const deliveriesThisWeek = deliveredOrders.filter(
+    );
+    const ordersThisWeek = deliveredOrders.filter(
       (o) => new Date(o.updatedAt) >= startOfWeek,
-    ).length;
-
-    // Доставки за месяц
-    const deliveriesThisMonth = deliveredOrders.filter(
+    );
+    const ordersThisMonth = deliveredOrders.filter(
       (o) => new Date(o.updatedAt) >= startOfMonth,
-    ).length;
+    );
 
-    // Заработок
-    const deliveryRate = Number(courier.deliveryRate) || 0;
-    const earningsToday = deliveriesToday * deliveryRate;
-    const earningsThisWeek = deliveriesThisWeek * deliveryRate;
-    const earningsThisMonth = deliveriesThisMonth * deliveryRate;
-    const totalEarnings = totalDeliveries * deliveryRate;
+    // Заработок из courierCost каждого заказа (тариф зоны доставки)
+    const earningsToday = ordersToday.reduce((sum, o) => sum + o.courierCost, 0);
+    const earningsThisWeek = ordersThisWeek.reduce((sum, o) => sum + o.courierCost, 0);
+    const earningsThisMonth = ordersThisMonth.reduce((sum, o) => sum + o.courierCost, 0);
+    const totalEarnings = deliveredOrders.reduce((sum, o) => sum + o.courierCost, 0);
 
     // Последние 20 доставок для истории
     const recentDeliveries = deliveredOrders.slice(0, 20).map((o) => ({
@@ -610,16 +605,15 @@ export class CourierOrdersController {
       addressLine: o.addressLine,
       totalAmount: o.totalAmount,
       deliveredAt: o.updatedAt,
-      earnings: deliveryRate,
+      earnings: o.courierCost,
     }));
 
     return {
       stats: {
-        deliveryRate,
         totalDeliveries,
-        deliveriesToday,
-        deliveriesThisWeek,
-        deliveriesThisMonth,
+        deliveriesToday: ordersToday.length,
+        deliveriesThisWeek: ordersThisWeek.length,
+        deliveriesThisMonth: ordersThisMonth.length,
         earningsToday,
         earningsThisWeek,
         earningsThisMonth,

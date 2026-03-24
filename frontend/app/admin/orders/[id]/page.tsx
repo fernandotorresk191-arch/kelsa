@@ -255,6 +255,44 @@ export default function AdminOrderDetailPage() {
             </div>
           </div>
 
+          {/* Экономика заказа */}
+          {(order.purchaseCost !== undefined || order.courierCost !== undefined || order.profit !== undefined) && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-lg font-bold mb-4">Экономика заказа</h2>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="text-sm text-blue-600">Выручка</div>
+                  <div className="text-xl font-bold text-blue-800">
+                    {order.totalAmount.toLocaleString('ru-RU')} ₽
+                  </div>
+                </div>
+                <div className="p-3 bg-orange-50 rounded-lg">
+                  <div className="text-sm text-orange-600">Себестоимость</div>
+                  <div className="text-xl font-bold text-orange-800">
+                    {(order.purchaseCost ?? 0).toLocaleString('ru-RU')} ₽
+                  </div>
+                </div>
+                <div className="p-3 bg-purple-50 rounded-lg">
+                  <div className="text-sm text-purple-600">Доставка курьеру</div>
+                  <div className="text-xl font-bold text-purple-800">
+                    {(order.courierCost ?? 0).toLocaleString('ru-RU')} ₽
+                  </div>
+                </div>
+                <div className={`p-3 rounded-lg ${(order.profit ?? 0) >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <div className={`text-sm ${(order.profit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>Прибыль</div>
+                  <div className={`text-xl font-bold ${(order.profit ?? 0) >= 0 ? 'text-green-800' : 'text-red-800'}`}>
+                    {(order.profit ?? 0).toLocaleString('ru-RU')} ₽
+                  </div>
+                </div>
+              </div>
+              {order.settlement && (
+                <div className="mt-3 text-sm text-slate-500">
+                  Населённый пункт: <span className="font-medium text-slate-700">{order.settlement}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* История статусов */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-bold mb-4">История статусов</h2>

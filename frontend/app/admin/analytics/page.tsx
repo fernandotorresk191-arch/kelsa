@@ -6,6 +6,9 @@ import { adminAnalyticsApi } from '@/features/admin/api';
 type RevenueData = {
   date: string;
   revenue: number;
+  profit: number;
+  purchaseCost: number;
+  courierCost: number;
 };
 
 type ProductSalesData = {
@@ -52,6 +55,41 @@ export default function AdminAnalyticsPage() {
     <div className="space-y-8">
       <h1 className="text-3xl font-bold text-gray-900">Аналитика</h1>
 
+      {/* Сводка по экономике */}
+      {revenueData.length > 0 && (() => {
+        const totals = revenueData.reduce(
+          (acc, d) => ({
+            revenue: acc.revenue + d.revenue,
+            profit: acc.profit + d.profit,
+            purchaseCost: acc.purchaseCost + d.purchaseCost,
+            courierCost: acc.courierCost + d.courierCost,
+          }),
+          { revenue: 0, profit: 0, purchaseCost: 0, courierCost: 0 }
+        );
+        return (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-sm text-gray-500">Выручка</div>
+              <div className="text-2xl font-bold text-blue-700">{totals.revenue.toLocaleString('ru-RU')} ₽</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-sm text-gray-500">Себестоимость</div>
+              <div className="text-2xl font-bold text-orange-600">{totals.purchaseCost.toLocaleString('ru-RU')} ₽</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-sm text-gray-500">Доставка курьерам</div>
+              <div className="text-2xl font-bold text-purple-600">{totals.courierCost.toLocaleString('ru-RU')} ₽</div>
+            </div>
+            <div className="bg-white rounded-lg shadow p-5">
+              <div className="text-sm text-gray-500">Прибыль</div>
+              <div className={`text-2xl font-bold ${totals.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {totals.profit.toLocaleString('ru-RU')} ₽
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Выручка */}
       <div className="bg-white rounded-lg shadow p-6">
         <div className="flex items-center justify-between mb-6">
@@ -82,14 +120,27 @@ export default function AdminAnalyticsPage() {
                     {new Date(item.date).toLocaleDateString('ru-RU')}
                   </div>
                   {/* Dynamic height for chart bar - inline style is required here */}
-                  <div
-                    className="w-12 bg-blue-500 rounded-t"
-                    style={{
-                      height: `${Math.max(30, (item.revenue / 10) || 30)}px`,
-                    } as React.CSSProperties}
-                  />
+                  <div className="flex gap-0.5 items-end">
+                    <div
+                      className="w-6 bg-blue-500 rounded-t"
+                      title={`Выручка: ${item.revenue.toLocaleString('ru-RU')} ₽`}
+                      style={{
+                        height: `${Math.max(20, (item.revenue / 10) || 20)}px`,
+                      } as React.CSSProperties}
+                    />
+                    <div
+                      className={`w-6 rounded-t ${item.profit >= 0 ? 'bg-green-500' : 'bg-red-400'}`}
+                      title={`Прибыль: ${item.profit.toLocaleString('ru-RU')} ₽`}
+                      style={{
+                        height: `${Math.max(10, Math.abs(item.profit) / 10 || 10)}px`,
+                      } as React.CSSProperties}
+                    />
+                  </div>
                   <div className="text-xs text-gray-900 text-center mt-1 font-medium">
                     {item.revenue.toLocaleString('ru-RU')} ₽
+                  </div>
+                  <div className={`text-xs text-center ${item.profit >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {item.profit >= 0 ? '+' : ''}{item.profit.toLocaleString('ru-RU')} ₽
                   </div>
                 </div>
               ))

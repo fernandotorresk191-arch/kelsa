@@ -18,4 +18,8 @@ export class CreateOrderDto {
   @IsOptional()
   @IsString()
   comment?: string;
+
+  @IsOptional()
+  @IsString()
+  settlement?: string;
 }

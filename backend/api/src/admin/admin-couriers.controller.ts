@@ -19,7 +19,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
-import { IsString, IsOptional, IsBoolean, IsNumber, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, MinLength } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 
 class CreateCourierDto {
@@ -49,9 +49,6 @@ class CreateCourierDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
-
-  @IsOptional()
-  deliveryRate?: number;
 }
 
 class UpdateCourierDto {
@@ -81,23 +78,6 @@ class UpdateCourierDto {
   @IsOptional()
   @IsString()
   carNumber?: string;
-
-  @IsOptional()
-  @IsBoolean()
-  isActive?: boolean;
-
-  @IsOptional()
-  deliveryRate?: number;
-}
-
-class UpdateDeliverySettingsDto {
-  @IsOptional()
-  @IsNumber()
-  deliveryFee?: number;
-
-  @IsOptional()
-  @IsNumber()
-  freeDeliveryFrom?: number;
 
   @IsOptional()
   @IsBoolean()
@@ -157,7 +137,6 @@ export class AdminCouriersController {
           phone: true,
           carBrand: true,
           carNumber: true,
-          deliveryRate: true,
           isActive: true,
           createdAt: true,
           updatedAt: true,
@@ -190,7 +169,6 @@ export class AdminCouriersController {
         phone: true,
         carBrand: true,
         carNumber: true,
-        deliveryRate: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -227,7 +205,6 @@ export class AdminCouriersController {
         phone: dto.phone,
         carBrand: dto.carBrand || null,
         carNumber: dto.carNumber || null,
-        deliveryRate: dto.deliveryRate ?? 0,
         isActive: dto.isActive ?? true,
       },
       select: {
@@ -237,7 +214,6 @@ export class AdminCouriersController {
         phone: true,
         carBrand: true,
         carNumber: true,
-        deliveryRate: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -281,7 +257,6 @@ export class AdminCouriersController {
       phone?: string;
       carBrand?: string | null;
       carNumber?: string | null;
-      deliveryRate?: number;
       isActive?: boolean;
     } = {};
 
@@ -295,7 +270,6 @@ export class AdminCouriersController {
     if (dto.carNumber !== undefined) {
       updateData.carNumber = dto.carNumber || null;
     }
-    if (dto.deliveryRate !== undefined) updateData.deliveryRate = dto.deliveryRate;
     if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
 
     const courier = await this.prisma.courier.update({
@@ -308,7 +282,6 @@ export class AdminCouriersController {
         phone: true,
         carBrand: true,
         carNumber: true,
-        deliveryRate: true,
         isActive: true,
         createdAt: true,
         updatedAt: true,
@@ -372,7 +345,6 @@ export class AdminCouriersController {
         phone: true,
         carBrand: true,
         carNumber: true,
-        deliveryRate: true,
         isActive: true,
         status: true,
         createdAt: true,
@@ -392,7 +364,7 @@ export class AdminCouriersController {
     startOfWeek.setHours(0, 0, 0, 0);
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Получаем все доставленные заказы курьера
+    // Получаем все доставленные заказы курьера с courierCost
     const deliveredOrders = await this.prisma.order.findMany({
       where: {
         courierId: id,
@@ -405,6 +377,7 @@ export class AdminCouriersController {
         addressLine: true,
         phone: true,
         totalAmount: true,
+        courierCost: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -414,26 +387,15 @@ export class AdminCouriersController {
     // Считаем статистику
     const totalDeliveries = deliveredOrders.length;
     
-    // Доставки за день
-    const deliveriesToday = deliveredOrders.filter(
-      (o) => new Date(o.updatedAt) >= startOfDay
-    ).length;
-    
-    // Доставки за неделю
-    const deliveriesThisWeek = deliveredOrders.filter(
-      (o) => new Date(o.updatedAt) >= startOfWeek
-    ).length;
-    
-    // Доставки за месяц
-    const deliveriesThisMonth = deliveredOrders.filter(
-      (o) => new Date(o.updatedAt) >= startOfMonth
-    ).length;
+    // Фильтруем по периодам и считаем заработок из courierCost
+    const ordersToday = deliveredOrders.filter((o) => new Date(o.updatedAt) >= startOfDay);
+    const ordersThisWeek = deliveredOrders.filter((o) => new Date(o.updatedAt) >= startOfWeek);
+    const ordersThisMonth = deliveredOrders.filter((o) => new Date(o.updatedAt) >= startOfMonth);
 
-    // Заработок (только за доставленные заказы)
-    const earningsToday = deliveriesToday * courier.deliveryRate;
-    const earningsThisWeek = deliveriesThisWeek * courier.deliveryRate;
-    const earningsThisMonth = deliveriesThisMonth * courier.deliveryRate;
-    const totalEarnings = totalDeliveries * courier.deliveryRate;
+    const earningsToday = ordersToday.reduce((sum, o) => sum + o.courierCost, 0);
+    const earningsThisWeek = ordersThisWeek.reduce((sum, o) => sum + o.courierCost, 0);
+    const earningsThisMonth = ordersThisMonth.reduce((sum, o) => sum + o.courierCost, 0);
+    const totalEarnings = deliveredOrders.reduce((sum, o) => sum + o.courierCost, 0);
 
     // Активные заказы (не доставленные и не отмененные)
     const activeOrders = await this.prisma.order.findMany({
@@ -460,9 +422,9 @@ export class AdminCouriersController {
       courier,
       stats: {
         totalDeliveries,
-        deliveriesToday,
-        deliveriesThisWeek,
-        deliveriesThisMonth,
+        deliveriesToday: ordersToday.length,
+        deliveriesThisWeek: ordersThisWeek.length,
+        deliveriesThisMonth: ordersThisMonth.length,
         earningsToday,
         earningsThisWeek,
         earningsThisMonth,
@@ -470,59 +432,7 @@ export class AdminCouriersController {
         activeOrdersCount: activeOrders.length,
       },
       activeOrders,
-      recentDeliveries: deliveredOrders.slice(0, 50), // Последние 50 доставок
+      recentDeliveries: deliveredOrders.slice(0, 50),
     };
-  }
-
-  // === Настройки доставки ===
-
-  @Get('delivery-settings/current')
-  async getDeliverySettings(@Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
-    let settings = await this.prisma.deliverySettings.findUnique({
-      where: { id: 'default' },
-    });
-
-    // Создаём настройки по умолчанию если не существуют
-    if (!settings) {
-      settings = await this.prisma.deliverySettings.create({
-        data: {
-          id: 'default',
-          deliveryFee: 150,
-          freeDeliveryFrom: 1500,
-          isActive: true,
-        },
-      });
-    }
-
-    return settings;
-  }
-
-  @Put('delivery-settings/current')
-  async updateDeliverySettings(
-    @Body() dto: UpdateDeliverySettingsDto,
-    @Req() req: AuthRequest,
-  ) {
-    this.checkAdminRole(req);
-
-    const settings = await this.prisma.deliverySettings.upsert({
-      where: { id: 'default' },
-      update: {
-        ...(dto.deliveryFee !== undefined && { deliveryFee: dto.deliveryFee }),
-        ...(dto.freeDeliveryFrom !== undefined && {
-          freeDeliveryFrom: dto.freeDeliveryFrom,
-        }),
-        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
-      },
-      create: {
-        id: 'default',
-        deliveryFee: dto.deliveryFee ?? 150,
-        freeDeliveryFrom: dto.freeDeliveryFrom ?? 1500,
-        isActive: dto.isActive ?? true,
-      },
-    });
-
-    return settings;
   }
 }

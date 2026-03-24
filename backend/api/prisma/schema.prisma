@@ -130,6 +130,12 @@ model Order {
   totalAmount   Int      // Сумма за товары (целые рубли)
   deliveryFee   Int      @default(0)  // Стоимость доставки (целые рубли)
   
+  // Экономика заказа
+  purchaseCost  Int      @default(0)  // Себестоимость товаров (закупочная цена)
+  courierCost   Int      @default(0)  // Расходы на курьера (тариф зоны доставки)
+  profit        Int      @default(0)  // Прибыль = totalAmount - purchaseCost - courierCost
+  settlement    String?              // Населённый пункт заказа
+  
   // Курьер
   courierId    String?
   courier      Courier?    @relation(fields: [courierId], references: [id], onDelete: SetNull)
@@ -211,6 +217,18 @@ enum Settlement {
   LEVOBEREZHNOE
   YUBILEYNOE
   NOVOE_SOLKUSHINO
+}
+
+// ==================== ЗОНЫ ДОСТАВКИ ====================
+
+model DeliveryZone {
+  id               String     @id @default(cuid())
+  settlement       Settlement @unique
+  deliveryFee      Int        @default(150)    // Тариф за доставку (целые рубли) — начисляется курьеру
+  freeDeliveryFrom Int        @default(1500)   // Бесплатная доставка от суммы (целые рубли)
+  isActive         Boolean    @default(true)   // Включена ли доставка в этот н.п.
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 }
 
 model User {
@@ -310,7 +328,7 @@ model Courier {
   carBrand      String?       // Марка автомобиля (необязательно)
   carNumber     String?       // Номер автомобиля (необязательно)
   
-  deliveryRate  Int           @default(0) // Тариф за одну доставку (целые рубли)
+  // deliveryRate removed - теперь тариф зависит от зоны доставки
   
   isActive      Boolean       @default(true) // Активен или нет
   status        CourierStatus @default(AVAILABLE) // Текущий статус курьера
@@ -326,10 +344,4 @@ model Courier {
 
 // ==================== НАСТРОЙКИ ДОСТАВКИ ====================
 
-model DeliverySettings {
-  id                String   @id @default(cuid())
-  deliveryFee       Int      @default(150)    // Стоимость доставки (целые рубли)
-  freeDeliveryFrom  Int      @default(1500)   // Бесплатная доставка от суммы (целые рубли)
-  isActive          Boolean  @default(true)   // Включена ли доставка
-  updatedAt         DateTime @updatedAt
-}
+// DeliverySettings removed — replaced by DeliveryZone per settlement

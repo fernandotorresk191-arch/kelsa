@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { adminCouriersApi } from '@/features/admin/api';
-import { Courier, DeliverySettings } from '@/features/admin/types';
+import { Courier } from '@/features/admin/types';
 import { useAdmin } from '@/components/admin/AdminProvider';
 
 interface CourierFormData {
@@ -14,7 +14,6 @@ interface CourierFormData {
   carBrand: string;
   carNumber: string;
   isActive: boolean;
-  deliveryRate: string;
 }
 
 const initialFormData: CourierFormData = {
@@ -25,7 +24,6 @@ const initialFormData: CourierFormData = {
   carBrand: '',
   carNumber: '',
   isActive: true,
-  deliveryRate: '',
 };
 
 // Функция форматирования телефона в российский формат
@@ -74,12 +72,6 @@ export default function AdminCouriersPage() {
   // Состояние ошибки загрузки
   const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Настройки доставки
-  const [deliverySettings, setDeliverySettings] = useState<DeliverySettings | null>(null);
-  const [editingDelivery, setEditingDelivery] = useState(false);
-  const [deliveryForm, setDeliveryForm] = useState({ deliveryFee: '', freeDeliveryFrom: '', isActive: true });
-  const [savingDelivery, setSavingDelivery] = useState(false);
-
   const limit = 20;
 
   const fetchCouriers = useCallback(async () => {
@@ -106,15 +98,6 @@ export default function AdminCouriersPage() {
     // Загружаем только когда авторизация проверена и пользователь авторизован
     if (!isAuthLoading && isAuthenticated) {
       fetchCouriers();
-      // Загружаем настройки доставки
-      adminCouriersApi.getDeliverySettings().then(settings => {
-        setDeliverySettings(settings);
-        setDeliveryForm({
-          deliveryFee: String(settings.deliveryFee),
-          freeDeliveryFrom: String(settings.freeDeliveryFrom),
-          isActive: settings.isActive,
-        });
-      }).catch(err => console.error('Failed to fetch delivery settings:', err));
     }
   }, [fetchCouriers, isAuthLoading, isAuthenticated]);
 
@@ -135,7 +118,6 @@ export default function AdminCouriersPage() {
         carBrand: courier.carBrand || '',
         carNumber: courier.carNumber || '',
         isActive: courier.isActive,
-        deliveryRate: courier.deliveryRate ? String(courier.deliveryRate) : '',
       });
     } else {
       setEditingCourier(null);
@@ -192,7 +174,6 @@ export default function AdminCouriersPage() {
     try {
       const phoneDigits = formData.phone.replace(/\D/g, '');
       const normalizedPhone = phoneDigits.startsWith('8') ? '7' + phoneDigits.slice(1) : phoneDigits;
-      const deliveryRateValue = formData.deliveryRate ? parseInt(formData.deliveryRate, 10) : 0;
 
       if (editingCourier) {
         const updateData: {
@@ -203,7 +184,6 @@ export default function AdminCouriersPage() {
           carBrand?: string;
           carNumber?: string;
           isActive?: boolean;
-          deliveryRate?: number;
         } = {
           fullName: formData.fullName.trim(),
           login: formData.login.trim(),
@@ -211,7 +191,6 @@ export default function AdminCouriersPage() {
           carBrand: formData.carBrand.trim() || undefined,
           carNumber: formData.carNumber.trim() || undefined,
           isActive: formData.isActive,
-          deliveryRate: deliveryRateValue,
         };
 
         if (formData.password) {
@@ -228,7 +207,6 @@ export default function AdminCouriersPage() {
           carBrand: formData.carBrand.trim() || undefined,
           carNumber: formData.carNumber.trim() || undefined,
           isActive: formData.isActive,
-          deliveryRate: deliveryRateValue,
         });
       }
 
@@ -278,24 +256,6 @@ export default function AdminCouriersPage() {
     setCourierToDelete(null);
   };
 
-  const handleSaveDeliverySettings = async () => {
-    setSavingDelivery(true);
-    try {
-      const updated = await adminCouriersApi.updateDeliverySettings({
-        deliveryFee: parseInt(deliveryForm.deliveryFee) || 0,
-        freeDeliveryFrom: parseInt(deliveryForm.freeDeliveryFrom) || 0,
-        isActive: deliveryForm.isActive,
-      });
-      setDeliverySettings(updated);
-      setEditingDelivery(false);
-    } catch (error) {
-      console.error('Failed to save delivery settings:', error);
-      alert('Ошибка при сохранении настроек доставки');
-    } finally {
-      setSavingDelivery(false);
-    }
-  };
-
   const totalPages = Math.ceil(total / limit);
 
   return (
@@ -315,107 +275,6 @@ export default function AdminCouriersPage() {
           </svg>
           Добавить курьера
         </button>
-      </div>
-
-      {/* Настройки доставки */}
-      <div className="admin-card">
-        <div className="admin-card-header flex justify-between items-center">
-          <h2 className="admin-card-title">Настройки доставки</h2>
-          {!editingDelivery && (
-            <button
-              className="admin-btn admin-btn-secondary admin-btn-sm"
-              onClick={() => setEditingDelivery(true)}
-            >
-              Изменить
-            </button>
-          )}
-        </div>
-        <div className="admin-card-body">
-          {editingDelivery ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Стоимость доставки (₽)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={deliveryForm.deliveryFee}
-                    onChange={(e) => setDeliveryForm({ ...deliveryForm, deliveryFee: e.target.value })}
-                    className="admin-input"
-                    title="Стоимость доставки"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Бесплатная доставка от (₽)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={deliveryForm.freeDeliveryFrom}
-                    onChange={(e) => setDeliveryForm({ ...deliveryForm, freeDeliveryFrom: e.target.value })}
-                    className="admin-input"
-                    title="Бесплатная доставка от"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={deliveryForm.isActive}
-                      onChange={(e) => setDeliveryForm({ ...deliveryForm, isActive: e.target.checked })}
-                      className="w-5 h-5 rounded border-gray-300"
-                    />
-                    <span className="text-sm font-medium text-gray-700">Активна</span>
-                  </label>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  className="admin-btn admin-btn-primary admin-btn-sm"
-                  onClick={handleSaveDeliverySettings}
-                  disabled={savingDelivery}
-                >
-                  {savingDelivery ? 'Сохранение...' : 'Сохранить'}
-                </button>
-                <button
-                  className="admin-btn admin-btn-secondary admin-btn-sm"
-                  onClick={() => {
-                    setEditingDelivery(false);
-                    if (deliverySettings) {
-                      setDeliveryForm({
-                        deliveryFee: String(deliverySettings.deliveryFee),
-                        freeDeliveryFrom: String(deliverySettings.freeDeliveryFrom),
-                        isActive: deliverySettings.isActive,
-                      });
-                    }
-                  }}
-                >
-                  Отмена
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-6">
-              <div>
-                <div className="text-sm text-slate-500">Стоимость доставки</div>
-                <div className="text-lg font-semibold">{deliverySettings?.deliveryFee ?? 0} ₽</div>
-              </div>
-              <div>
-                <div className="text-sm text-slate-500">Бесплатная от</div>
-                <div className="text-lg font-semibold">{deliverySettings?.freeDeliveryFrom ?? 0} ₽</div>
-              </div>
-              <div>
-                <div className="text-sm text-slate-500">Статус</div>
-                <div className={`text-lg font-semibold ${deliverySettings?.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                  {deliverySettings?.isActive ? 'Активна' : 'Отключена'}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Фильтры */}
@@ -721,27 +580,6 @@ export default function AdminCouriersPage() {
                     placeholder="А123БВ95"
                   />
                 </div>
-              </div>
-
-              {/* Тариф за доставку */}
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Тариф за доставку (₽)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="1"
-                    min="0"
-                    value={formData.deliveryRate}
-                    onChange={(e) => setFormData({ ...formData, deliveryRate: e.target.value })}
-                    className="admin-input pl-10"
-                    placeholder="100"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Сумма, начисляемая курьеру за каждый доставленный заказ
-                </p>
               </div>
 
               {/* Статус */}

@@ -114,6 +114,73 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* Экономика */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="admin-kpi-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-kpi-label">Общая прибыль</p>
+              <p className={`admin-kpi-value ${(overview.totalProfit ?? 0) >= 0 ? 'success' : ''}`} style={(overview.totalProfit ?? 0) < 0 ? { color: '#dc2626' } : undefined}>
+                {(overview.totalProfit ?? 0).toLocaleString('ru-RU')} ₽
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-kpi-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-kpi-label">Прибыль сегодня</p>
+              <p className={`admin-kpi-value ${(overview.totalProfitToday ?? 0) >= 0 ? 'success' : ''}`} style={(overview.totalProfitToday ?? 0) < 0 ? { color: '#dc2626' } : undefined}>
+                {(overview.totalProfitToday ?? 0).toLocaleString('ru-RU')} ₽
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-kpi-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-kpi-label">Себестоимость</p>
+              <p className="admin-kpi-value" style={{ color: '#ea580c' }}>
+                {(overview.totalPurchaseCost ?? 0).toLocaleString('ru-RU')} ₽
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-kpi-card">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="admin-kpi-label">Оплата курьерам</p>
+              <p className="admin-kpi-value" style={{ color: '#9333ea' }}>
+                {(overview.totalCourierCost ?? 0).toLocaleString('ru-RU')} ₽
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+              <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Заказы по статусам */}
       <div className="admin-card">
         <div className="admin-card-header">

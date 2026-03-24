@@ -43,18 +43,25 @@ export class CatalogController {
 
   @Get('delivery-settings')
   async deliverySettings() {
-    const settings = await this.prisma.deliverySettings.findUnique({
-      where: { id: 'default' },
+    // Возвращаем зоны доставки вместо глобальных настроек
+    const zones = await this.prisma.deliveryZone.findMany({
+      where: { isActive: true },
     });
 
-    if (!settings || !settings.isActive) {
-      return { deliveryFee: 0, freeDeliveryFrom: 0, isActive: false };
+    if (zones.length === 0) {
+      return { deliveryFee: 0, freeDeliveryFrom: 0, isActive: false, zones: [] };
     }
 
+    // Для обратной совместимости возвращаем первую зону + массив всех зон
     return {
-      deliveryFee: settings.deliveryFee,
-      freeDeliveryFrom: settings.freeDeliveryFrom,
-      isActive: settings.isActive,
+      deliveryFee: zones[0].deliveryFee,
+      freeDeliveryFrom: zones[0].freeDeliveryFrom,
+      isActive: true,
+      zones: zones.map((z) => ({
+        settlement: z.settlement,
+        deliveryFee: z.deliveryFee,
+        freeDeliveryFrom: z.freeDeliveryFrom,
+      })),
     };
   }
 

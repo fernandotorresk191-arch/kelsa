@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile, DeliverySettings } from './types';
+import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile, DeliveryZone } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -40,6 +40,9 @@ interface RevenueResponse {
   data: Array<{
     date: string;
     revenue: number;
+    profit: number;
+    purchaseCost: number;
+    courierCost: number;
   }>;
 }
 
@@ -542,7 +545,6 @@ interface CreateCourierInput {
   carBrand?: string;
   carNumber?: string;
   isActive?: boolean;
-  deliveryRate?: number;
 }
 
 interface UpdateCourierInput {
@@ -553,7 +555,6 @@ interface UpdateCourierInput {
   carBrand?: string;
   carNumber?: string;
   isActive?: boolean;
-  deliveryRate?: number;
 }
 
 export const adminCouriersApi = {
@@ -596,14 +597,33 @@ export const adminCouriersApi = {
   getCourierProfile: async (id: string): Promise<CourierProfile> => {
     return http.get<CourierProfile>(`/v1/admin/couriers/${id}/profile`);
   },
+};
 
-  // Получить настройки доставки
-  getDeliverySettings: async (): Promise<DeliverySettings> => {
-    return http.get<DeliverySettings>('/v1/admin/couriers/delivery-settings/current');
+// ==================== ЗОНЫ ДОСТАВКИ ====================
+
+export const adminDeliveryZonesApi = {
+  // Получить все зоны
+  getZones: async (): Promise<DeliveryZone[]> => {
+    return http.get<DeliveryZone[]>('/v1/admin/delivery-zones');
   },
 
-  // Обновить настройки доставки
-  updateDeliverySettings: async (data: Partial<DeliverySettings>): Promise<DeliverySettings> => {
-    return http.put<DeliverySettings>('/v1/admin/couriers/delivery-settings/current', data);
+  // Получить доступные населённые пункты
+  getAvailableSettlements: async (): Promise<Array<{ code: string; title: string }>> => {
+    return http.get<Array<{ code: string; title: string }>>('/v1/admin/delivery-zones/available-settlements');
+  },
+
+  // Создать зону
+  createZone: async (data: { settlement: string; deliveryFee: number; freeDeliveryFrom: number }): Promise<DeliveryZone> => {
+    return http.post<DeliveryZone>('/v1/admin/delivery-zones', data);
+  },
+
+  // Обновить зону
+  updateZone: async (id: string, data: Partial<{ deliveryFee: number; freeDeliveryFrom: number; isActive: boolean }>): Promise<DeliveryZone> => {
+    return http.put<DeliveryZone>(`/v1/admin/delivery-zones/${id}`, data);
+  },
+
+  // Удалить зону
+  deleteZone: async (id: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/admin/delivery-zones/${id}`);
   },
 };
