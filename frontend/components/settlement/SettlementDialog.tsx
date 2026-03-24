@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Button } from "../ui/button";
 import { useSettlement } from "./SettlementProvider";
-import type { SettlementCode } from "features/auth/types";
 import { FiMapPin, FiCheck } from "react-icons/fi";
 
 export function SettlementDialog() {
@@ -16,7 +15,7 @@ export function SettlementDialog() {
     selectSettlement,
   } = useSettlement();
 
-  const [pendingCode, setPendingCode] = useState<SettlementCode | null>(
+  const [pendingCode, setPendingCode] = useState<string | null>(
     selectedSettlement?.code ?? null,
   );
 
@@ -51,6 +50,11 @@ export function SettlementDialog() {
 
         {/* Settlement grid */}
         <div className="px-6 py-5">
+          {settlements.length === 0 ? (
+            <p className="text-center text-gray-500 py-4">
+              Населённые пункты ещё не настроены
+            </p>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {settlements.map((settlement) => {
               const isActive = settlement.code === pendingCode;
@@ -92,6 +96,7 @@ export function SettlementDialog() {
               );
             })}
           </div>
+          )}
         </div>
 
         {/* Footer */}

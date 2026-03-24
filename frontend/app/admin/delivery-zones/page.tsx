@@ -21,7 +21,6 @@ export default function AdminDeliveryZonesPage() {
   const { isAuthenticated, isLoading: isAuthLoading } = useAdmin();
 
   const [zones, setZones] = useState<DeliveryZone[]>([]);
-  const [availableSettlements, setAvailableSettlements] = useState<Array<{ code: string; title: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
 
@@ -42,12 +41,8 @@ export default function AdminDeliveryZonesPage() {
     try {
       setIsLoading(true);
       setFetchError(null);
-      const [zonesData, settlements] = await Promise.all([
-        adminDeliveryZonesApi.getZones(),
-        adminDeliveryZonesApi.getAvailableSettlements(),
-      ]);
+      const zonesData = await adminDeliveryZonesApi.getZones();
       setZones(zonesData);
-      setAvailableSettlements(settlements);
     } catch (error) {
       const err = error as { message?: string };
       setFetchError(err.message || 'Ошибка загрузки');
@@ -88,8 +83,8 @@ export default function AdminDeliveryZonesPage() {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    if (!editingZone && !formData.settlement) {
-      errors.settlement = 'Выберите населённый пункт';
+    if (!editingZone && !formData.settlement.trim()) {
+      errors.settlement = 'Введите название населённого пункта';
     }
 
     const fee = parseInt(formData.deliveryFee);
@@ -118,8 +113,11 @@ export default function AdminDeliveryZonesPage() {
           freeDeliveryFrom: parseInt(formData.freeDeliveryFrom),
         });
       } else {
+        const title = formData.settlement.trim();
+        const code = title.toUpperCase().replace(/[\s-]+/g, '_');
         await adminDeliveryZonesApi.createZone({
-          settlement: formData.settlement,
+          settlement: code,
+          settlementTitle: title,
           deliveryFee: parseInt(formData.deliveryFee),
           freeDeliveryFrom: parseInt(formData.freeDeliveryFrom),
         });
@@ -174,7 +172,6 @@ export default function AdminDeliveryZonesPage() {
         <button
           onClick={() => handleOpenForm()}
           className="admin-btn admin-btn-success"
-          disabled={availableSettlements.length === 0 && !editingZone}
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -220,8 +217,7 @@ export default function AdminDeliveryZonesPage() {
                 {zones.map((zone) => (
                   <tr key={zone.id}>
                     <td>
-                      <div className="font-medium text-slate-800">{zone.settlementTitle}</div>
-                      <div className="text-xs text-slate-400 font-mono">{zone.settlement}</div>
+                      <div className="font-medium text-slate-800">{zone.settlementTitle || zone.settlement}</div>
                     </td>
                     <td>
                       <span className="text-lg font-semibold text-slate-800">{zone.deliveryFee} ₽</span>
@@ -288,18 +284,15 @@ export default function AdminDeliveryZonesPage() {
                 {!editingZone ? (
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Населённый пункт *
+                      Название населённого пункта *
                     </label>
-                    <select
+                    <input
+                      type="text"
                       value={formData.settlement}
                       onChange={(e) => setFormData({ ...formData, settlement: e.target.value })}
                       className="admin-input"
-                    >
-                      <option value="">Выберите...</option>
-                      {availableSettlements.map((s) => (
-                        <option key={s.code} value={s.code}>{s.title}</option>
-                      ))}
-                    </select>
+                      placeholder="Например: Калиновская"
+                    />
                     {formErrors.settlement && (
                       <p className="mt-1 text-sm text-red-500">{formErrors.settlement}</p>
                     )}

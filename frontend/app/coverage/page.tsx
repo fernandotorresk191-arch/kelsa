@@ -1,41 +1,21 @@
-import { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { FiMapPin, FiTruck, FiClock, FiPhone } from "react-icons/fi";
-
-export const metadata: Metadata = {
-  title: "Зона доставки | Kelsa — Доставка продуктов по Наурскому району",
-  description: "Kelsa доставляет продукты по Наурскому району Чеченской Республики. Калиновская, Новотерская, Левобережное, Юбилейное, Новое-Солкушино.",
-};
-
-const coverageAreas = [
-  {
-    name: "Калиновская",
-    description: "Станица Калиновская",
-    isMain: false,
-  },
-  {
-    name: "Новотерская",
-    description: "Село Новотерская",
-    isMain: false,
-  },
-  {
-    name: "Левобережное",
-    description: "Село Левобережное — центр нашей доставки",
-    isMain: true,
-  },
-  {
-    name: "Юбилейное",
-    description: "Село Юбилейное",
-    isMain: false,
-  },
-  {
-    name: "Новое-Солкушино",
-    description: "Село Новое-Солкушино",
-    isMain: false,
-  },
-];
+import { http } from "@/shared/api/http";
 
 export default function CoveragePage() {
+  const [areas, setAreas] = useState<Array<{ settlement: string; settlementTitle: string }>>([]);
+
+  useEffect(() => {
+    http.get<{ zones?: Array<{ settlement: string; settlementTitle: string }> }>('/v1/delivery-settings')
+      .then(data => {
+        setAreas(data.zones || []);
+      })
+      .catch(() => {});
+  }, []);
+
   return (
     <div className="kelsa-container py-12">
       {/* Hero Section */}
@@ -62,35 +42,29 @@ export default function CoveragePage() {
             Чеченская Республика
           </p>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            {coverageAreas.map((area) => (
-              <div
-                key={area.name}
-                className={`bg-white rounded-xl p-5 border transition-shadow hover:shadow-md ${
-                  area.isMain ? "ring-2 ring-[#6206c7] shadow-md" : ""
-                }`}
-              >
-                <div className="flex items-start gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                    area.isMain 
-                      ? "bg-[#6206c7] text-white" 
-                      : "bg-[#6206c7]/10 text-[#6206c7]"
-                  }`}>
-                    <FiMapPin className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-lg">{area.name}</h3>
-                    <p className="text-sm text-muted-foreground">{area.description}</p>
-                    {area.isMain && (
-                      <span className="inline-block mt-2 text-xs font-medium text-[#6206c7] bg-[#6206c7]/10 px-2 py-1 rounded-full">
-                        Главный пункт
-                      </span>
-                    )}
+          {areas.length > 0 ? (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              {areas.map((area) => (
+                <div
+                  key={area.settlement}
+                  className="bg-white rounded-xl p-5 border transition-shadow hover:shadow-md"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-[#6206c7]/10 text-[#6206c7]">
+                      <FiMapPin className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg">{area.settlementTitle}</h3>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-muted-foreground">
+              Зоны доставки ещё не настроены. Скоро здесь появится информация.
+            </p>
+          )}
         </div>
       </section>
 

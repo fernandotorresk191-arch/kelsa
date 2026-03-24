@@ -1,14 +1,9 @@
 import type { OrderStatus } from "../orders/types";
 
-export type SettlementCode =
-  | "KALINOVSKAYA"
-  | "NOVOTERSKAYA"
-  | "LEVOBEREZHNOE"
-  | "YUBILEYNOE"
-  | "NOVOE_SOLKUSHINO";
+export type SettlementCode = string;
 
 export type SettlementDto = {
-  code: SettlementCode;
+  code: string;
   title: string;
 };
 
@@ -18,7 +13,7 @@ export type AuthUser = {
   name: string;
   phone: string;
   addressLine: string;
-  settlement: SettlementCode;
+  settlement: string;
   settlementTitle: string;
   createdAt: string;
 };
@@ -31,7 +26,7 @@ export type AuthResponse = {
 export type RegisterPayload = {
   login: string;
   password: string;
-  settlement: SettlementCode;
+  settlement: string;
   email: string;
   phone: string;
   name: string;

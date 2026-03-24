@@ -608,14 +608,8 @@ export const adminDeliveryZonesApi = {
     return res.data;
   },
 
-  // Получить доступные населённые пункты
-  getAvailableSettlements: async (): Promise<Array<{ code: string; title: string }>> => {
-    const res = await http.get<{ data: Array<{ code: string; title: string }> }>('/v1/admin/delivery-zones/available-settlements');
-    return res.data;
-  },
-
   // Создать зону
-  createZone: async (data: { settlement: string; deliveryFee: number; freeDeliveryFrom: number }): Promise<DeliveryZone> => {
+  createZone: async (data: { settlement: string; settlementTitle: string; deliveryFee: number; freeDeliveryFrom: number }): Promise<DeliveryZone> => {
     return http.post<DeliveryZone>('/v1/admin/delivery-zones', data);
   },
 

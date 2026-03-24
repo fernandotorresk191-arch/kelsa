@@ -12,7 +12,6 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAuth } from "./AuthProvider";
 import { useSettlement } from "../settlement/SettlementProvider";
-import type { SettlementCode } from "features/auth/types";
 import { formatRuPhone } from "../../shared/phone/format";
 
 type AuthDialogProps = {
@@ -47,7 +46,7 @@ export function AuthDialog({
     phone: string;
     email: string;
     addressLine: string;
-    settlement: SettlementCode | "";
+    settlement: string;
   }>({
     login: "",
     password: "",
@@ -85,8 +84,8 @@ export function AuthDialog({
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     const settlementCode =
-      (registerForm.settlement as SettlementCode) ??
-      selectedSettlement?.code ??
+      registerForm.settlement ||
+      selectedSettlement?.code ||
       settlements[0]?.code;
 
     if (!settlementCode) return;
@@ -269,7 +268,7 @@ export function AuthDialog({
                   onChange={(e) =>
                     setRegisterForm((prev) => ({
                       ...prev,
-                      settlement: e.target.value as SettlementCode,
+                      settlement: e.target.value,
                     }))
                   }
                 >

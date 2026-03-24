@@ -211,31 +211,24 @@ model OrderStatusHistory {
 }
 
 
-enum Settlement {
-  KALINOVSKAYA
-  NOVOTERSKAYA
-  LEVOBEREZHNOE
-  YUBILEYNOE
-  NOVOE_SOLKUSHINO
-}
-
 // ==================== ЗОНЫ ДОСТАВКИ ====================
 
 model DeliveryZone {
-  id               String     @id @default(cuid())
-  settlement       Settlement @unique
-  deliveryFee      Int        @default(150)    // Тариф за доставку (целые рубли) — начисляется курьеру
-  freeDeliveryFrom Int        @default(1500)   // Бесплатная доставка от суммы (целые рубли)
-  isActive         Boolean    @default(true)   // Включена ли доставка в этот н.п.
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
+  id               String   @id @default(cuid())
+  settlement       String   @unique           // Код населённого пункта (произвольный)
+  settlementTitle  String   @default("")      // Название населённого пункта для отображения
+  deliveryFee      Int      @default(150)      // Тариф за доставку (целые рубли) — начисляется курьеру
+  freeDeliveryFrom Int      @default(1500)     // Бесплатная доставка от суммы (целые рубли)
+  isActive         Boolean  @default(true)     // Включена ли доставка в этот н.п.
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model User {
-  id           String     @id @default(cuid())
-  login        String     @unique
+  id           String   @id @default(cuid())
+  login        String   @unique
   passwordHash String
-  settlement   Settlement
+  settlement   String   // Код населённого пункта
   name         String
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt

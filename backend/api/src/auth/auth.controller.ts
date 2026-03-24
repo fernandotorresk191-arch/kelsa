@@ -7,27 +7,10 @@
 import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength } from 'class-validator';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from './jwt.guard';
 
-
-// 1) Список сёл (жёстко задан)
-export enum Settlement {
-  KALINOVSKAYA = 'KALINOVSKAYA',
-  NOVOTERSKAYA = 'NOVOTERSKAYA',
-  LEVOBEREZHNOE = 'LEVOBEREZHNOE',
-  YUBILEYNOE = 'YUBILEYNOE',
-  NOVOE_SOLKUSHINO = 'NOVOE_SOLKUSHINO',
-}
-
-const SETTLEMENT_LABELS: Record<Settlement, string> = {
-  [Settlement.KALINOVSKAYA]: 'Калиновская',
-  [Settlement.NOVOTERSKAYA]: 'Новотерская',
-  [Settlement.LEVOBEREZHNOE]: 'Левобережное',
-  [Settlement.YUBILEYNOE]: 'Юбилейное',
-  [Settlement.NOVOE_SOLKUSHINO]: 'Новое-Солкушино',
-}
 
 // 2) DTO
 class RegisterDto {
@@ -39,8 +22,8 @@ class RegisterDto {
   @MinLength(6)
   password: string
 
-  @IsEnum(Settlement)
-  settlement: Settlement
+  @IsString()
+  settlement: string
 
   @IsEmail()
   email: string
@@ -79,13 +62,28 @@ export class AuthController {
     private readonly guard: JwtGuard,
   ) {}
 
-  // Справочник сёл для фронта
+  // Справочник сёл для фронта — берётся из активных зон доставки
   @Get('settlements')
-  settlements() {
-    return Object.values(Settlement).map((code) => ({
-      code,
-      title: SETTLEMENT_LABELS[code as Settlement],
-    }))
+  async settlements() {
+    const zones = await this.prisma.deliveryZone.findMany({
+      where: { isActive: true },
+      orderBy: { createdAt: 'asc' },
+      select: { settlement: true, settlementTitle: true },
+    });
+    return zones.map((z) => ({
+      code: z.settlement,
+      title: z.settlementTitle || z.settlement,
+    }));
+  }
+
+  // Получить название н.п. из зоны доставки
+  private async getSettlementTitle(code: string): Promise<string> {
+    if (!code) return '';
+    const zone = await this.prisma.deliveryZone.findUnique({
+      where: { settlement: code },
+      select: { settlementTitle: true },
+    });
+    return zone?.settlementTitle || code;
   }
 
   // Регистрация
@@ -130,7 +128,7 @@ export class AuthController {
     return {
       user: {
         ...user,
-        settlementTitle: SETTLEMENT_LABELS[user.settlement as unknown as Settlement],
+        settlementTitle: await this.getSettlementTitle(user.settlement),
       },
       accessToken,
     }
@@ -155,7 +153,7 @@ export class AuthController {
         phone: user.phone,
         addressLine: user.addressLine,
         settlement: user.settlement,
-        settlementTitle: SETTLEMENT_LABELS[user.settlement as unknown as Settlement],
+        settlementTitle: await this.getSettlementTitle(user.settlement),
       },
       accessToken,
     }
@@ -182,7 +180,7 @@ export class AuthController {
 
     return {
       ...user,
-      settlementTitle: SETTLEMENT_LABELS[user.settlement as unknown as Settlement],
+      settlementTitle: await this.getSettlementTitle(user.settlement),
     }
   }
 

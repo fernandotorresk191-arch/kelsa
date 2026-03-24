@@ -9,7 +9,7 @@ import React, {
   useState,
 } from "react";
 import { authApi } from "features/auth/api";
-import type { SettlementCode, SettlementDto } from "features/auth/types";
+import type { SettlementDto } from "features/auth/types";
 import {
   clearStoredSettlement,
   getStoredSettlement,
@@ -22,17 +22,9 @@ type SettlementContextValue = {
   isReady: boolean;
   isDialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
-  selectSettlement: (code: SettlementCode) => void;
+  selectSettlement: (code: string) => void;
   refreshSettlements: () => Promise<void>;
 };
-
-const FALLBACK_SETTLEMENTS: SettlementDto[] = [
-  { code: "KALINOVSKAYA", title: "Калиновская" },
-  { code: "NOVOTERSKAYA", title: "Новотерская" },
-  { code: "LEVOBEREZHNOE", title: "Левобережное" },
-  { code: "YUBILEYNOE", title: "Юбилейное" },
-  { code: "NOVOE_SOLKUSHINO", title: "Новое-Солкушино" },
-];
 
 const SettlementContext = createContext<SettlementContextValue | undefined>(
   undefined,
@@ -40,8 +32,8 @@ const SettlementContext = createContext<SettlementContextValue | undefined>(
 
 export function SettlementProvider({ children }: { children: React.ReactNode }) {
   const [settlements, setSettlements] =
-    useState<SettlementDto[]>(FALLBACK_SETTLEMENTS);
-  const [selectedCode, setSelectedCode] = useState<SettlementCode | null>(null);
+    useState<SettlementDto[]>([]);
+  const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -56,15 +48,15 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
   const refreshSettlements = useCallback(async () => {
     try {
       const data = await authApi.settlements();
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setSettlements(data);
       }
     } catch {
-      setSettlements(FALLBACK_SETTLEMENTS);
+      setSettlements([]);
     }
   }, []);
 
-  const selectSettlement = useCallback((code: SettlementCode) => {
+  const selectSettlement = useCallback((code: string) => {
     setSelectedCode(code);
     storeSettlement(code);
     setIsDialogOpen(false);
@@ -75,20 +67,26 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
 
     const stored = getStoredSettlement();
     if (stored?.code) {
-      setSelectedCode(stored.code as SettlementCode);
+      setSelectedCode(stored.code);
       setIsDialogOpen(false);
-    } else {
-      setIsDialogOpen(true);
     }
+    // Don't open dialog here — wait until settlements are loaded
 
     setIsReady(true);
   }, [refreshSettlements]);
+
+  // Open dialog once settlements are loaded and nothing is selected
+  useEffect(() => {
+    if (settlements.length > 0 && !selectedCode) {
+      setIsDialogOpen(true);
+    }
+  }, [settlements, selectedCode]);
 
   useEffect(() => {
     if (!selectedCode) return;
 
     const exists = settlements.some((s) => s.code === selectedCode);
-    if (!exists) {
+    if (!exists && settlements.length > 0) {
       clearStoredSettlement();
       setSelectedCode(null);
       setIsDialogOpen(true);
@@ -97,13 +95,13 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
 
   const setDialogOpen = useCallback(
     (open: boolean) => {
-      if (!open && !selectedCode) {
+      if (!open && !selectedCode && settlements.length > 0) {
         setIsDialogOpen(true);
         return;
       }
       setIsDialogOpen(open);
     },
-    [selectedCode],
+    [selectedCode, settlements],
   );
 
   const value: SettlementContextValue = useMemo(

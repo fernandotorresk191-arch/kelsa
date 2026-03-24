@@ -17,20 +17,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
-import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum } from 'class-validator';
-import { Settlement } from '@prisma/client';
-
-const SETTLEMENT_LABELS: Record<string, string> = {
-  KALINOVSKAYA: 'Калиновская',
-  NOVOTERSKAYA: 'Новотерская',
-  LEVOBEREZHNOE: 'Левобережное',
-  YUBILEYNOE: 'Юбилейное',
-  NOVOE_SOLKUSHINO: 'Новое-Солкушино',
-};
+import { IsString, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 
 class CreateDeliveryZoneDto {
-  @IsEnum(Settlement)
-  settlement: Settlement;
+  @IsString()
+  settlement: string;
+
+  @IsString()
+  settlementTitle: string;
 
   @IsNumber()
   deliveryFee: number;
@@ -80,31 +74,9 @@ export class AdminDeliveryZonesController {
       orderBy: { createdAt: 'asc' },
     });
 
-    // Добавляем русское название населённого пункта
     return {
-      data: zones.map((zone) => ({
-        ...zone,
-        settlementTitle: SETTLEMENT_LABELS[zone.settlement] || zone.settlement,
-      })),
+      data: zones,
     };
-  }
-
-  @Get('available-settlements')
-  async getAvailableSettlements(@Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
-    // Найти уже добавленные зоны
-    const existingZones = await this.prisma.deliveryZone.findMany({
-      select: { settlement: true },
-    });
-    const existingSettlements = new Set(existingZones.map((z) => z.settlement));
-
-    // Вернуть те, которых ещё нет
-    const available = Object.entries(SETTLEMENT_LABELS)
-      .filter(([code]) => !existingSettlements.has(code as Settlement))
-      .map(([code, title]) => ({ code, title }));
-
-    return { data: available };
   }
 
   @Post()
@@ -123,16 +95,14 @@ export class AdminDeliveryZonesController {
     const zone = await this.prisma.deliveryZone.create({
       data: {
         settlement: dto.settlement,
+        settlementTitle: dto.settlementTitle,
         deliveryFee: dto.deliveryFee,
         freeDeliveryFrom: dto.freeDeliveryFrom,
         isActive: dto.isActive ?? true,
       },
     });
 
-    return {
-      ...zone,
-      settlementTitle: SETTLEMENT_LABELS[zone.settlement] || zone.settlement,
-    };
+    return zone;
   }
 
   @Put(':id')
@@ -157,10 +127,7 @@ export class AdminDeliveryZonesController {
       },
     });
 
-    return {
-      ...zone,
-      settlementTitle: SETTLEMENT_LABELS[zone.settlement] || zone.settlement,
-    };
+    return zone;
   }
 
   @Delete(':id')

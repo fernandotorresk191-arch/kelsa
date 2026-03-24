@@ -59,6 +59,7 @@ export class CatalogController {
       isActive: true,
       zones: zones.map((z) => ({
         settlement: z.settlement,
+        settlementTitle: z.settlementTitle || z.settlement,
         deliveryFee: z.deliveryFee,
         freeDeliveryFrom: z.freeDeliveryFrom,
       })),
