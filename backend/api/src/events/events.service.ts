@@ -20,8 +20,8 @@ export interface OrderEvent {
 }
 
 export interface ChatEvent {
-  type: 'NEW_MESSAGE';
-  message: {
+  type: 'NEW_MESSAGE' | 'MESSAGES_READ';
+  message?: {
     id: string;
     orderId: string;
     orderNumber: number;
@@ -32,6 +32,9 @@ export interface ChatEvent {
     longitude?: number | null;
     createdAt: Date;
   };
+  // Для MESSAGES_READ
+  orderId?: string;
+  readBy?: 'MANAGER' | 'CLIENT';
   userId?: string;     // Для фильтрации — владелец заказа
 }
 

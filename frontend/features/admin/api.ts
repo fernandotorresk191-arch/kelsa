@@ -198,6 +198,10 @@ export const adminChatApi = {
   getUnreadCounts: async (): Promise<Record<string, number>> => {
     return http.get('/v1/admin/orders/unread-counts');
   },
+
+  setOrderGeolocation: async (orderId: string, latitude: number, longitude: number): Promise<{ ok: boolean }> => {
+    return http.patch(`/v1/admin/orders/${orderId}/geolocation`, { latitude, longitude });
+  },
 };
 
 export const adminProductsApi = {

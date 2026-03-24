@@ -82,6 +82,8 @@ export type Order = {
   courierCost?: number;
   profit?: number;
   settlement?: string;
+  customerLatitude?: number | null;
+  customerLongitude?: number | null;
   createdAt: string;
   updatedAt: string;
   items: OrderItem[];

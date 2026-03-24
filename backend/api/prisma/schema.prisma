@@ -136,6 +136,10 @@ model Order {
   profit        Int      @default(0)  // Прибыль = totalAmount - purchaseCost - courierCost
   settlement    String?              // Населённый пункт заказа
   
+  // Геопозиция клиента (добавляется менеджером из чата)
+  customerLatitude  Float?
+  customerLongitude Float?
+  
   // Курьер
   courierId    String?
   courier      Courier?    @relation(fields: [courierId], references: [id], onDelete: SetNull)

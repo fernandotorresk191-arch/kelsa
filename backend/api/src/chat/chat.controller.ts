@@ -218,10 +218,26 @@ export class ChatController {
   ) {
     this.checkAdmin(req);
 
-    await this.prisma.chatMessage.updateMany({
+    const result = await this.prisma.chatMessage.updateMany({
       where: { orderId, sender: 'CLIENT', isRead: false },
       data: { isRead: true },
     });
+
+    // Если были обновлены сообщения — отправляем SSE событие клиенту
+    if (result.count > 0) {
+      const order = await this.prisma.order.findUnique({
+        where: { id: orderId },
+        select: { userId: true },
+      });
+      if (order) {
+        this.eventsService.emitChatEvent({
+          type: 'MESSAGES_READ',
+          orderId,
+          readBy: 'MANAGER',
+          userId: order.userId,
+        });
+      }
+    }
 
     return { ok: true };
   }
@@ -242,6 +258,36 @@ export class ChatController {
       result[c.orderId] = c._count.id;
     }
     return result;
+  }
+
+  // PATCH /v1/admin/orders/:orderId/geolocation — сохранить геопозицию клиента из чата в заказ
+  @Patch('admin/orders/:orderId/geolocation')
+  async setOrderGeolocation(
+    @Param('orderId') orderId: string,
+    @Body() body: { latitude: number; longitude: number },
+    @Req() req: AuthRequest,
+  ) {
+    this.checkAdmin(req);
+
+    if (body.latitude == null || body.longitude == null) {
+      throw new BadRequestException('Координаты обязательны');
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true },
+    });
+    if (!order) throw new BadRequestException('Заказ не найден');
+
+    await this.prisma.order.update({
+      where: { id: orderId },
+      data: {
+        customerLatitude: body.latitude,
+        customerLongitude: body.longitude,
+      },
+    });
+
+    return { ok: true };
   }
 
   // ==================== CUSTOMER ENDPOINTS ====================
@@ -389,10 +435,20 @@ export class ChatController {
       throw new UnauthorizedException('Заказ не найден');
     }
 
-    await this.prisma.chatMessage.updateMany({
+    const result = await this.prisma.chatMessage.updateMany({
       where: { orderId: order.id, sender: 'MANAGER', isRead: false },
       data: { isRead: true },
     });
+
+    // Если были обновлены сообщения — отправляем SSE событие админам
+    if (result.count > 0) {
+      this.eventsService.emitChatEvent({
+        type: 'MESSAGES_READ',
+        orderId: order.id,
+        readBy: 'CLIENT',
+        userId,
+      });
+    }
 
     return { ok: true };
   }

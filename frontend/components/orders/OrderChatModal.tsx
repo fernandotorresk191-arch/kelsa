@@ -5,11 +5,29 @@ import { chatApi, ChatMessage } from '@/features/orders/api';
 import { resolveMediaUrl } from '@/shared/api/media';
 import { API_URL } from '@/shared/api/config';
 import { getStoredAccessToken } from '@/shared/auth/token';
+import { compressImage } from '@/lib/compressImage';
 
 interface OrderChatModalProps {
   orderNumber: number;
   open: boolean;
   onClose: () => void;
+}
+
+/* ───────── WhatsApp-style double checkmark SVG ───────── */
+function CheckIcon({ read }: { read: boolean }) {
+  if (read) {
+    return (
+      <svg className="inline-block ml-1 -mb-px" width="16" height="11" viewBox="0 0 16 11" fill="none">
+        <path d="M11.071 0.653L4.214 7.51L1.857 5.153L0.443 6.567L4.214 10.339L12.485 2.067L11.071 0.653Z" fill="#53bdeb"/>
+        <path d="M14.071 0.653L7.214 7.51L6.5 6.796L5.086 8.21L7.214 10.339L15.485 2.067L14.071 0.653Z" fill="#53bdeb"/>
+      </svg>
+    );
+  }
+  return (
+    <svg className="inline-block ml-1 -mb-px" width="12" height="11" viewBox="0 0 12 11" fill="none">
+      <path d="M11.071 0.653L4.214 7.51L1.857 5.153L0.443 6.567L4.214 10.339L12.485 2.067L11.071 0.653Z" fill="#8696a0"/>
+    </svg>
+  );
 }
 
 export default function OrderChatModal({ orderNumber, open, onClose }: OrderChatModalProps) {
@@ -18,15 +36,25 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showActions, setShowActions] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 50);
+  }, []);
+
+  // Auto-resize textarea
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
   }, []);
 
   // Load messages when modal opens
@@ -48,7 +76,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
     return () => { cancelled = true; };
   }, [open, orderNumber, scrollToBottom]);
 
-  // SSE for real-time messages
+  // SSE for real-time messages + read status
   useEffect(() => {
     if (!open) return;
     const token = getStoredAccessToken();
@@ -60,23 +88,31 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
 
     es.addEventListener('chat', (event) => {
       try {
-        const data = JSON.parse(event.data) as { type: string; message: ChatMessage & { orderNumber: number } };
-        if (data.type === 'NEW_MESSAGE' && data.message.orderNumber === orderNumber) {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'NEW_MESSAGE' && data.message?.orderNumber === orderNumber) {
           setMessages((prev) => {
             if (prev.some((m) => m.id === data.message.id)) return prev;
-            return [...prev, data.message];
+            return [...prev, data.message as ChatMessage];
           });
           scrollToBottom();
           if (data.message.sender === 'MANAGER') {
             chatApi.markRead(orderNumber).catch(() => {});
           }
         }
+
+        // Manager read our messages → update checkmarks
+        if (data.type === 'MESSAGES_READ' && data.readBy === 'MANAGER') {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.sender === 'CLIENT' && !m.isRead ? { ...m, isRead: true } : m,
+            ),
+          );
+        }
       } catch { /* ignore */ }
     });
 
-    es.onerror = () => {
-      es.close();
-    };
+    es.onerror = () => { es.close(); };
 
     return () => {
       es.close();
@@ -94,8 +130,8 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-      setLoading(false);
       setText('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
       scrollToBottom();
     } catch (err) { console.error('[Chat] sendText error:', err); }
     setSending(false);
@@ -107,12 +143,12 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
     setSending(true);
     setShowActions(false);
     try {
-      const msg = await chatApi.sendImage(orderNumber, file);
+      const compressed = await compressImage(file);
+      const msg = await chatApi.sendImage(orderNumber, compressed);
       setMessages((prev) => {
         if (prev.some((m) => m.id === msg.id)) return prev;
         return [...prev, msg];
       });
-      setLoading(false);
       scrollToBottom();
     } catch (err) { console.error('[Chat] sendImage error:', err); }
     setSending(false);
@@ -139,7 +175,6 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
-          setLoading(false);
           scrollToBottom();
         } catch (err) { console.error('[Chat] sendLocation error:', err); }
         setSending(false);
@@ -195,96 +230,120 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50 animate-[fadeIn_150ms_ease-out]" />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px] animate-[fadeIn_150ms_ease-out]" />
 
-      {/* Modal */}
-      <div className="relative w-full sm:max-w-md h-[85vh] sm:h-[600px] sm:rounded-2xl overflow-hidden flex flex-col animate-[slideUp_250ms_ease-out] bg-white">
+      {/* Modal — full screen on mobile, centered card on desktop */}
+      <div className="relative w-full h-full sm:h-[80vh] sm:max-h-[700px] sm:max-w-lg sm:rounded-2xl overflow-hidden flex flex-col animate-[slideUp_200ms_ease-out] bg-white shadow-2xl">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white shrink-0">
+        <div className="flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors"
+            aria-label="Закрыть"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl">🛒</div>
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-xl shrink-0">
+            🛒
+          </div>
           <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm">Чат по заказу #{orderNumber}</div>
-            <div className="text-xs text-emerald-100">Менеджер</div>
+            <div className="font-semibold text-[15px] leading-tight">Заказ #{orderNumber}</div>
+            <div className="text-xs text-emerald-100/90">Менеджер</div>
           </div>
         </div>
 
         {/* Messages */}
         <div
-          className="flex-1 overflow-y-auto px-3 py-3"
+          className="flex-1 overflow-y-auto overscroll-contain px-3 py-3"
           style={{
-            backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.4\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
-            backgroundColor: '#f0f2f5',
+            backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23e5e7eb\' fill-opacity=\'0.3\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")',
+            backgroundColor: '#efeae2',
           }}
         >
           {loading && messages.length === 0 ? (
-            <div className="text-center text-gray-400 py-12 text-sm">Загрузка сообщений...</div>
+            <div className="flex items-center justify-center py-16">
+              <div className="w-8 h-8 border-2 border-emerald-300 border-t-emerald-600 rounded-full animate-spin" />
+            </div>
           ) : messages.length === 0 && !loading ? (
-            <div className="text-center text-gray-400 py-12">
-              <div className="text-5xl mb-3">💬</div>
-              <div className="text-sm font-medium">Нет сообщений</div>
-              <div className="text-xs mt-1">Напишите менеджеру, если возникли вопросы</div>
+            <div className="text-center text-gray-400 py-16">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">
+                <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <div className="text-sm font-medium text-gray-500">Нет сообщений</div>
+              <div className="text-xs mt-1 text-gray-400">Напишите менеджеру, если есть вопросы</div>
             </div>
           ) : (
             groupedMessages.map((group) => (
               <div key={group.date}>
-                {/* Date separator */}
                 <div className="flex justify-center my-3">
-                  <span className="bg-white/80 text-gray-500 text-xs px-3 py-1 rounded-full shadow-sm">
+                  <span className="bg-white/90 text-gray-500 text-[11px] px-3 py-1 rounded-full shadow-sm font-medium">
                     {formatDate(group.date)}
                   </span>
                 </div>
-                <div className="space-y-1.5">
-                  {group.msgs.map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`flex ${msg.sender === 'CLIENT' ? 'justify-end' : 'justify-start'}`}
-                    >
+                <div className="space-y-[3px]">
+                  {group.msgs.map((msg) => {
+                    const isClient = msg.sender === 'CLIENT';
+                    return (
                       <div
-                        className={`max-w-[80%] rounded-2xl px-3 py-2 shadow-sm ${
-                          msg.sender === 'CLIENT'
-                            ? 'bg-emerald-100 text-gray-900 rounded-br-md'
-                            : 'bg-white text-gray-900 rounded-bl-md'
-                        }`}
+                        key={msg.id}
+                        className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}
                       >
-                        {msg.imageUrl && (
-                          <img
-                            src={resolveMediaUrl(msg.imageUrl) || ''}
-                            alt="Фото"
-                            className="rounded-lg max-w-full max-h-52 object-cover mb-1 cursor-pointer"
-                            onClick={() => window.open(resolveMediaUrl(msg.imageUrl) || '', '_blank')}
-                          />
-                        )}
-                        {msg.text && (
-                          <p className="text-sm whitespace-pre-wrap break-words">{msg.text}</p>
-                        )}
-                        {msg.latitude != null && msg.longitude != null && (
-                          <a
-                            href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-lg mt-1 transition-colors"
-                          >
-                            <span className="text-lg">📍</span>
-                            <span>Открыть на карте</span>
-                          </a>
-                        )}
-                        <div className={`text-[10px] mt-0.5 ${msg.sender === 'CLIENT' ? 'text-emerald-600' : 'text-gray-400'} text-right`}>
-                          {formatTime(msg.createdAt)}
-                          {msg.sender === 'CLIENT' && (
-                            <span className="ml-1">{msg.isRead ? '✓✓' : '✓'}</span>
+                        <div
+                          className={`relative max-w-[85%] sm:max-w-[75%] rounded-lg px-2.5 py-1.5 shadow-sm ${
+                            isClient
+                              ? 'bg-[#d9fdd3] rounded-tr-none'
+                              : 'bg-white rounded-tl-none'
+                          }`}
+                        >
+                          {/* WhatsApp-style tail */}
+                          <div className={`absolute top-0 w-2 h-3 ${isClient ? '-right-1.5 text-[#d9fdd3]' : '-left-1.5 text-white'}`}>
+                            <svg viewBox="0 0 8 13" width="8" height="13" fill="currentColor">
+                              {isClient
+                                ? <path d="M5.188 0H0v11.193l6.467-8.625C7.526 1.156 6.958 0 5.188 0z" />
+                                : <path d="M2.812 0H8v11.193L1.533 2.568C.474 1.156 1.042 0 2.812 0z" />
+                              }
+                            </svg>
+                          </div>
+
+                          {msg.imageUrl && (
+                            <img
+                              src={resolveMediaUrl(msg.imageUrl) || ''}
+                              alt="Фото"
+                              className="rounded-md max-w-full max-h-60 sm:max-h-72 object-cover mb-1 cursor-pointer"
+                              onClick={() => setImagePreview(resolveMediaUrl(msg.imageUrl) || null)}
+                              loading="lazy"
+                            />
                           )}
+                          {msg.text && (
+                            <p className="text-[14px] leading-[19px] whitespace-pre-wrap break-words text-gray-900">
+                              {msg.text}
+                            </p>
+                          )}
+                          {msg.latitude != null && msg.longitude != null && (
+                            <a
+                              href={`https://www.google.com/maps?q=${msg.latitude},${msg.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-lg mt-1 transition-colors"
+                            >
+                              <span className="text-lg">📍</span>
+                              <span className="font-medium">Открыть на карте</span>
+                            </a>
+                          )}
+                          <div className="flex items-center justify-end gap-0.5 mt-0.5">
+                            <span className="text-[11px] text-gray-500 leading-none">
+                              {formatTime(msg.createdAt)}
+                            </span>
+                            {isClient && <CheckIcon read={msg.isRead} />}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             ))
@@ -294,43 +353,47 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
 
         {/* Actions popover */}
         {showActions && (
-          <div className="absolute bottom-16 left-3 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-[slideUp_150ms_ease-out] z-10">
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <span className="text-sm font-medium text-gray-700">Фото из галереи</span>
-            </button>
-            <button
-              onClick={handleSendLocation}
-              className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 transition-colors border-t border-gray-50"
-            >
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </div>
-              <span className="text-sm font-medium text-gray-700">Геопозиция</span>
-            </button>
-          </div>
+          <>
+            <div className="absolute inset-0 z-[5]" onClick={() => setShowActions(false)} />
+            <div className="absolute bottom-16 left-3 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-10 animate-[slideUp_120ms_ease-out]">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-gray-700">Фото</span>
+              </button>
+              <button
+                onClick={handleSendLocation}
+                className="flex items-center gap-3 w-full px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-50"
+              >
+                <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <span className="text-sm font-medium text-gray-700">Геопозиция</span>
+              </button>
+            </div>
+          </>
         )}
 
         {/* Input area */}
-        <div className="border-t border-gray-200 bg-white px-3 py-2 flex items-end gap-2 shrink-0">
+        <div className="border-t border-gray-200 bg-[#f0f0f0] px-2 py-1.5 flex items-end gap-1.5 shrink-0" style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }}>
           <button
             type="button"
             onClick={() => setShowActions(!showActions)}
-            className={`p-2 rounded-full transition-colors ${
-              showActions ? 'text-emerald-600 bg-emerald-50' : 'text-gray-500 hover:text-emerald-600 hover:bg-emerald-50'
+            className={`p-2.5 rounded-full transition-colors shrink-0 ${
+              showActions ? 'text-emerald-600 bg-emerald-50' : 'text-gray-500 hover:text-emerald-600 active:bg-gray-200'
             }`}
+            aria-label="Действия"
           >
-            <svg className={`w-5 h-5 transition-transform ${showActions ? 'rotate-45' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 transition-transform duration-200 ${showActions ? 'rotate-45' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
           </button>
@@ -341,26 +404,53 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
             className="hidden"
             onChange={handleImageUpload}
           />
-          <textarea
-            value={text}
-            onChange={(e) => { setText(e.target.value); setShowActions(false); }}
-            onKeyDown={handleKeyDown}
-            placeholder="Сообщение..."
-            rows={1}
-            className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2 text-sm focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors max-h-24"
-            style={{ minHeight: 38 }}
-          />
+          <div className="flex-1 min-w-0 bg-white rounded-[22px] border border-gray-200 flex items-end overflow-hidden">
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={(e) => { setText(e.target.value); setShowActions(false); autoResize(); }}
+              onKeyDown={handleKeyDown}
+              placeholder="Сообщение"
+              rows={1}
+              className="flex-1 resize-none px-3 py-2 text-[15px] leading-[20px] focus:outline-none max-h-[120px] bg-transparent"
+              style={{ minHeight: 36 }}
+            />
+          </div>
           <button
             onClick={handleSend}
             disabled={!text.trim() || sending}
-            className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+            className="p-2.5 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 active:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0"
+            aria-label="Отправить"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
             </svg>
           </button>
         </div>
       </div>
+
+      {/* Image preview fullscreen */}
+      {imagePreview && (
+        <div
+          className="fixed inset-0 z-[200] bg-black/90 flex items-center justify-center p-4"
+          onClick={() => setImagePreview(null)}
+        >
+          <button
+            className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center text-white z-10"
+            onClick={() => setImagePreview(null)}
+            aria-label="Закрыть"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={imagePreview}
+            alt="Просмотр"
+            className="max-w-full max-h-full object-contain rounded-lg"
+          />
+        </div>
+      )}
 
       <style jsx global>{`
         @keyframes fadeIn {
@@ -368,7 +458,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
           to { opacity: 1; }
         }
         @keyframes slideUp {
-          from { opacity: 0; transform: translateY(20px); }
+          from { opacity: 0; transform: translateY(16px); }
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>

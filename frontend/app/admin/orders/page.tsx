@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { adminOrdersApi } from '@/features/admin/api';
+import { adminOrdersApi, adminChatApi } from '@/features/admin/api';
 import { Order, OrderStatus, OrderStatusLabels } from '@/features/admin/types';
 import { useOrdersSSE, OrderEventData } from '@/features/admin/useOrdersSSE';
 
@@ -26,6 +26,7 @@ export default function AdminOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [recentOrderIds, setRecentOrderIds] = useState<Set<string>>(new Set());
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
   const limit = 20;
 
@@ -43,6 +44,16 @@ export default function AdminOrdersPage() {
       setIsLoading(false);
     }
   };
+
+  // Fetch unread chat counts
+  const fetchUnreadCounts = useCallback(async () => {
+    try {
+      const counts = await adminChatApi.getUnreadCounts();
+      setUnreadCounts(counts);
+    } catch (error) {
+      console.error('Failed to fetch unread counts:', error);
+    }
+  }, []);
 
   const handleNewOrder = useCallback((orderData: OrderEventData['order']) => {
     if (page === 1 && !statusFilter) {
@@ -105,6 +116,10 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
+    fetchUnreadCounts();
+    // Периодически обновляем счётчики непрочитанных сообщений
+    const interval = setInterval(fetchUnreadCounts, 30000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, statusFilter]);
 
@@ -242,12 +257,19 @@ export default function AdminOrdersPage() {
                         </div>
                       </td>
                       <td>
-                        <Link
-                          href={`/admin/orders/${order.id}`}
-                          className="admin-btn admin-btn-secondary admin-btn-sm"
-                        >
-                          Открыть
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/admin/orders/${order.id}`}
+                            className="admin-btn admin-btn-secondary admin-btn-sm"
+                          >
+                            Открыть
+                          </Link>
+                          {(unreadCounts[order.id] ?? 0) > 0 && (
+                            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[11px] font-bold rounded-full animate-pulse">
+                              {unreadCounts[order.id]}
+                            </span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -66,6 +66,8 @@ export type CourierOrder = {
   addressLine: string;
   comment?: string;
   totalAmount: number;
+  customerLatitude?: number | null;
+  customerLongitude?: number | null;
   createdAt: string;
   updatedAt: string;
   items: CourierOrderItem[];
