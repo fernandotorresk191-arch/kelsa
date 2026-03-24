@@ -303,7 +303,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
       <div className="absolute inset-0 bg-black/50 animate-[fadeIn_150ms_ease-out]" />
 
       {/* Modal — full screen on mobile, centered card on desktop */}
-      <div className="absolute inset-0 sm:static sm:h-full sm:flex sm:items-center sm:justify-center">
+      <div className="absolute inset-0 flex sm:items-center sm:justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
         <div className="flex flex-col w-full h-full sm:h-[85vh] sm:max-h-[720px] sm:max-w-lg sm:rounded-2xl overflow-hidden animate-[slideUp_200ms_ease-out] bg-white sm:shadow-2xl">
           {/* Header */}
           <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
