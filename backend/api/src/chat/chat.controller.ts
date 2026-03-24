@@ -522,8 +522,8 @@ export class ChatController {
         JSON.stringify({
           title: `Чат по заказу #${orderNumber}`,
           body,
-          icon: '/icons/icon-192x192.png',
-          badge: '/icons/icon-192x192.png',
+          icon: '/icons/icon-192.png',
+          badge: '/icons/icon-192.png',
           data: {
             type: 'CHAT_MESSAGE',
             orderNumber,

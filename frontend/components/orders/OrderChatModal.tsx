@@ -6,6 +6,7 @@ import { resolveMediaUrl } from '@/shared/api/media';
 import { API_URL } from '@/shared/api/config';
 import { getStoredAccessToken } from '@/shared/auth/token';
 import { compressImage } from '@/lib/compressImage';
+import { useClientPush } from '@/features/orders/useClientPush';
 
 interface OrderChatModalProps {
   orderNumber: number;
@@ -44,6 +45,8 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   const backdropRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const needsInitialScroll = useRef(false);
+  const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe } = useClientPush();
+  const [pushDismissed, setPushDismissed] = useState(false);
 
   const scrollToBottom = useCallback((instant?: boolean) => {
     const doScroll = () => {
@@ -321,6 +324,32 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
             <div className="text-xs text-emerald-100/90">Менеджер</div>
           </div>
         </div>
+
+        {/* Push notification banner */}
+        {pushSupported && !pushSubscribed && !pushDismissed && !pushLoading && (
+          <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 border-b border-amber-100 shrink-0">
+            <span className="text-lg">🔔</span>
+            <span className="flex-1 text-[13px] text-amber-900">Включите уведомления, чтобы не пропустить ответ</span>
+            <button
+              onClick={async () => {
+                const ok = await pushSubscribe();
+                if (!ok) setPushDismissed(true);
+              }}
+              className="px-3 py-1 bg-amber-500 text-white text-[13px] font-medium rounded-full hover:bg-amber-600 active:bg-amber-700 transition-colors shrink-0"
+            >
+              Включить
+            </button>
+            <button
+              onClick={() => setPushDismissed(true)}
+              className="p-1 text-amber-400 hover:text-amber-600 transition-colors shrink-0"
+              aria-label="Закрыть"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* Messages */}
         <div
