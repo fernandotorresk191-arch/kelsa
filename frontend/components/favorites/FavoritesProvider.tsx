@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import type { ProductDto } from "features/catalog/types";
 import { favoritesApi } from "features/favorites/api";
 import type { ApiError } from "shared/api/http";
@@ -45,6 +46,8 @@ function getErrorMessage(err: unknown) {
 
 export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   const { user, isReady: authReady } = useAuth();
+  const pathname = usePathname();
+  const isAdminOrCourier = pathname.startsWith('/admin') || pathname.startsWith('/courier');
   const [favorites, setFavorites] = useState<ProductDto[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,13 +83,13 @@ export function FavoritesProvider({ children }: { children: React.ReactNode }) {
   }, [user]);
 
   useEffect(() => {
-    if (!authReady) return;
+    if (!authReady || isAdminOrCourier) return;
     if (!user) {
       setFavorites([]);
       return;
     }
     void refresh();
-  }, [authReady, refresh, user]);
+  }, [authReady, refresh, user, isAdminOrCourier]);
 
   const addFavorite = useCallback(
     async (product: ProductDto) => {

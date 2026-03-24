@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useCallback, ReactNode, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '../auth/AuthProvider';
 import { useToast } from '../ui/toast';
 import { useMyOrdersSSE, OrderStatusEvent, requestNotificationPermission } from '@/features/orders/useMyOrdersSSE';
@@ -43,6 +44,8 @@ interface OrderNotificationsProviderProps {
 
 export function OrderNotificationsProvider({ children }: OrderNotificationsProviderProps) {
   const { user } = useAuth();
+  const pathname = usePathname();
+  const isAdminOrCourier = pathname.startsWith('/admin') || pathname.startsWith('/courier');
   const { addToast } = useToast();
   const [isConnected, setIsConnected] = useState(false);
 
@@ -58,22 +61,21 @@ export function OrderNotificationsProvider({ children }: OrderNotificationsProvi
     });
   }, [addToast]);
 
-  // SSE подключение только для авторизованных пользователей
+  // SSE подключение только для авторизованных пользователей (не на админ/курьер страницах)
   useMyOrdersSSE({
     onOrderUpdated: handleOrderUpdated,
-    enabled: !!user,
+    enabled: !!user && !isAdminOrCourier,
   });
 
   // Запрашиваем разрешение на уведомления при монтировании
   useEffect(() => {
-    if (user) {
+    if (user && !isAdminOrCourier) {
       setIsConnected(true);
-      // Запрашиваем разрешение на Push-уведомления
       requestNotificationPermission();
     } else {
       setIsConnected(false);
     }
-  }, [user]);
+  }, [user, isAdminOrCourier]);
 
   const requestPermission = useCallback(async () => {
     await requestNotificationPermission();
