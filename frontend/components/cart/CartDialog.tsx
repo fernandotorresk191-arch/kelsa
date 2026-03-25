@@ -25,7 +25,6 @@ const currency = (value: number) => `${value} ₽`;
 export function CartDialog() {
   const {
     cart,
-    itemCount,
     isCartLoading,
     isSubmittingOrder,
     error,
@@ -178,11 +177,11 @@ export function CartDialog() {
         <DialogTitle className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap text-[21px] leading-6 tracking-[-0.3px] xl:text-2xl xl:leading-7 xl:tracking-[-0.4px] font-bold text-[#404040]">
           <FiShoppingBag />
           Корзина
-          {itemCount > 0 && (
+{/*           {itemCount > 0 && (
             <span className="text-sm font-normal text-muted-foreground">
               {itemCount} шт.
             </span>
-          )}
+          )} */}
         </DialogTitle>
       </DialogHeader>
 
@@ -520,9 +519,6 @@ export function CartDialog() {
               ? "Оформить заказ"
               : "Войти, чтобы оформить"}
           </Button>
-          <div className="text-xs text-muted-foreground">
-            Нажимая кнопку, вы подтверждаете согласие на обработку данных.
-          </div>
         </form>
 
       </div>
