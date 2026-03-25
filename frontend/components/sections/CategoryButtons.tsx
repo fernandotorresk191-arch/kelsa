@@ -11,7 +11,7 @@ interface CategoryButtonsProps {
 }
 
 const CategoryButtons: React.FC<CategoryButtonsProps> = ({ categories }) => {
-  const categoriesToShow = categories.slice(0, 11);
+  const categoriesToShow = categories.slice(0, 15);
 
   return (
     <div className="py-6 overflow-hidden">
