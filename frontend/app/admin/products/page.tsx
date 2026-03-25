@@ -4,8 +4,9 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { adminProductsApi, adminCategoriesApi } from '@/features/admin/api';
+import { adminProductsApi, adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Product, Category } from '@/features/admin/types';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 
 type CategoryWithCount = Category & { _count: { products: number } };
 
@@ -721,6 +722,8 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   // Получаем список подкатегорий для выбранной категории
   const subcategories = categories.filter(c => c.parentId === formData.categoryId);
@@ -779,7 +782,7 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
     setError(null);
 
     try {
-      await adminProductsApi.createProduct({
+      const created = await adminProductsApi.createProduct({
         ...formData,
         price: Math.round(parseFloat(formData.price)),
         stock: parseInt(formData.stock) || 0,
@@ -788,6 +791,15 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
         cellNumber: formData.cellNumber || undefined,
         isActive: true,
       } as unknown as Parameters<typeof adminProductsApi.createProduct>[0]);
+
+      // Upload image if one was selected
+      if (pendingImageFile && created.id) {
+        try {
+          await adminUploadApi.uploadProductImage(created.id, pendingImageFile);
+        } catch (uploadErr) {
+          console.error('Image upload failed:', uploadErr);
+        }
+      }
       onSuccess();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка при создании товара';
@@ -963,20 +975,20 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
             />
           </div>
           <div>
-            <label htmlFor="product-image" className="block text-sm font-medium text-gray-700 mb-1">
-              URL изображения
-            </label>
-            <input
-              id="product-image"
-              type="url"
-              value={formData.imageUrl}
-              onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder="Добавьте через редактирование"
+            <ImageUpload
+              currentImageUrl={imagePreviewUrl}
+              onUpload={async (file) => {
+                setPendingImageFile(file);
+                const url = URL.createObjectURL(file);
+                setImagePreviewUrl(url);
+                return url;
+              }}
+              onDelete={async () => {
+                setPendingImageFile(null);
+                setImagePreviewUrl(null);
+              }}
+              label="Изображение"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Загрузка файла доступна после создания товара
-            </p>
           </div>
         </div>
 
