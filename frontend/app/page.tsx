@@ -30,6 +30,14 @@ export default async function Home() {
         </div>
       </section>
 
+      <div className="kelsa-container">
+        <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-3 text-center text-sm font-medium text-emerald-800">
+          🕘 Работаем с 09:00 до 21:00
+        </div>
+      </div>
+
+
+
       {/* Main content */}
       <div className="kelsa-container">
         {/* Categories section */}
