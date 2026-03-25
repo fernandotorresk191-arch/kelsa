@@ -77,7 +77,7 @@ const Header = () => {
           {/* Address selection */}
           <button
             type="button"
-            className="items-center hidden ml-6 text-sm md:flex"
+            className="items-center hidden ml-6 mt-1 text-sm md:flex"
             onClick={() => setDialogOpen(true)}
           >
             <FiMapPin className="mr-1 text-primary" />
