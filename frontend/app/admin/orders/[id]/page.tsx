@@ -270,6 +270,14 @@ export default function AdminOrderDetailPage() {
                   ))}
                 </tbody>
                 <tfoot className="border-t-2 border-gray-300">
+                  <tr>
+                    <td className="px-4 py-2 text-gray-600">Доставка</td>
+                    <td />
+                    <td />
+                    <td className="px-4 py-2 text-right text-gray-600">
+                      {(order.deliveryFee ?? 0).toLocaleString('ru-RU')} ₽
+                    </td>
+                  </tr>
                   <tr className="font-bold">
                     <td colSpan={3} className="px-4 py-2 text-right">
                       Итого:
