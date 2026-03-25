@@ -185,9 +185,6 @@ export function CartDialog() {
             </span>
           )}
         </DialogTitle>
-        <DialogDescription>
-          Добавляйте товары и оформляйте заказ после регистрации.
-        </DialogDescription>
       </DialogHeader>
 
       {error && (
