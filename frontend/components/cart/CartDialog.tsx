@@ -6,7 +6,6 @@ import { FiMinus, FiPlus, FiShoppingBag, FiX, FiEdit2 } from "react-icons/fi";
 import { useCart } from "./CartProvider";
 import {
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
