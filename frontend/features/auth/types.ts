@@ -49,6 +49,7 @@ export type UserOrder = {
   orderNumber: number;
   status: OrderStatus;
   totalAmount: number;
+  deliveryFee: number;
   createdAt: string;
   updatedAt: string;
   items: UserOrderItem[];

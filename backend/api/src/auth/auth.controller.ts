@@ -198,6 +198,7 @@ export class AuthController {
         orderNumber: true,
         status: true,
         totalAmount: true,
+        deliveryFee: true,
         createdAt: true,
         updatedAt: true,
         items: { select: { title: true, qty: true, price: true, amount: true } },

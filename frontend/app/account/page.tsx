@@ -230,6 +230,13 @@ function AccountPageContent() {
                     <span className="font-semibold shrink-0">{item.amount} ₽</span>
                   </div>
                 ))}
+                {/* Delivery fee */}
+                <div className="flex justify-between gap-3 text-sm sm:text-base pt-2 border-t">
+                  <span className="text-muted-foreground min-w-0">
+                    Доставка
+                  </span>
+                  <span className="font-semibold shrink-0">{order.deliveryFee} ₽</span>
+                </div>
               </div>
 
               {/* Chat button */}
