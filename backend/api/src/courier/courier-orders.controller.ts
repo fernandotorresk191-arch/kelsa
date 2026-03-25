@@ -259,9 +259,8 @@ export class CourierOrdersController {
         },
       });
 
-      // Рассчитываем прибыль при доставке: subtotal - себестоимость - расходы на курьера
-      const subtotal = updated.items.reduce((sum, item) => sum + item.amount, 0);
-      const realProfit = subtotal - (order.purchaseCost || 0) - (order.courierCost || 0);
+      // Рассчитываем прибыль при доставке: totalAmount (включая deliveryFee) - себестоимость - расходы на курьера
+      const realProfit = updated.totalAmount - (order.purchaseCost || 0) - (order.courierCost || 0);
       await tx.order.update({
         where: { id: orderId },
         data: { profit: realProfit },

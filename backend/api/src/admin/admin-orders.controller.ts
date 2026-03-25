@@ -236,9 +236,8 @@ export class AdminOrdersController {
 
       // При доставке: рассчитываем прибыль и списываем товар со склада
       if (dto.status === OrderStatus.DELIVERED && order.status !== 'DELIVERED') {
-        // Рассчитываем прибыль: subtotal (сумма товаров) - себестоимость - расходы на курьера
-        const subtotal = updated.items.reduce((sum, item) => sum + item.amount, 0);
-        const realProfit = subtotal - (order.purchaseCost || 0) - (order.courierCost || 0);
+        // Рассчитываем прибыль: totalAmount (включая deliveryFee) - себестоимость - расходы на курьера
+        const realProfit = updated.totalAmount - (order.purchaseCost || 0) - (order.courierCost || 0);
         await tx.order.update({
           where: { id },
           data: { profit: realProfit },
