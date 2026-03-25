@@ -22,7 +22,7 @@ const ProductSection: React.FC<ProductSectionProps> = ({
   return (
     <section className="py-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">{title}</h2>
+        <h2 className="text-[28px] font-bold leading-[30px] tracking-[-0.6px] text-[#404040]">{title}</h2>
 
         {viewAllLink && (
           <Link href={viewAllLink}>
