@@ -418,9 +418,9 @@ function AccountPageContent() {
           </Link>
         </div>
 
-        <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5">
+{/*         <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5">
           {activeTab === "favorites" ? "Избранное" : activeTab === "profile" ? "Профиль" : "Мои заказы"}
-        </h2>
+        </h2> */}
         {activeTab === "favorites" ? favoritesContent : activeTab === "profile" ? (
           <div className="rounded-xl border bg-white p-5 sm:p-6 max-w-lg space-y-4">
             {profileSuccess && (
