@@ -75,6 +75,7 @@ function AccountPageContent() {
   const [profileSettlement, setProfileSettlement] = useState("");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileSuccess, setProfileSuccess] = useState(false);
+  const [profileEditing, setProfileEditing] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -422,82 +423,132 @@ function AccountPageContent() {
         </h2>
         {activeTab === "favorites" ? favoritesContent : activeTab === "profile" ? (
           <div className="rounded-xl border bg-white p-5 sm:p-6 max-w-lg space-y-4">
-            <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="profile-name">Имя</label>
-              <Input
-                id="profile-name"
-                value={profileName}
-                onChange={(e) => setProfileName(e.target.value)}
-                placeholder="Ваше имя"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="profile-phone">Телефон</label>
-              <Input
-                id="profile-phone"
-                type="tel"
-                inputMode="tel"
-                value={profilePhone}
-                onChange={(e) => setProfilePhone(formatRuPhone(e.target.value))}
-                placeholder="+7 (___) ___-__-__"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="profile-address">Адрес доставки</label>
-              <Input
-                id="profile-address"
-                value={profileAddress}
-                onChange={(e) => setProfileAddress(e.target.value)}
-                placeholder="ул. Ленина, 10, кв. 5"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium" htmlFor="profile-settlement">Населённый пункт</label>
-              <select
-                id="profile-settlement"
-                value={profileSettlement}
-                onChange={(e) => setProfileSettlement(e.target.value)}
-                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                <option value="">Выберите</option>
-                {settlements.map((s) => (
-                  <option key={s.code} value={s.code}>{s.title}</option>
-                ))}
-              </select>
-            </div>
             {profileSuccess && (
               <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
                 Данные сохранены
               </div>
             )}
-            <Button
-              className="w-full"
-              disabled={profileSaving}
-              onClick={async () => {
-                setProfileSaving(true);
-                setProfileSuccess(false);
-                try {
-                  await authApi.updateProfile({
-                    name: profileName,
-                    phone: profilePhone,
-                    addressLine: profileAddress,
-                    settlement: profileSettlement || undefined,
-                  });
-                  if (profileSettlement && profileSettlement !== selectedSettlement?.code) {
-                    selectSettlement(profileSettlement);
-                  }
-                  await refreshProfile();
-                  setProfileSuccess(true);
-                  setTimeout(() => setProfileSuccess(false), 3000);
-                } catch {
-                  // error
-                } finally {
-                  setProfileSaving(false);
-                }
-              }}
-            >
-              {profileSaving ? "Сохранение..." : "Сохранить"}
-            </Button>
+            {!profileEditing ? (
+              <>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Имя</span>
+                    <span className="text-base font-medium">{user.name || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Телефон</span>
+                    <span className="text-base font-medium">{formatRuPhone(user.phone) || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Адрес доставки</span>
+                    <span className="text-base font-medium text-right max-w-[60%]">{user.addressLine || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Нас. пункт</span>
+                    <span className="text-base font-medium">{user.settlementTitle || "—"}</span>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => {
+                    setProfileName(user.name);
+                    setProfilePhone(formatRuPhone(user.phone));
+                    setProfileAddress(user.addressLine);
+                    setProfileSettlement(user.settlement);
+                    setProfileEditing(true);
+                  }}
+                >
+                  Изменить
+                </Button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="profile-name">Имя</label>
+                    <Input
+                      id="profile-name"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      placeholder="Ваше имя"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="profile-phone">Телефон</label>
+                    <Input
+                      id="profile-phone"
+                      type="tel"
+                      inputMode="tel"
+                      value={profilePhone}
+                      onChange={(e) => setProfilePhone(formatRuPhone(e.target.value))}
+                      placeholder="+7 (___) ___-__-__"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="profile-address">Адрес доставки</label>
+                    <Input
+                      id="profile-address"
+                      value={profileAddress}
+                      onChange={(e) => setProfileAddress(e.target.value)}
+                      placeholder="ул. Ленина, 10, кв. 5"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium" htmlFor="profile-settlement">Населённый пункт</label>
+                    <select
+                      id="profile-settlement"
+                      value={profileSettlement}
+                      onChange={(e) => setProfileSettlement(e.target.value)}
+                      className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    >
+                      <option value="">Выберите</option>
+                      {settlements.map((s) => (
+                        <option key={s.code} value={s.code}>{s.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setProfileEditing(false)}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    disabled={profileSaving}
+                    onClick={async () => {
+                      setProfileSaving(true);
+                      setProfileSuccess(false);
+                      try {
+                        await authApi.updateProfile({
+                          name: profileName,
+                          phone: profilePhone,
+                          addressLine: profileAddress,
+                          settlement: profileSettlement || undefined,
+                        });
+                        if (profileSettlement && profileSettlement !== selectedSettlement?.code) {
+                          selectSettlement(profileSettlement);
+                        }
+                        await refreshProfile();
+                        setProfileEditing(false);
+                        setProfileSuccess(true);
+                        setTimeout(() => setProfileSuccess(false), 3000);
+                      } catch {
+                        // error
+                      } finally {
+                        setProfileSaving(false);
+                      }
+                    }}
+                  >
+                    {profileSaving ? "Сохранение..." : "Сохранить"}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ) : ordersContent}
       </div>
