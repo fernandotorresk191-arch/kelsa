@@ -120,11 +120,12 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
     const token = getStoredAccessToken();
     if (!token) return;
 
-    const url = `${API_URL}/v1/events/my-orders?token=${encodeURIComponent(token)}`;
-    const es = new EventSource(url);
-    eventSourceRef.current = es;
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    es.addEventListener('chat', (event) => {
+    const url = `${API_URL}/v1/events/my-orders?token=${encodeURIComponent(token)}`;
+
+    const handleChatEvent = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
 
@@ -148,45 +149,32 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
           );
         }
       } catch { /* ignore */ }
-    });
-
-    es.onerror = () => {
-      es.close();
-      // Reconnect after 5s
-      setTimeout(() => {
-        if (!eventSourceRef.current || eventSourceRef.current.readyState === EventSource.CLOSED) {
-          const newEs = new EventSource(url);
-          eventSourceRef.current = newEs;
-          newEs.addEventListener('chat', (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if (data.type === 'NEW_MESSAGE' && data.message?.orderNumber === orderNumber) {
-                setMessages((prev) => {
-                  if (prev.some((m) => m.id === data.message.id)) return prev;
-                  return [...prev, data.message as ChatMessage];
-                });
-                scrollToBottom();
-                if (data.message.sender === 'MANAGER') {
-                  chatApi.markRead(orderNumber).catch(() => {});
-                }
-              }
-              if (data.type === 'MESSAGES_READ' && data.readBy === 'MANAGER') {
-                setMessages((prev) =>
-                  prev.map((m) =>
-                    m.sender === 'CLIENT' && !m.isRead ? { ...m, isRead: true } : m,
-                  ),
-                );
-              }
-            } catch { /* ignore */ }
-          });
-          newEs.onerror = () => { newEs.close(); };
-        }
-      }, 5000);
     };
 
+    const connect = () => {
+      if (disposed) return;
+      const es = new EventSource(url);
+      eventSourceRef.current = es;
+
+      es.addEventListener('chat', handleChatEvent);
+
+      es.onerror = () => {
+        es.close();
+        if (!disposed) {
+          reconnectTimer = setTimeout(connect, 5000);
+        }
+      };
+    };
+
+    connect();
+
     return () => {
-      es.close();
-      eventSourceRef.current = null;
+      disposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
     };
   }, [open, orderNumber, scrollToBottom]);
 
