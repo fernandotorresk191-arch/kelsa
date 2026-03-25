@@ -4,10 +4,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Body, Controller, Delete, Get, NotFoundException, Param, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from './jwt.guard';
 
@@ -49,6 +49,24 @@ class LoginDto {
 class FavoriteDto {
   @IsString()
   productId: string
+}
+
+class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  name?: string
+
+  @IsOptional()
+  @IsString()
+  phone?: string
+
+  @IsOptional()
+  @IsString()
+  addressLine?: string
+
+  @IsOptional()
+  @IsString()
+  settlement?: string
 }
 
 // 3) Guard is now in jwt.guard.ts file
@@ -177,6 +195,38 @@ export class AuthController {
       },
     })
     if (!user) throw new UnauthorizedException('User not found')
+
+    return {
+      ...user,
+      settlementTitle: await this.getSettlementTitle(user.settlement),
+    }
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch('me/profile')
+  async updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+    const userId = req.user?.sub as string
+    if (!userId) throw new UnauthorizedException('Invalid token payload')
+
+    const data: Record<string, any> = {}
+    if (dto.name !== undefined) data.name = dto.name
+    if (dto.phone !== undefined) data.phone = dto.phone
+    if (dto.addressLine !== undefined) data.addressLine = dto.addressLine
+    if (dto.settlement !== undefined) data.settlement = dto.settlement
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        login: true,
+        name: true,
+        phone: true,
+        addressLine: true,
+        settlement: true,
+        createdAt: true,
+      },
+    })
 
     return {
       ...user,

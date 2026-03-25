@@ -38,6 +38,13 @@ export type LoginPayload = {
   password: string;
 };
 
+export type UpdateProfilePayload = {
+  name?: string;
+  phone?: string;
+  addressLine?: string;
+  settlement?: string;
+};
+
 export type UserOrderItem = {
   title: string;
   qty: number;

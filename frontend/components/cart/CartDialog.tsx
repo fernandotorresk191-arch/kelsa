@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FiMinus, FiPlus, FiShoppingBag, FiX } from "react-icons/fi";
+import { FiMinus, FiPlus, FiShoppingBag, FiX, FiEdit2 } from "react-icons/fi";
 import { useCart } from "./CartProvider";
 import {
   DialogContent,
@@ -19,6 +19,7 @@ import { formatRuPhone } from "../../shared/phone/format";
 import { useSettlement } from "../settlement/SettlementProvider";
 import { resolveMediaUrl } from "../../shared/api/media";
 import { http } from "../../shared/api/http";
+import { authApi } from "../../features/auth/api";
 
 const currency = (value: number) => `${value} ₽`;
 
@@ -33,8 +34,8 @@ export function CartDialog() {
     removeItem,
     createOrder,
   } = useCart();
-  const { user } = useAuth();
-  const { selectedSettlement } = useSettlement();
+  const { user, refreshProfile } = useAuth();
+  const { selectedSettlement, settlements, selectSettlement } = useSettlement();
 
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
@@ -44,6 +45,9 @@ export function CartDialog() {
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const lastUserIdRef = useRef<string | null>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [editSettlement, setEditSettlement] = useState("");
 
   // Delivery settings per zone
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -100,6 +104,33 @@ export function CartDialog() {
       isUserChanged || !prev ? user.addressLine : prev,
     );
   }, [user]);
+
+  const handleStartEdit = () => {
+    setIsEditingProfile(true);
+    setEditSettlement(selectedSettlement?.code || "");
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setSavingProfile(true);
+    try {
+      await authApi.updateProfile({
+        name: customerName,
+        phone,
+        addressLine,
+        settlement: editSettlement || undefined,
+      });
+      if (editSettlement && editSettlement !== selectedSettlement?.code) {
+        selectSettlement(editSettlement);
+      }
+      await refreshProfile();
+      setIsEditingProfile(false);
+    } catch {
+      // error
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -329,7 +360,7 @@ export function CartDialog() {
           <div>
             <div className="text-sm font-semibold">Оформление заказа</div>
             <div className="text-xs text-muted-foreground">
-              Укажите контакты и адрес доставки
+              Проверьте данные и добавьте комментарий
             </div>
           </div>
 
@@ -339,56 +370,127 @@ export function CartDialog() {
             </div>
           )}
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="cart-name">
-              Имя
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Как к вам обращаться при доставке.
-            </p>
-            <Input
-              id="cart-name"
-              placeholder="Иван"
-              autoComplete="name"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="cart-phone">
-              Телефон
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Номер для подтверждения заказа.
-            </p>
-            <Input
-              id="cart-phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="+7 (___) ___-__-__"
-              value={phone}
-              onChange={(e) => setPhone(formatRuPhone(e.target.value))}
-              required
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor="cart-address">
-              Адрес доставки
-            </label>
-            <p className="text-xs text-muted-foreground">
-              Улица, дом, подъезд, квартира.
-            </p>
-            <Input
-              id="cart-address"
-              autoComplete="street-address"
-              placeholder="ул. Ленина, 10, кв. 5"
-              value={addressLine}
-              onChange={(e) => setAddressLine(e.target.value)}
-              required
-            />
-          </div>
+          {user && !isEditingProfile ? (
+            <>
+              <div className="space-y-2 rounded-md border border-border bg-accent/20 px-3 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Имя</span>
+                  <span className="text-sm font-medium">{customerName || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Телефон</span>
+                  <span className="text-sm font-medium">{phone || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Адрес</span>
+                  <span className="text-sm font-medium text-right max-w-[60%]">{addressLine || "—"}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Нас. пункт</span>
+                  <span className="text-sm font-medium">{selectedSettlement?.title || "—"}</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={handleStartEdit}
+              >
+                <FiEdit2 className="w-3.5 h-3.5" />
+                Изменить
+              </Button>
+            </>
+          ) : (
+            <>
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="cart-name">
+                  Имя
+                </label>
+                <Input
+                  id="cart-name"
+                  placeholder="Иван"
+                  autoComplete="name"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="cart-phone">
+                  Телефон
+                </label>
+                <Input
+                  id="cart-phone"
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  placeholder="+7 (___) ___-__-__"
+                  value={phone}
+                  onChange={(e) => setPhone(formatRuPhone(e.target.value))}
+                  required
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="cart-address">
+                  Адрес доставки
+                </label>
+                <Input
+                  id="cart-address"
+                  autoComplete="street-address"
+                  placeholder="ул. Ленина, 10, кв. 5"
+                  value={addressLine}
+                  onChange={(e) => setAddressLine(e.target.value)}
+                  required
+                />
+              </div>
+              {user && (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium" htmlFor="cart-settlement">
+                    Населённый пункт
+                  </label>
+                  <select
+                    id="cart-settlement"
+                    value={editSettlement}
+                    onChange={(e) => setEditSettlement(e.target.value)}
+                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    <option value="">Выберите</option>
+                    {settlements.map((s) => (
+                      <option key={s.code} value={s.code}>{s.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {user && (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setIsEditingProfile(false);
+                      setCustomerName(user.name);
+                      setPhone(formatRuPhone(user.phone));
+                      setAddressLine(user.addressLine);
+                    }}
+                  >
+                    Отмена
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="flex-1"
+                    disabled={savingProfile}
+                    onClick={handleSaveProfile}
+                  >
+                    {savingProfile ? "Сохранение..." : "Сохранить"}
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="space-y-1">
             <label className="text-sm font-medium" htmlFor="cart-comment">

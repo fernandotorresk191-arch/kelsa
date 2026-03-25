@@ -1,10 +1,11 @@
-import { apiGet, apiPost } from "shared/api/http";
+import { apiGet, apiPatch, apiPost } from "shared/api/http";
 import type {
   AuthResponse,
   AuthUser,
   LoginPayload,
   RegisterPayload,
   SettlementDto,
+  UpdateProfilePayload,
   UserOrder,
 } from "./types";
 
@@ -16,4 +17,6 @@ export const authApi = {
     apiPost<AuthResponse, LoginPayload>("/v1/auth/login", payload),
   me: () => apiGet<AuthUser>("/v1/me"),
   myOrders: () => apiGet<UserOrder[]>("/v1/me/orders"),
+  updateProfile: (payload: UpdateProfilePayload) =>
+    apiPatch<AuthUser, UpdateProfilePayload>("/v1/me/profile", payload),
 };

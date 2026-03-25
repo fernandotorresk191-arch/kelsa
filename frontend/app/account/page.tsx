@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
 import { AuthDialog } from "../../components/auth/AuthDialog";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { authApi } from "features/auth/api";
@@ -13,8 +14,10 @@ import OrderChatModal from "@/components/orders/OrderChatModal";
 import type { UserOrder } from "features/auth/types";
 import type { OrderStatus } from "features/orders/types";
 import { useFavorites } from "../../components/favorites/FavoritesProvider";
+import { useSettlement } from "../../components/settlement/SettlementProvider";
 import ProductCard from "../../components/product/ProductCard";
 import { useMyOrdersSSE, OrderStatusEvent, ChatMessageEvent } from "@/features/orders/useMyOrdersSSE";
+import { formatRuPhone } from "../../shared/phone/format";
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
   NEW: "Новый",
@@ -46,8 +49,10 @@ function formatDate(dateStr: string) {
 
 function AccountPageContent() {
   const searchParams = useSearchParams();
-  const activeTab = searchParams.get("tab") === "favorites" ? "favorites" : "orders";
-  const { user, logout, isReady, isLoading: authLoading } = useAuth();
+  const tab = searchParams.get("tab");
+  const activeTab = tab === "favorites" ? "favorites" : tab === "profile" ? "profile" : "orders";
+  const { user, logout, isReady, isLoading: authLoading, refreshProfile } = useAuth();
+  const { settlements, selectedSettlement, selectSettlement } = useSettlement();
   const {
     favorites,
     isLoading: favoritesLoading,
@@ -62,6 +67,23 @@ function AccountPageContent() {
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   const unreadCountsRef = useRef(unreadCounts);
   unreadCountsRef.current = unreadCounts;
+
+  // Profile editing state
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileAddress, setProfileAddress] = useState("");
+  const [profileSettlement, setProfileSettlement] = useState("");
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuccess, setProfileSuccess] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setProfileName(user.name);
+      setProfilePhone(formatRuPhone(user.phone));
+      setProfileAddress(user.addressLine);
+      setProfileSettlement(user.settlement);
+    }
+  }, [user]);
 
   // Listen for push notification clicks to open chat
   useEffect(() => {
@@ -387,12 +409,97 @@ function AccountPageContent() {
           >
             Избранное
           </Link>
+          <Link
+            href="/account?tab=profile"
+            className={tabClass(activeTab === "profile")}
+          >
+            Профиль
+          </Link>
         </div>
 
         <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-5">
-          {activeTab === "favorites" ? "Избранное" : "Мои заказы"}
+          {activeTab === "favorites" ? "Избранное" : activeTab === "profile" ? "Профиль" : "Мои заказы"}
         </h2>
-        {activeTab === "favorites" ? favoritesContent : ordersContent}
+        {activeTab === "favorites" ? favoritesContent : activeTab === "profile" ? (
+          <div className="rounded-xl border bg-white p-5 sm:p-6 max-w-lg space-y-4">
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="profile-name">Имя</label>
+              <Input
+                id="profile-name"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Ваше имя"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="profile-phone">Телефон</label>
+              <Input
+                id="profile-phone"
+                type="tel"
+                inputMode="tel"
+                value={profilePhone}
+                onChange={(e) => setProfilePhone(formatRuPhone(e.target.value))}
+                placeholder="+7 (___) ___-__-__"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="profile-address">Адрес доставки</label>
+              <Input
+                id="profile-address"
+                value={profileAddress}
+                onChange={(e) => setProfileAddress(e.target.value)}
+                placeholder="ул. Ленина, 10, кв. 5"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="profile-settlement">Населённый пункт</label>
+              <select
+                id="profile-settlement"
+                value={profileSettlement}
+                onChange={(e) => setProfileSettlement(e.target.value)}
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <option value="">Выберите</option>
+                {settlements.map((s) => (
+                  <option key={s.code} value={s.code}>{s.title}</option>
+                ))}
+              </select>
+            </div>
+            {profileSuccess && (
+              <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                Данные сохранены
+              </div>
+            )}
+            <Button
+              className="w-full"
+              disabled={profileSaving}
+              onClick={async () => {
+                setProfileSaving(true);
+                setProfileSuccess(false);
+                try {
+                  await authApi.updateProfile({
+                    name: profileName,
+                    phone: profilePhone,
+                    addressLine: profileAddress,
+                    settlement: profileSettlement || undefined,
+                  });
+                  if (profileSettlement && profileSettlement !== selectedSettlement?.code) {
+                    selectSettlement(profileSettlement);
+                  }
+                  await refreshProfile();
+                  setProfileSuccess(true);
+                  setTimeout(() => setProfileSuccess(false), 3000);
+                } catch {
+                  // error
+                } finally {
+                  setProfileSaving(false);
+                }
+              }}
+            >
+              {profileSaving ? "Сохранение..." : "Сохранить"}
+            </Button>
+          </div>
+        ) : ordersContent}
       </div>
 
       {/* Chat modal */}
