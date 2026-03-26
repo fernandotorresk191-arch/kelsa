@@ -506,19 +506,19 @@ export function CartDialog() {
             />
           </div>
 
-          <Button
+          <button
             type="submit"
-            className="w-full"
             disabled={
               isEmpty || isSubmittingOrder || submitting || isCartLoading
             }
+            className="w-full h-16 sm:h-[72px] px-6 rounded-[56px] bg-primary text-white font-semibold text-base sm:text-lg whitespace-pre-line overflow-hidden transition-opacity disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {isSubmittingOrder || submitting
               ? "Создаём заказ..."
               : user
               ? "Оформить заказ"
               : "Войти, чтобы оформить"}
-          </Button>
+          </button>
         </form>
 
       </div>
