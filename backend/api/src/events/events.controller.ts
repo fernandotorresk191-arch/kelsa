@@ -33,7 +33,7 @@ export class EventsController {
   @UseGuards(JwtGuard)
   ordersStream(@Req() req: AuthRequest): Observable<MessageEvent> {
     // Check admin access
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+    if (req.user.role !== 'admin' && req.user.role !== 'manager' && req.user.role !== 'superadmin') {
       throw new UnauthorizedException('Admin access required');
     }
 
@@ -120,7 +120,7 @@ export class EventsController {
   @Sse('chat')
   @UseGuards(JwtGuard)
   chatStream(@Req() req: AuthRequest): Observable<MessageEvent> {
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
+    if (req.user.role !== 'admin' && req.user.role !== 'manager' && req.user.role !== 'superadmin') {
       throw new UnauthorizedException('Admin access required');
     }
 

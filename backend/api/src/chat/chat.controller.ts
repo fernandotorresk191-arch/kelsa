@@ -533,7 +533,8 @@ export class ChatController {
   // ==================== HELPERS ====================
 
   private checkAdmin(req: AuthRequest) {
-    if (req.user?.role !== 'admin' && req.user?.role !== 'manager') {
+    const role = req.user?.role;
+    if (role !== 'admin' && role !== 'manager' && role !== 'superadmin') {
       throw new UnauthorizedException('Admin access required');
     }
   }
