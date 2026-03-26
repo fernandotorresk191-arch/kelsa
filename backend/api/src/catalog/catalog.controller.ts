@@ -23,7 +23,7 @@ export class CatalogController {
     return this.prisma.category.findMany({
       where,
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
-      select: { id: true, name: true, slug: true, sort: true, imageUrl: true },
+      select: { id: true, name: true, slug: true, description: true, sort: true, imageUrl: true },
     });
   }
 
@@ -48,7 +48,7 @@ export class CatalogController {
     return this.prisma.category.findMany({
       where: { isActive: true, parentId: category.id },
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
-      select: { id: true, name: true, slug: true, sort: true, imageUrl: true },
+      select: { id: true, name: true, slug: true, description: true, sort: true, imageUrl: true },
     });
   }
 

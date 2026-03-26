@@ -59,6 +59,13 @@ export default async function CategoryPage({
         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900">{title}</h1>
       </div>
 
+      {category?.description && (
+        <div
+          className="prose prose-sm max-w-none mb-6 text-gray-700"
+          dangerouslySetInnerHTML={{ __html: category.description }}
+        />
+      )}
+
       <CategoryFilters 
         initialProducts={categoryProducts}
         subcategories={subcategories}

@@ -4,6 +4,7 @@ import { useEffect, useState, Fragment } from 'react';
 import { adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Category } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { resolveMediaUrl } from '@/shared/api/media';
 import { useAdmin } from '@/components/admin/AdminProvider';
 
@@ -428,6 +429,7 @@ function CategoryForm({
     slug: initialSlug,
     sort: category?.sort?.toString() || '0',
     imageUrl: category?.imageUrl || '',
+    description: category?.description || '',
     isActive: category?.isActive ?? true,
     parentId: category?.parentId || parentCategory?.id || '',
     markupPercent: category?.markupPercent?.toString() || '0',
@@ -435,6 +437,8 @@ function CategoryForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slugError, setSlugError] = useState<string | null>(null);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
 
   // Получаем полный slug с учетом родителя
   const getFullSlug = () => {
@@ -482,6 +486,7 @@ function CategoryForm({
         slug: formData.slug,
         sort: parseInt(formData.sort) || 0,
         imageUrl: formData.imageUrl || undefined,
+        description: formData.description || undefined,
         isActive: formData.isActive,
         parentId: formData.parentId || undefined,
         markupPercent: parseFloat(formData.markupPercent) || 0,
@@ -490,7 +495,15 @@ function CategoryForm({
       if (category) {
         await adminCategoriesApi.updateCategory(category.id, data);
       } else {
-        await adminCategoriesApi.createCategory(data as Omit<Category, 'id'>);
+        const created = await adminCategoriesApi.createCategory(data as Omit<Category, 'id'>);
+        // Upload image if one was selected for new category
+        if (pendingImageFile && created.id) {
+          try {
+            await adminUploadApi.uploadCategoryImage(created.id, pendingImageFile);
+          } catch (uploadErr) {
+            console.error('Image upload failed:', uploadErr);
+          }
+        }
       }
       onSuccess();
     } catch (err: unknown) {
@@ -681,22 +694,47 @@ function CategoryForm({
                 disabled={isSubmitting}
               />
             ) : (
-              <>
-                <label htmlFor="category-image" className="block text-sm font-medium text-gray-700 mb-1">
-                  URL изображения
-                </label>
-                <input
-                  id="category-image"
-                  type="url"
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  placeholder="Добавьте изображение после создания категории"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Загрузка изображения доступна после создания категории
-                </p>
-              </>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Изображение категории</label>
+                {imagePreviewUrl ? (
+                  <div className="relative border-2 border-dashed border-gray-300 rounded-lg">
+                    <div className="relative aspect-video">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={imagePreviewUrl} alt="Превью" className="w-full h-full object-contain rounded-lg" />
+                      <div className="absolute top-2 right-2">
+                        <button
+                          type="button"
+                          onClick={() => { setPendingImageFile(null); setImagePreviewUrl(null); }}
+                          className="bg-red-500 text-white rounded p-1 hover:bg-red-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center py-6 px-4 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-gray-400 transition-colors">
+                    <span className="text-sm text-gray-600">Перетащите изображение или</span>
+                    <span className="text-sm text-blue-600 hover:text-blue-700">выберите файл</span>
+                    <span className="text-xs text-gray-400 mt-1">JPG, PNG, WebP, GIF до 5MB</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) { setError('Максимальный размер файла: 5MB'); return; }
+                        setPendingImageFile(file);
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setImagePreviewUrl(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                        e.target.value = '';
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
             )}
           </div>
           <div className="flex items-end">
@@ -710,6 +748,19 @@ function CategoryForm({
               <span className="text-sm font-medium text-gray-700">Активна</span>
             </label>
           </div>
+        </div>
+
+        {/* Описание (WYSIWYG) */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Описание (необязательно)
+          </label>
+          <RichTextEditor
+            value={formData.description}
+            onChange={(val) => setFormData({ ...formData, description: val })}
+            disabled={isSubmitting}
+            rows={4}
+          />
         </div>
 
         <div className="flex gap-2 pt-4">

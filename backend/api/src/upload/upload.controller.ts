@@ -70,7 +70,7 @@ export class UploadController {
   constructor(private prisma: PrismaService) {}
 
   private checkAdminRole(req: AuthRequest) {
-    if (req.user?.role !== 'admin' && req.user?.role !== 'manager') {
+    if (req.user?.role !== 'admin' && req.user?.role !== 'manager' && req.user?.role !== 'superadmin') {
       throw new UnauthorizedException('Admin access required');
     }
   }

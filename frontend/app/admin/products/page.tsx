@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { adminProductsApi, adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Product, Category } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { useAdmin } from '@/components/admin/AdminProvider';
 
 type CategoryWithCount = Category & { _count: { products: number } };
@@ -926,15 +927,14 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
         </div>
 
         <div>
-          <label htmlFor="product-description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Описание
           </label>
-          <textarea
-            id="product-description"
+          <RichTextEditor
             value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            rows={3}
+            onChange={(val) => setFormData({ ...formData, description: val })}
+            disabled={isSubmitting}
+            rows={4}
           />
         </div>
 

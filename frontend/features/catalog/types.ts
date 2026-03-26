@@ -2,6 +2,7 @@ export type CategoryDto = {
   id: string;
   name: string;
   slug: string;
+  description?: string | null;
   sort: number;
   isActive?: boolean;
   imageUrl?: string | null;

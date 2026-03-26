@@ -24,6 +24,10 @@ class CreateCategoryDto {
   slug: string;
 
   @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
   @IsNumber()
   sort?: number;
 
@@ -52,6 +56,10 @@ class UpdateCategoryDto {
   @IsOptional()
   @IsString()
   slug?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
 
   @IsOptional()
   @IsNumber()
@@ -209,6 +217,7 @@ export class AdminCategoriesController {
       data: {
         name: dto.name,
         slug: finalSlug,
+        description: dto.description || null,
         sort: dto.sort ?? 0,
         isActive: dto.isActive ?? true,
         imageUrl: dto.imageUrl,
@@ -287,6 +296,7 @@ export class AdminCategoriesController {
       data: {
         ...(dto.name && { name: dto.name }),
         slug: finalSlug,
+        ...(dto.description !== undefined && { description: dto.description || null }),
         ...(dto.sort !== undefined && { sort: dto.sort }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
         ...(dto.imageUrl !== undefined && { imageUrl: dto.imageUrl }),

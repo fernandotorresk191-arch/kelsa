@@ -40,13 +40,14 @@ model AdminUserDarkstore {
 }
 
 model Category {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String
-  sort      Int      @default(0)
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  description String?
+  sort        Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
   imageUrl    String?
   
   // Торговая наценка по умолчанию для товаров этой категории (%)

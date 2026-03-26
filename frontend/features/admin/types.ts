@@ -147,6 +147,7 @@ export type Category = {
   id: string;
   name: string;
   slug: string;
+  description?: string;
   sort: number;
   isActive: boolean;
   imageUrl?: string;
