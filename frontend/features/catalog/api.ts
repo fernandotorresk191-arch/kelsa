@@ -3,10 +3,18 @@ import { apiGet } from "shared/api/http";
 import type { CategoryDto, ProductDto, PromotionDto } from "./types";
 
 export const catalogApi = {
-  categories: () => apiGet<CategoryDto[]>("/v1/categories"),
-  subcategories: (categorySlug: string) => 
-    apiGet<CategoryDto[]>(`/v1/categories/${categorySlug}/subcategories`),
-  promotions: () => apiGet<PromotionDto[]>("/v1/promotions"),
+  categories: (settlement?: string) => {
+    const qs = settlement ? `?settlement=${encodeURIComponent(settlement)}` : "";
+    return apiGet<CategoryDto[]>(`/v1/categories${qs}`);
+  },
+  subcategories: (categorySlug: string, settlement?: string) => {
+    const qs = settlement ? `?settlement=${encodeURIComponent(settlement)}` : "";
+    return apiGet<CategoryDto[]>(`/v1/categories/${categorySlug}/subcategories${qs}`);
+  },
+  promotions: (settlement?: string) => {
+    const qs = settlement ? `?settlement=${encodeURIComponent(settlement)}` : "";
+    return apiGet<PromotionDto[]>(`/v1/promotions${qs}`);
+  },
 
   products: (params?: {
     categorySlug?: string;
@@ -16,6 +24,7 @@ export const catalogApi = {
     offset?: number;
     sortBy?: string;
     sortOrder?: 'asc' | 'desc';
+    settlement?: string;
   }) => {
     const sp = new URLSearchParams();
     if (params?.categorySlug) sp.set("categorySlug", params.categorySlug);
@@ -25,6 +34,7 @@ export const catalogApi = {
     if (params?.offset != null) sp.set("offset", String(params.offset));
     if (params?.sortBy) sp.set("sortBy", params.sortBy);
     if (params?.sortOrder) sp.set("sortOrder", params.sortOrder);
+    if (params?.settlement) sp.set("settlement", params.settlement);
 
     const qs = sp.toString();
     return apiGet<ProductDto[]>(`/v1/products${qs ? `?${qs}` : ""}`);

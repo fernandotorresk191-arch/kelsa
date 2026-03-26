@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import PromoCarousel from "../components/promotions/PromoCarousel";
 import ProductSection from "../components/sections/ProductSection";
 import CategoryButtons from "../components/sections/CategoryButtons";
@@ -6,16 +7,28 @@ import { catalogApi } from "../features/catalog/api";
 
 export const dynamic = "force-dynamic";
 
+function getSettlementCode(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(decodeURIComponent(raw))?.code;
+  } catch {
+    return undefined;
+  }
+}
+
 export default async function Home() {
+  const cookieStore = await cookies();
+  const settlement = getSettlementCode(cookieStore.get("kelsa_settlement")?.value);
+
   // 1) Грузим данные для главной
   const [categories, milkProducts, drinksProducts, discountProducts] =
     await Promise.all([
-      catalogApi.categories(),
-      catalogApi.products({ categorySlug: "molochnoe-i-yaytsa-i-sir", limit: 6, offset: 0 }),
-      catalogApi.products({ categorySlug: "voda-i-napitki", limit: 6, offset: 0 }),
-      // “Выгодно сейчас”: берём побольше и фильтруем по oldPrice > price
+      catalogApi.categories(settlement),
+      catalogApi.products({ categorySlug: "molochnoe-i-yaytsa-i-sir", limit: 6, offset: 0, settlement }),
+      catalogApi.products({ categorySlug: "voda-i-napitki", limit: 6, offset: 0, settlement }),
+      // "Выгодно сейчас": берём побольше и фильтруем по oldPrice > price
       catalogApi
-        .products({ limit: 60, offset: 0 })
+        .products({ limit: 60, offset: 0, settlement })
         .then((items) => items.filter((p) => (p.oldPrice ?? 0) > p.price).slice(0, 6)),
     ]);
 

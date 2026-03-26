@@ -5,15 +5,18 @@ import Link from "next/link";
 
 import { catalogApi } from "../../features/catalog/api";
 import type { CategoryDto } from "../../features/catalog/types";
+import { useSettlement } from "../settlement/SettlementProvider";
 
 const CategoryMenu = () => {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
+  const { selectedSettlement } = useSettlement();
+  const settlement = selectedSettlement?.code;
 
   useEffect(() => {
     let mounted = true;
 
     catalogApi
-      .categories()
+      .categories(settlement)
       .then((data) => {
         if (mounted) {
           setCategories(data);
@@ -26,7 +29,7 @@ const CategoryMenu = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [settlement]);
 
   if (!categories.length) return null;
 

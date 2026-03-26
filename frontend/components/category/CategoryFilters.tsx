@@ -44,6 +44,15 @@ export default function CategoryFilters({
         params.set("sortOrder", sortOrder);
       }
 
+      // Передаём settlement для фильтрации по даркстору
+      try {
+        const raw = window.localStorage.getItem("kelsa_settlement");
+        const code = raw ? JSON.parse(raw)?.code : null;
+        if (code) params.set("settlement", code);
+      } catch {
+        // noop
+      }
+
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       const response = await fetch(`${apiUrl}/v1/products?${params.toString()}`);
       let data: ProductDto[] = await response.json();

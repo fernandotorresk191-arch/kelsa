@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import ProductCard from "../../components/product/ProductCard";
 import { catalogApi } from "../../features/catalog/api";
 
@@ -8,6 +9,15 @@ function normalizeQuery(value: string | string[] | undefined) {
   return value?.trim() ?? "";
 }
 
+function getSettlementCode(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(decodeURIComponent(raw))?.code;
+  } catch {
+    return undefined;
+  }
+}
+
 export default async function SearchPage({
   searchParams,
 }: {
@@ -16,8 +26,11 @@ export default async function SearchPage({
   const params = await searchParams;
   const query = normalizeQuery(params?.q);
 
+  const cookieStore = await cookies();
+  const settlement = getSettlementCode(cookieStore.get("kelsa_settlement")?.value);
+
   const products = query
-    ? await catalogApi.products({ q: query, limit: 200, offset: 0 })
+    ? await catalogApi.products({ q: query, limit: 200, offset: 0, settlement })
     : [];
 
   return (

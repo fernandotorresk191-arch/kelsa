@@ -31,11 +31,13 @@ const MobileMenu = ({ onClose, onOpenCart }: MobileMenuProps) => {
   const { selectedSettlement, setDialogOpen } = useSettlement();
   const { user } = useAuth();
 
+  const settlement = selectedSettlement?.code;
+
   useEffect(() => {
     let mounted = true;
 
     catalogApi
-      .categories()
+      .categories(settlement)
       .then((data) => {
         if (mounted) {
           setCategories(data);
@@ -48,7 +50,7 @@ const MobileMenu = ({ onClose, onOpenCart }: MobileMenuProps) => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [settlement]);
 
   if (!categories.length) return null;
 
