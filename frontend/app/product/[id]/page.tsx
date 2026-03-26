@@ -89,9 +89,14 @@ export default async function ProductPage({
 
           <div className="border-t pt-6">
             <h3 className="font-medium mb-2">Описание</h3>
-            <p className="text-muted-foreground">
-              {product.description || "Описание скоро появится."}
-            </p>
+            {product.description ? (
+              <div
+                className="text-muted-foreground prose prose-sm max-w-none"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
+            ) : (
+              <p className="text-muted-foreground">Описание скоро появится.</p>
+            )}
           </div>
         </div>
       </div>

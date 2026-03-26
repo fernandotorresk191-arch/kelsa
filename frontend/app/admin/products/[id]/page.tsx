@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { adminProductsApi, adminCategoriesApi, adminUploadApi, adminPurchasesApi } from '@/features/admin/api';
 import { Product, Category, Batch } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 
 type CategoryWithCount = Category & { _count: { products: number } };
 
@@ -163,12 +164,11 @@ export default function AdminProductDetailPage() {
                 <label htmlFor="edit-description" className="block text-sm font-medium text-gray-700 mb-1">
                   Описание
                 </label>
-                <textarea
-                  id="edit-description"
+                <RichTextEditor
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  rows={4}
+                  onChange={(val) => setFormData({ ...formData, description: val })}
+                  disabled={isSubmitting}
+                  rows={6}
                 />
               </div>
 
