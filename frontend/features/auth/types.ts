@@ -57,6 +57,7 @@ export type UserOrder = {
   status: OrderStatus;
   totalAmount: number;
   deliveryFee: number;
+  addressLine?: string | null;
   createdAt: string;
   updatedAt: string;
   items: UserOrderItem[];

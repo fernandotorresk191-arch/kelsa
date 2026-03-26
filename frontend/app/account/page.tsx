@@ -236,11 +236,19 @@ function AccountPageContent() {
               </div>
 
               {/* Order total */}
-              <div className="mt-3 sm:mt-4 text-base sm:text-lg text-muted-foreground">
-                Сумма заказа:{" "}
-                <span className="font-bold text-foreground">
-                  {order.totalAmount} ₽
-                </span>
+              <div className="mt-3 sm:mt-4 space-y-1">
+                {order.addressLine && (
+                  <div className="text-sm sm:text-base text-muted-foreground">
+                    Адрес доставки:{" "}
+                    <span className="font-medium text-foreground">{order.addressLine}</span>
+                  </div>
+                )}
+                <div className="text-base sm:text-lg text-muted-foreground">
+                  Сумма заказа:{" "}
+                  <span className="font-bold text-foreground">
+                    {order.totalAmount} ₽
+                  </span>
+                </div>
               </div>
 
               {/* Order items */}
