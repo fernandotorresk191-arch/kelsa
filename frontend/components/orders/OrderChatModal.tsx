@@ -47,6 +47,25 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   const needsInitialScroll = useRef(false);
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe } = useClientPush();
   const [pushDismissed, setPushDismissed] = useState(false);
+  // Track visual viewport to keep modal within visible area when iOS keyboard appears
+  const [vpStyle, setVpStyle] = useState<{ top: number; height: string }>({ top: 0, height: '100%' });
+
+  useEffect(() => {
+    if (!open) return;
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    if (!vv) return;
+    const update = () => {
+      setVpStyle({ top: vv.offsetTop, height: `${vv.height}px` });
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      setVpStyle({ top: 0, height: '100%' });
+    };
+  }, [open]);
 
   const scrollToBottom = useCallback((instant?: boolean) => {
     const doScroll = () => {
@@ -289,7 +308,8 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   return (
     <div
       ref={backdropRef}
-      className="fixed inset-0 z-[100]"
+      className="fixed left-0 right-0 z-[100]"
+      style={{ top: vpStyle.top, height: vpStyle.height }}
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
       {/* Backdrop */}
