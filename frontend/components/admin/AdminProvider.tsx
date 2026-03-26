@@ -16,6 +16,7 @@ type AdminContextType = {
   darkstores: Darkstore[];
   currentDarkstore: Darkstore | null;
   switchDarkstore: (id: string) => void;
+  refreshDarkstores: () => Promise<void>;
 };
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -110,6 +111,17 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     }
   }, [darkstores]);
 
+  const refreshDarkstores = useCallback(async () => {
+    try {
+      const stores = admin?.role === 'superadmin'
+        ? await adminDarkstoresApi.list()
+        : (await adminAuthApi.getProfile()).darkstores || [];
+      applyDarkstore(stores);
+    } catch {
+      // ignore
+    }
+  }, [admin?.role, applyDarkstore]);
+
   const hasPermission = useCallback((section: string) => {
     if (!admin) return false;
     // Суперадмин и админ имеют доступ ко всему
@@ -120,7 +132,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   }, [admin]);
 
   return (
-    <AdminContext.Provider value={{ admin, isLoading, isAuthenticated: !!admin, login, logout, checkAuth, hasPermission, darkstores, currentDarkstore, switchDarkstore }}>
+    <AdminContext.Provider value={{ admin, isLoading, isAuthenticated: !!admin, login, logout, checkAuth, hasPermission, darkstores, currentDarkstore, switchDarkstore, refreshDarkstores }}>
       {children}
     </AdminContext.Provider>
   );

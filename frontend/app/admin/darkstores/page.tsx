@@ -7,7 +7,7 @@ import { ApiError } from '@/shared/api/http';
 import { useAdmin } from '@/components/admin/AdminProvider';
 
 export default function DarkstoresPage() {
-  const { admin } = useAdmin();
+  const { admin, refreshDarkstores } = useAdmin();
   const [darkstores, setDarkstores] = useState<Darkstore[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -83,6 +83,7 @@ export default function DarkstoresPage() {
       }
       setShowModal(false);
       load();
+      refreshDarkstores();
     } catch (err: unknown) {
       const e = err as ApiError;
       setError(e?.details || e?.message || 'Ошибка при сохранении');
@@ -96,6 +97,7 @@ export default function DarkstoresPage() {
       await adminDarkstoresApi.delete(id);
       setDeleteConfirm(null);
       load();
+      refreshDarkstores();
     } catch (err: unknown) {
       const e = err as ApiError;
       setError(e?.details || e?.message || 'Ошибка при удалении');
@@ -106,6 +108,7 @@ export default function DarkstoresPage() {
     try {
       await adminDarkstoresApi.update(ds.id, { isActive: !ds.isActive });
       load();
+      refreshDarkstores();
     } catch {
       // ignore
     }
