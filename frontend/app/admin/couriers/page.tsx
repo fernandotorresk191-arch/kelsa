@@ -460,7 +460,7 @@ export default function AdminCouriersPage() {
 
       {/* Модальное окно формы */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
               <h2 className="text-lg font-semibold text-slate-800">
@@ -623,7 +623,7 @@ export default function AdminCouriersPage() {
 
       {/* Модальное окно подтверждения удаления */}
       {showDeleteConfirm && courierToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl p-6">
             <div className="text-center mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">

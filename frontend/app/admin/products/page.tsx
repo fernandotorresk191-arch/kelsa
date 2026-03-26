@@ -671,7 +671,7 @@ export default function AdminProductsPage() {
 
       {/* Модальное окно подтверждения удаления */}
       {showDeleteConfirm && productToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl w-full max-w-sm shadow-2xl p-6">
             <div className="text-center mb-4">
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">

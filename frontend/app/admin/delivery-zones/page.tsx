@@ -265,7 +265,7 @@ export default function AdminDeliveryZonesPage() {
 
       {/* Модал формы */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60">
           <div className="admin-card w-full max-w-lg">
             <div className="admin-card-header">
               <h2 className="admin-card-title">
@@ -374,7 +374,7 @@ export default function AdminDeliveryZonesPage() {
 
       {/* Модал подтверждения удаления */}
       {showDeleteConfirm && zoneToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60">
           <div className="admin-card w-full max-w-md">
             <div className="admin-card-header">
               <h2 className="admin-card-title">Удаление зоны</h2>
