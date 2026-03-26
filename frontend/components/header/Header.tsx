@@ -118,7 +118,7 @@ const Header = () => {
                 className="hidden md:inline-flex items-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent"
               >
                 <FiUser className="mr-2" size={18} />
-                <span>Мои заказы</span>
+                <span>{user.name}</span>
               </Link>
             ) : (
               <Button
