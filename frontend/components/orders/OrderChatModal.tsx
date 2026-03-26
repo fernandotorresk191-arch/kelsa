@@ -59,12 +59,17 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   useEffect(() => {
     if (!open) return;
     const scrollY = window.scrollY;
+    // Measure scrollbar width BEFORE removing it, then compensate with padding
+    // so the content doesn't shift and the overlay fully covers the scrollbar area.
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    document.body.style.paddingRight = `${scrollbarWidth}px`;
     document.body.style.position = 'fixed';
     document.body.style.top = `-${scrollY}px`;
     document.body.style.left = '0';
     document.body.style.right = '0';
     document.body.style.overflow = 'hidden';
     return () => {
+      document.body.style.paddingRight = '';
       document.body.style.position = '';
       document.body.style.top = '';
       document.body.style.left = '';
