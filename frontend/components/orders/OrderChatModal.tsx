@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { chatApi, ChatMessage } from '@/features/orders/api';
 import { resolveMediaUrl } from '@/shared/api/media';
 import { API_URL } from '@/shared/api/config';
@@ -306,7 +307,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       ref={backdropRef}
       className="fixed inset-0 z-[100]"
@@ -607,6 +608,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
           overscroll-behavior: none;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 }
