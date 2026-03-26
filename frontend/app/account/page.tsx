@@ -395,7 +395,7 @@ function AccountPageContent() {
             Личный кабинет
           </h1>
           <div className="text-base sm:text-lg text-muted-foreground">
-            {user.login} — {user.settlementTitle}
+            {user.name} - {formatRuPhone(user.phone)}
           </div>
         </div>
         <Button variant="outline" size="lg" onClick={logout} className="text-base">
