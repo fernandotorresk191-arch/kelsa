@@ -48,14 +48,15 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   const { isSupported: pushSupported, isSubscribed: pushSubscribed, isLoading: pushLoading, subscribe: pushSubscribe } = useClientPush();
   const [pushDismissed, setPushDismissed] = useState(false);
   // Track visual viewport to keep modal within visible area when iOS keyboard appears
-  const [vpStyle, setVpStyle] = useState<{ top: number; height: string }>({ top: 0, height: '100%' });
+  const [vpStyle, setVpStyle] = useState<{ top: number; height: string; keyboardOpen: boolean }>({ top: 0, height: '100%', keyboardOpen: false });
 
   useEffect(() => {
     if (!open) return;
     const vv = typeof window !== 'undefined' ? window.visualViewport : null;
     if (!vv) return;
     const update = () => {
-      setVpStyle({ top: vv.offsetTop, height: `${vv.height}px` });
+      const keyboardOpen = vv.offsetTop > 10;
+      setVpStyle({ top: vv.offsetTop, height: `${vv.height}px`, keyboardOpen });
     };
     update();
     vv.addEventListener('resize', update);
@@ -63,7 +64,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
     return () => {
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
-      setVpStyle({ top: 0, height: '100%' });
+      setVpStyle({ top: 0, height: '100%', keyboardOpen: false });
     };
   }, [open]);
 
@@ -308,18 +309,21 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
   return (
     <div
       ref={backdropRef}
-      className="fixed left-0 right-0 z-[100]"
-      style={{ top: vpStyle.top, height: vpStyle.height }}
+      className="fixed inset-0 z-[100]"
       onClick={(e) => { if (e.target === backdropRef.current) onClose(); }}
     >
-      {/* Backdrop */}
+      {/* Backdrop — covers full screen so no gap at top */}
       <div className="absolute inset-0 bg-black/50 animate-[fadeIn_150ms_ease-out]" />
 
-      {/* Modal — full screen on mobile, centered card on desktop */}
-      <div className="absolute inset-0 flex sm:items-center sm:justify-center" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      {/* Modal — constrained to visual viewport (handles iOS keyboard) */}
+      <div
+        className="absolute left-0 right-0 flex sm:items-center sm:justify-center"
+        style={{ top: vpStyle.top, height: vpStyle.height }}
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      >
         <div className="flex flex-col w-full h-full sm:h-[85vh] sm:max-h-[720px] sm:max-w-lg sm:rounded-2xl overflow-hidden animate-[slideUp_200ms_ease-out] bg-white sm:shadow-2xl">
           {/* Header */}
-          <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0" style={{ paddingTop: 'max(0.625rem, env(safe-area-inset-top))' }}>
+          <div className="flex items-center gap-3 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-emerald-600 to-teal-500 text-white shrink-0" style={{ paddingTop: vpStyle.keyboardOpen ? undefined : 'max(0.625rem, env(safe-area-inset-top))' }}>
           <button
             onClick={onClose}
             className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20 active:bg-white/30 transition-colors -ml-1"
@@ -515,7 +519,7 @@ export default function OrderChatModal({ orderNumber, open, onClose }: OrderChat
         )}
 
         {/* Input area */}
-        <div className="border-t border-gray-200 bg-[#f0f0f0] px-2 sm:px-2.5 py-1.5 sm:py-2 flex items-end gap-1 sm:gap-1.5 shrink-0" style={{ paddingBottom: 'max(0.375rem, env(safe-area-inset-bottom))' }}>
+        <div className="border-t border-gray-200 bg-[#f0f0f0] px-2 sm:px-2.5 py-1.5 sm:py-2 flex items-end gap-1 sm:gap-1.5 shrink-0" style={{ paddingBottom: vpStyle.keyboardOpen ? '0.375rem' : 'max(0.375rem, env(safe-area-inset-bottom))' }}>
           <button
             type="button"
             onClick={() => setShowActions(!showActions)}
