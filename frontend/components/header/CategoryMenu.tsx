@@ -34,12 +34,15 @@ const CategoryMenu = () => {
   if (!categories.length) return null;
 
   return (
-    <nav className="flex items-center py-3 overflow-x-auto hide-scrollbar gap-4 px-1">
+    <nav
+      className="flex items-center py-2.5 overflow-x-auto hide-scrollbar gap-3 px-1 scroll-smooth"
+      style={{ WebkitOverflowScrolling: 'touch', scrollBehavior: 'smooth' }}
+    >
       {categories.map((category) => (
         <Link
           key={category.id}
           href={`/category/${category.slug}`}
-          className="nav-link whitespace-nowrap flex-shrink-0 text-sm"
+          className="nav-link whitespace-nowrap flex-shrink-0 text-[13px] tracking-wide transition-colors duration-200"
         >
           {category.name}
         </Link>
