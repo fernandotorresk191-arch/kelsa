@@ -4,6 +4,8 @@ import * as bcrypt from 'bcrypt';
 import { IsEmail, IsString, MinLength, IsOptional, IsArray } from 'class-validator';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
+import { Roles } from './roles.decorator';
 
 class AdminLoginDto {
   @IsEmail()
@@ -23,7 +25,7 @@ class CreateAdminDto {
   password: string;
 
   @IsString()
-  role: 'admin' | 'manager';
+  role: 'superadmin' | 'admin' | 'manager';
 
   @IsOptional()
   @IsString()
@@ -36,6 +38,10 @@ class CreateAdminDto {
   @IsOptional()
   @IsArray()
   permissions?: string[];
+
+  @IsOptional()
+  @IsArray()
+  darkstoreIds?: string[];
 }
 
 class UpdateAdminDto {
@@ -50,7 +56,7 @@ class UpdateAdminDto {
 
   @IsOptional()
   @IsString()
-  role?: 'admin' | 'manager';
+  role?: 'superadmin' | 'admin' | 'manager';
 
   @IsOptional()
   @IsString()
@@ -66,6 +72,10 @@ class UpdateAdminDto {
 
   @IsOptional()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsArray()
+  darkstoreIds?: string[];
 }
 
 const ADMIN_SELECT = {
@@ -85,6 +95,21 @@ export class AdminAuthController {
     private prisma: PrismaService,
     private jwt: JwtService,
   ) {}
+
+  private formatAdmin(admin: any) {
+    return {
+      ...admin,
+      permissions: admin.permissions ? JSON.parse(admin.permissions) : null,
+    };
+  }
+
+  private async getAdminDarkstores(adminId: string) {
+    const assignments = await this.prisma.adminUserDarkstore.findMany({
+      where: { adminUserId: adminId },
+      include: { darkstore: true },
+    });
+    return assignments.map(a => a.darkstore);
+  }
 
   @Post('login')
   async login(@Body() dto: AdminLoginDto) {
@@ -107,6 +132,10 @@ export class AdminAuthController {
       role: admin.role,
     });
 
+    const darkstores = admin.role === 'superadmin'
+      ? await this.prisma.darkstore.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } })
+      : await this.getAdminDarkstores(admin.id);
+
     return {
       admin: {
         id: admin.id,
@@ -116,6 +145,7 @@ export class AdminAuthController {
         phone: admin.phone,
         permissions: admin.permissions ? JSON.parse(admin.permissions) : null,
       },
+      darkstores,
       accessToken,
     };
   }
@@ -133,40 +163,52 @@ export class AdminAuthController {
       throw new UnauthorizedException('Admin not found');
     }
 
+    const darkstores = admin.role === 'superadmin'
+      ? await this.prisma.darkstore.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } })
+      : await this.getAdminDarkstores(adminId);
+
     return {
-      ...admin,
-      permissions: admin.permissions ? JSON.parse(admin.permissions) : null,
+      ...this.formatAdmin(admin),
+      darkstores,
     };
   }
 
-  // === Управление пользователями (только для admin) ===
+  // === Управление пользователями (superadmin / admin) ===
 
   private ensureAdmin(req: any) {
-    if (req.user.role !== 'admin') {
-      throw new UnauthorizedException('Only admin can manage users');
+    if (!['superadmin', 'admin'].includes(req.user.role)) {
+      throw new UnauthorizedException('Only admin or superadmin can manage users');
     }
   }
 
   @Get('users')
-  @UseGuards(JwtGuard)
+  @UseGuards(AdminGuard)
+  @Roles('superadmin', 'admin')
   async listUsers(@Req() req: any) {
-    this.ensureAdmin(req);
-
     const users = await this.prisma.adminUser.findMany({
-      select: { ...ADMIN_SELECT },
+      select: {
+        ...ADMIN_SELECT,
+        darkstores: {
+          include: { darkstore: true },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
     return users.map(u => ({
-      ...u,
-      permissions: u.permissions ? JSON.parse(u.permissions) : null,
+      ...this.formatAdmin(u),
+      darkstores: u.darkstores.map(d => d.darkstore),
     }));
   }
 
   @Post('create')
-  @UseGuards(JwtGuard)
+  @UseGuards(AdminGuard)
+  @Roles('superadmin', 'admin')
   async createAdmin(@Req() req: any, @Body() dto: CreateAdminDto) {
-    this.ensureAdmin(req);
+    // Only superadmin can create superadmin
+    if (dto.role === 'superadmin' && req.user.role !== 'superadmin') {
+      throw new UnauthorizedException('Only superadmin can create superadmin users');
+    }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
 
@@ -182,16 +224,32 @@ export class AdminAuthController {
       select: { ...ADMIN_SELECT },
     });
 
+    // Assign darkstores
+    if (dto.darkstoreIds?.length) {
+      await this.prisma.adminUserDarkstore.createMany({
+        data: dto.darkstoreIds.map(darkstoreId => ({
+          adminUserId: admin.id,
+          darkstoreId,
+        })),
+      });
+    }
+
+    const darkstores = await this.getAdminDarkstores(admin.id);
+
     return {
-      ...admin,
-      permissions: admin.permissions ? JSON.parse(admin.permissions) : null,
+      ...this.formatAdmin(admin),
+      darkstores,
     };
   }
 
   @Patch('users/:id')
-  @UseGuards(JwtGuard)
+  @UseGuards(AdminGuard)
+  @Roles('superadmin', 'admin')
   async updateUser(@Req() req: any, @Param('id') id: string, @Body() dto: UpdateAdminDto) {
-    this.ensureAdmin(req);
+    // Only superadmin can assign superadmin role
+    if (dto.role === 'superadmin' && req.user.role !== 'superadmin') {
+      throw new UnauthorizedException('Only superadmin can assign superadmin role');
+    }
 
     const data: any = {};
     if (dto.email !== undefined) data.email = dto.email;
@@ -208,22 +266,45 @@ export class AdminAuthController {
       select: { ...ADMIN_SELECT },
     });
 
+    // Update darkstore assignments if provided
+    if (dto.darkstoreIds !== undefined) {
+      await this.prisma.adminUserDarkstore.deleteMany({
+        where: { adminUserId: id },
+      });
+      if (dto.darkstoreIds.length) {
+        await this.prisma.adminUserDarkstore.createMany({
+          data: dto.darkstoreIds.map(darkstoreId => ({
+            adminUserId: id,
+            darkstoreId,
+          })),
+        });
+      }
+    }
+
+    const darkstores = await this.getAdminDarkstores(id);
+
     return {
-      ...user,
-      permissions: user.permissions ? JSON.parse(user.permissions) : null,
+      ...this.formatAdmin(user),
+      darkstores,
     };
   }
 
   @Delete('users/:id')
-  @UseGuards(JwtGuard)
+  @UseGuards(AdminGuard)
+  @Roles('superadmin', 'admin')
   async deleteUser(@Req() req: any, @Param('id') id: string) {
-    this.ensureAdmin(req);
-
     // Нельзя удалить себя
     if (req.user.sub === id) {
       throw new UnauthorizedException('Cannot delete yourself');
     }
 
+    // Only superadmin can delete superadmin
+    const target = await this.prisma.adminUser.findUnique({ where: { id } });
+    if (target?.role === 'superadmin' && req.user.role !== 'superadmin') {
+      throw new UnauthorizedException('Only superadmin can delete superadmin users');
+    }
+
+    await this.prisma.adminUserDarkstore.deleteMany({ where: { adminUserId: id } });
     await this.prisma.adminUser.delete({ where: { id } });
     return { success: true };
   }

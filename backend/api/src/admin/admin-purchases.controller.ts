@@ -11,10 +11,11 @@ import {
   Param,
   UseGuards,
   Query,
+  Req,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 import {
   IsString,
   IsOptional,
@@ -65,7 +66,7 @@ class CreatePurchaseDto {
 }
 
 @Controller('admin/purchases')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminPurchasesController {
   constructor(private prisma: PrismaService) {}
 
@@ -141,13 +142,21 @@ export class AdminPurchasesController {
 
   // Получить список закупок
   @Get()
-  async getPurchases(@Query('page') page = '1', @Query('limit') limit = '20') {
+  async getPurchases(
+    @Query('page') page = '1',
+    @Query('limit') limit = '20',
+    @Req() req?: any,
+  ) {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 20;
     const skip = (pageNum - 1) * limitNum;
 
+    const where: any = {};
+    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
+
     const [purchases, total] = await Promise.all([
       this.prisma.purchase.findMany({
+        where,
         skip,
         take: limitNum,
         orderBy: { createdAt: 'desc' },
@@ -161,7 +170,7 @@ export class AdminPurchasesController {
           },
         },
       }),
-      this.prisma.purchase.count(),
+      this.prisma.purchase.count({ where }),
     ]);
 
     return {
@@ -206,7 +215,11 @@ export class AdminPurchasesController {
 
   // Создать новую закупку
   @Post()
-  async createPurchase(@Body() dto: CreatePurchaseDto) {
+  async createPurchase(@Body() dto: CreatePurchaseDto, @Req() req?: any) {
+    if (!req?.darkstoreId) {
+      throw new BadRequestException('Darkstore not selected');
+    }
+
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Добавьте хотя бы одну позицию');
     }
@@ -242,6 +255,7 @@ export class AdminPurchasesController {
           supplierName: dto.supplierName,
           notes: dto.notes,
           totalAmount,
+          darkstoreId: req.darkstoreId,
         },
       });
 

@@ -3,29 +3,22 @@ import {
   Get,
   UseGuards,
   Req,
-  UnauthorizedException,
 } from '@nestjs/common';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
+import { Roles } from './roles.decorator';
 import { CronRegistryService } from './cron-registry.service';
 import { readdirSync, statSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
 
 @Controller('v1/admin/server')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
+@Roles('superadmin', 'admin')
 export class AdminServerController {
   constructor(private cronRegistry: CronRegistryService) {}
 
-  private checkAdminRole(req: any) {
-    const user = (req as { user?: { role: string } })?.user;
-    if (!user || user.role !== 'admin') {
-      throw new UnauthorizedException('Admin access required');
-    }
-  }
-
   @Get('info')
   async getServerInfo(@Req() req: any) {
-    this.checkAdminRole(req);
 
     const disk = this.getDiskUsage();
     const uploadsStats = this.getUploadsStats();

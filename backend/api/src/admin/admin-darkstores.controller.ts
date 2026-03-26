@@ -1,0 +1,166 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  UseGuards,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from 'prisma/prisma.service';
+import { AdminGuard } from './admin.guard';
+import { Roles } from './roles.decorator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
+
+class CreateDarkstoreDto {
+  @IsString()
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+class UpdateDarkstoreDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  address?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+@Controller('v1/admin/darkstores')
+@UseGuards(AdminGuard)
+export class AdminDarkstoresController {
+  constructor(private prisma: PrismaService) {}
+
+  @Get()
+  async getDarkstores(@Req() req: any) {
+    // Superadmin sees all; admin/manager see assigned
+    if (req.user.role === 'superadmin') {
+      return this.prisma.darkstore.findMany({
+        orderBy: { createdAt: 'asc' },
+        include: {
+          _count: {
+            select: {
+              products: true,
+              orders: true,
+              couriers: true,
+              deliveryZones: true,
+              staff: true,
+            },
+          },
+        },
+      });
+    }
+
+    const assignments = await this.prisma.adminUserDarkstore.findMany({
+      where: { adminUserId: req.user.sub },
+      include: {
+        darkstore: {
+          include: {
+            _count: {
+              select: {
+                products: true,
+                orders: true,
+                couriers: true,
+                deliveryZones: true,
+                staff: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return assignments.map((a) => a.darkstore);
+  }
+
+  @Get(':id')
+  async getDarkstore(@Param('id') id: string) {
+    const darkstore = await this.prisma.darkstore.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            products: true,
+            orders: true,
+            categories: true,
+            couriers: true,
+            deliveryZones: true,
+            staff: true,
+            purchases: true,
+            promotions: true,
+          },
+        },
+      },
+    });
+
+    if (!darkstore) {
+      throw new BadRequestException('Даркстор не найден');
+    }
+
+    return darkstore;
+  }
+
+  @Post()
+  @Roles('superadmin')
+  async createDarkstore(@Body() dto: CreateDarkstoreDto) {
+    return this.prisma.darkstore.create({
+      data: {
+        name: dto.name,
+        address: dto.address || null,
+        isActive: dto.isActive ?? true,
+      },
+    });
+  }
+
+  @Put(':id')
+  @Roles('superadmin')
+  async updateDarkstore(@Param('id') id: string, @Body() dto: UpdateDarkstoreDto) {
+    const existing = await this.prisma.darkstore.findUnique({ where: { id } });
+    if (!existing) {
+      throw new BadRequestException('Даркстор не найден');
+    }
+
+    return this.prisma.darkstore.update({
+      where: { id },
+      data: {
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.address !== undefined && { address: dto.address }),
+        ...(dto.isActive !== undefined && { isActive: dto.isActive }),
+      },
+    });
+  }
+
+  @Delete(':id')
+  @Roles('superadmin')
+  async deleteDarkstore(@Param('id') id: string) {
+    const existing = await this.prisma.darkstore.findUnique({ where: { id } });
+    if (!existing) {
+      throw new BadRequestException('Даркстор не найден');
+    }
+
+    // Check for data linked to this darkstore
+    const orders = await this.prisma.order.count({ where: { darkstoreId: id } });
+    if (orders > 0) {
+      throw new BadRequestException('Нельзя удалить даркстор с заказами. Деактивируйте его.');
+    }
+
+    await this.prisma.darkstore.delete({ where: { id } });
+    return { success: true };
+  }
+}

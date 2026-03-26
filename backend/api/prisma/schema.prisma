@@ -6,10 +6,42 @@ datasource db {
   provider = "postgresql"
 }
 
+// ==================== ДАРКСТОРЫ ====================
+
+model Darkstore {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories    Category[]
+  products      Product[]
+  promotions    Promotion[]
+  orders        Order[]
+  purchases     Purchase[]
+  deliveryZones DeliveryZone[]
+  couriers      Courier[]
+  carts         Cart[]
+  staff         AdminUserDarkstore[]
+}
+
+// Связь many-to-many: один AdminUser может работать в нескольких дарксторах
+model AdminUserDarkstore {
+  id          String    @id @default(cuid())
+  adminUserId String
+  darkstoreId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
+
+  @@unique([adminUserId, darkstoreId])
+}
+
 model Category {
   id        String   @id @default(cuid())
   name      String
-  slug      String   @unique
+  slug      String
   sort      Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -24,14 +56,20 @@ model Category {
   parent      Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: Cascade)
   subcategories Category[] @relation("CategoryToSubcategory")
   
+  // Даркстор
+  darkstoreId String
+  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
+  
   products  Product[]
   productsAsSubcategory Product[] @relation("ProductSubcategory")
+
+  @@unique([slug, darkstoreId])
 }
 
 model Product {
   id          String   @id @default(cuid())
   title       String
-  slug        String   @unique
+  slug        String
   description String?
   imageUrl    String?
   weightGr    Int?
@@ -50,6 +88,10 @@ model Product {
   subcategoryId String?
   subcategory   Category? @relation("ProductSubcategory", fields: [subcategoryId], references: [id], onDelete: SetNull)
   
+  // Даркстор
+  darkstoreId String
+  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
+  
   cartItems   CartItem[]
   orderItems  OrderItem[]
   favorites   Favorite[]
@@ -57,6 +99,8 @@ model Product {
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@unique([slug, darkstoreId])
 }
 
 model Promotion {
@@ -68,19 +112,25 @@ model Promotion {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Даркстор
+  darkstoreId String
+  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
 }
 
 model AdminUser {
   id           String   @id @default(cuid())
   email        String   @unique
   passwordHash String
-  role         String   @default("admin") // admin | manager
+  role         String   @default("admin") // superadmin | admin | manager
   name         String?  // ФИО
   phone        String?  // Номер телефона
   permissions  String?  // JSON: разрешённые разделы для менеджера, например ["orders","products"]
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  
+  darkstores   AdminUserDarkstore[]
 }
 
 model Cart {
@@ -89,6 +139,10 @@ model Cart {
   status    CartStatus @default(ACTIVE)
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
+
+  // Даркстор (опционален — корзина создаётся до выбора н.п.)
+  darkstoreId String?
+  darkstore   Darkstore? @relation(fields: [darkstoreId], references: [id], onDelete: SetNull)
 
   items     CartItem[]
 }
@@ -143,6 +197,10 @@ model Order {
   // Курьер
   courierId    String?
   courier      Courier?    @relation(fields: [courierId], references: [id], onDelete: SetNull)
+  
+  // Даркстор
+  darkstoreId  String
+  darkstore    Darkstore   @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
   
   // Информация об отмене
   canceledBy   CanceledBy?
@@ -227,6 +285,10 @@ model DeliveryZone {
   isActive         Boolean  @default(true)     // Включена ли доставка в этот н.п.
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  
+  // Даркстор
+  darkstoreId String
+  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
 }
 
 model User {
@@ -275,6 +337,10 @@ model Purchase {
   supplierName    String?  // Поставщик
   notes           String?  // Примечания
   totalAmount     Int      @default(0) // Общая сумма закупки
+  
+  // Даркстор
+  darkstoreId String
+  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -357,6 +423,10 @@ model Courier {
   // Push-уведомления
   pushSubscription  String?   // JSON подписки для Web Push
   
+  // Даркстор
+  darkstoreId   String
+  darkstore     Darkstore     @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
+  
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   
@@ -366,3 +436,5 @@ model Courier {
 // ==================== НАСТРОЙКИ ДОСТАВКИ ====================
 
 // DeliverySettings removed — replaced by DeliveryZone per settlement
+
+

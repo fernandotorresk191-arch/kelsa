@@ -16,7 +16,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 import { IsString, IsOptional, IsBoolean, IsNumber } from 'class-validator';
 
 class CreateDeliveryZoneDto {
@@ -53,24 +53,21 @@ class UpdateDeliveryZoneDto {
 
 interface AuthRequest {
   user: { role: string };
+  darkstoreId: string | null;
 }
 
 @Controller('v1/admin/delivery-zones')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminDeliveryZonesController {
   constructor(private prisma: PrismaService) {}
 
-  private checkAdminRole(req: AuthRequest) {
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-      throw new UnauthorizedException('Admin access required');
-    }
-  }
-
   @Get()
   async getDeliveryZones(@Req() req: AuthRequest) {
-    this.checkAdminRole(req);
+    const where: any = {};
+    if (req.darkstoreId) where.darkstoreId = req.darkstoreId;
 
     const zones = await this.prisma.deliveryZone.findMany({
+      where,
       orderBy: { createdAt: 'asc' },
     });
 
@@ -81,11 +78,13 @@ export class AdminDeliveryZonesController {
 
   @Post()
   async createDeliveryZone(@Body() dto: CreateDeliveryZoneDto, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
+    if (!req.darkstoreId) {
+      throw new BadRequestException('Darkstore not selected');
+    }
 
-    // Проверка: не существует ли уже зона для этого н.п.
-    const existing = await this.prisma.deliveryZone.findUnique({
-      where: { settlement: dto.settlement },
+    // Проверка: не существует ли уже зона для этого н.п. в этом дарксторе
+    const existing = await this.prisma.deliveryZone.findFirst({
+      where: { settlement: dto.settlement, darkstoreId: req.darkstoreId },
     });
 
     if (existing) {
@@ -99,6 +98,7 @@ export class AdminDeliveryZonesController {
         deliveryFee: dto.deliveryFee,
         freeDeliveryFrom: dto.freeDeliveryFrom,
         isActive: dto.isActive ?? true,
+        darkstoreId: req.darkstoreId!,
       },
     });
 
@@ -111,8 +111,6 @@ export class AdminDeliveryZonesController {
     @Body() dto: UpdateDeliveryZoneDto,
     @Req() req: AuthRequest,
   ) {
-    this.checkAdminRole(req);
-
     const existing = await this.prisma.deliveryZone.findUnique({ where: { id } });
     if (!existing) {
       throw new BadRequestException('Зона доставки не найдена');
@@ -132,8 +130,6 @@ export class AdminDeliveryZonesController {
 
   @Delete(':id')
   async deleteDeliveryZone(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const existing = await this.prisma.deliveryZone.findUnique({ where: { id } });
     if (!existing) {
       throw new BadRequestException('Зона доставки не найдена');

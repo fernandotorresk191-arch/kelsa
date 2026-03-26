@@ -18,7 +18,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 import { IsString, IsOptional, IsBoolean, MinLength } from 'class-validator';
 import * as bcrypt from 'bcrypt';
 
@@ -86,18 +86,13 @@ class UpdateCourierDto {
 
 interface AuthRequest {
   user: { role: string };
+  darkstoreId: string | null;
 }
 
 @Controller('v1/admin/couriers')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminCouriersController {
   constructor(private prisma: PrismaService) {}
-
-  private checkAdminRole(req: AuthRequest) {
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-      throw new UnauthorizedException('Admin access required');
-    }
-  }
 
   @Get()
   async getCouriers(
@@ -106,16 +101,10 @@ export class AdminCouriersController {
     @Query('search') search?: string,
     @Req() req?: AuthRequest,
   ) {
-    this.checkAdminRole(req as AuthRequest);
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const where: {
-      OR?: {
-        fullName?: { contains: string; mode: 'insensitive' };
-        login?: { contains: string; mode: 'insensitive' };
-      }[];
-    } = {};
+    const where: any = {};
+    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 
     if (search) {
       where.OR = [
@@ -158,8 +147,6 @@ export class AdminCouriersController {
 
   @Get(':id')
   async getCourier(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const courier = await this.prisma.courier.findUnique({
       where: { id },
       select: {
@@ -184,7 +171,9 @@ export class AdminCouriersController {
 
   @Post()
   async createCourier(@Body() dto: CreateCourierDto, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
+    if (!req.darkstoreId) {
+      throw new BadRequestException('Darkstore not selected');
+    }
 
     // Проверяем уникальность логина
     const existingCourier = await this.prisma.courier.findUnique({
@@ -206,6 +195,7 @@ export class AdminCouriersController {
         carBrand: dto.carBrand || null,
         carNumber: dto.carNumber || null,
         isActive: dto.isActive ?? true,
+        darkstoreId: req.darkstoreId!,
       },
       select: {
         id: true,
@@ -229,8 +219,6 @@ export class AdminCouriersController {
     @Body() dto: UpdateCourierDto,
     @Req() req: AuthRequest,
   ) {
-    this.checkAdminRole(req);
-
     const existingCourier = await this.prisma.courier.findUnique({
       where: { id },
     });
@@ -293,8 +281,6 @@ export class AdminCouriersController {
 
   @Delete(':id')
   async deleteCourier(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const existingCourier = await this.prisma.courier.findUnique({
       where: { id },
     });
@@ -316,8 +302,6 @@ export class AdminCouriersController {
     @Query('excludeId') excludeId?: string,
     @Req() req?: AuthRequest,
   ) {
-    this.checkAdminRole(req as AuthRequest);
-
     const courier = await this.prisma.courier.findUnique({
       where: { login },
       select: { id: true },
@@ -334,8 +318,6 @@ export class AdminCouriersController {
   // Профиль курьера с полной статистикой
   @Get(':id/profile')
   async getCourierProfile(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const courier = await this.prisma.courier.findUnique({
       where: { id },
       select: {

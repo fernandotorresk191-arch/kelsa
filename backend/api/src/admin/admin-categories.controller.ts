@@ -13,7 +13,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 import { IsBoolean, IsOptional, IsString, IsNumber } from 'class-validator';
 
 class CreateCategoryDto {
@@ -75,16 +75,9 @@ class UpdateCategoryDto {
 }
 
 @Controller('v1/admin/categories')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminCategoriesController {
   constructor(private prisma: PrismaService) {}
-
-  private checkAdminRole(req: any) {
-    const user = (req as { user?: { role: string } })?.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
-      throw new UnauthorizedException('Admin access required');
-    }
-  }
 
   @Get()
   async getCategories(
@@ -93,15 +86,13 @@ export class AdminCategoriesController {
     @Query('parentId') parentId?: string,
     @Req() req?: any,
   ) {
-    this.checkAdminRole(req);
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Если parentId явно указан (не undefined), фильтруем по нему
-    // Если parentId не указан, возвращаем все категории для админки
-    const where = parentId !== undefined 
-      ? (parentId === 'null' ? { parentId: null } : { parentId })
-      : {};
+    const where: any = {};
+    if (parentId !== undefined) {
+      where.parentId = parentId === 'null' ? null : parentId;
+    }
+    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 
     const [categories, total] = await Promise.all([
       this.prisma.category.findMany({
@@ -159,22 +150,19 @@ export class AdminCategoriesController {
   async checkSlug(
     @Param('slug') slug: string,
     @Query('excludeId') excludeId?: string,
-    @Req() req?: { user?: { role: string } },
+    @Req() req?: any,
   ) {
-    this.checkAdminRole(req as { user?: { role: string } });
+    const where: any = { slug };
+    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 
-    const existing = await this.prisma.category.findUnique({
-      where: { slug },
-    });
+    const existing = await this.prisma.category.findFirst({ where });
 
     const isAvailable = !existing || (excludeId && existing.id === excludeId);
     return { available: isAvailable, existingId: isAvailable ? null : existing?.id };
   }
 
   @Get(':id')
-  async getCategoryById(@Param('id') id: string, @Req() req: { user?: { role: string } }) {
-    this.checkAdminRole(req);
-
+  async getCategoryById(@Param('id') id: string, @Req() req: any) {
     return this.prisma.category.findUnique({
       where: { id },
       include: {
@@ -188,8 +176,10 @@ export class AdminCategoriesController {
   }
 
   @Post()
-  async createCategory(@Body() dto: CreateCategoryDto, @Req() req: { user?: { role: string } }) {
-    this.checkAdminRole(req);
+  async createCategory(@Body() dto: CreateCategoryDto, @Req() req: any) {
+    if (!req.darkstoreId) {
+      throw new BadRequestException('Darkstore not selected');
+    }
 
     let finalSlug = dto.slug;
 
@@ -206,9 +196,9 @@ export class AdminCategoriesController {
       finalSlug = `${parent.slug}/${dto.slug}`;
     }
 
-    // Проверяем уникальность итогового slug
-    const existing = await this.prisma.category.findUnique({
-      where: { slug: finalSlug },
+    // Проверяем уникальность итогового slug в рамках даркстора
+    const existing = await this.prisma.category.findFirst({
+      where: { slug: finalSlug, darkstoreId: req.darkstoreId },
     });
 
     if (existing) {
@@ -224,6 +214,7 @@ export class AdminCategoriesController {
         imageUrl: dto.imageUrl,
         parentId: dto.parentId || null,
         markupPercent: dto.markupPercent ?? 0,
+        darkstoreId: req.darkstoreId,
       },
     });
   }
@@ -232,9 +223,8 @@ export class AdminCategoriesController {
   async updateCategory(
     @Param('id') id: string,
     @Body() dto: UpdateCategoryDto,
-    @Req() req: { user?: { role: string } },
+    @Req() req: any,
   ) {
-    this.checkAdminRole(req);
 
     // Получаем текущую категорию
     const currentCategory = await this.prisma.category.findUnique({
@@ -277,10 +267,10 @@ export class AdminCategoriesController {
       }
     }
 
-    // Проверяем уникальность slug, если он меняется
+    // Проверяем уникальность slug в рамках даркстора, если он меняется
     if (finalSlug !== currentCategory.slug) {
-      const existing = await this.prisma.category.findUnique({
-        where: { slug: finalSlug },
+      const existing = await this.prisma.category.findFirst({
+        where: { slug: finalSlug, darkstoreId: currentCategory.darkstoreId },
       });
 
       if (existing && existing.id !== id) {
@@ -303,8 +293,7 @@ export class AdminCategoriesController {
   }
 
   @Delete(':id')
-  async deleteCategory(@Param('id') id: string, @Req() req: { user?: { role: string } }) {
-    this.checkAdminRole(req);
+  async deleteCategory(@Param('id') id: string, @Req() req: any) {
 
     // Проверяем, есть ли товары в этой категории
     const productsCount = await this.prisma.product.count({

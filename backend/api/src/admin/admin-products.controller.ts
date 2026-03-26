@@ -14,7 +14,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 import { IsString, IsOptional, IsNumber, MinLength } from 'class-validator';
 
 class CreateProductDto {
@@ -120,18 +120,13 @@ class UpdateStockDto {
 
 interface AuthRequest {
   user: { role: string };
+  darkstoreId: string | null;
 }
 
 @Controller('v1/admin/products')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminProductsController {
   constructor(private prisma: PrismaService) {}
-
-  private checkAdminRole(req: AuthRequest) {
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-      throw new UnauthorizedException('Admin access required');
-    }
-  }
 
   @Get()
   async getProducts(
@@ -141,20 +136,11 @@ export class AdminProductsController {
     @Query('search') search?: string,
     @Req() req?: AuthRequest,
   ) {
-    this.checkAdminRole(req as AuthRequest);
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     // Формируем условия поиска
-    const where: {
-      categoryId?: string;
-      subcategoryId?: string;
-      OR?: Array<{
-        title?: { contains: string; mode: 'insensitive' };
-        slug?: { contains: string; mode: 'insensitive' };
-        cellNumber?: { contains: string; mode: 'insensitive' };
-      }>;
-    } = {};
+    const where: any = {};
+    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
     
     if (categoryId) {
       // Проверяем, является ли переданный ID подкатегорией
@@ -208,11 +194,10 @@ export class AdminProductsController {
     @Query('excludeId') excludeId?: string,
     @Req() req?: AuthRequest,
   ) {
-    this.checkAdminRole(req as AuthRequest);
+    const where: any = { slug };
+    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 
-    const existing = await this.prisma.product.findUnique({
-      where: { slug },
-    });
+    const existing = await this.prisma.product.findFirst({ where });
 
     const isAvailable = !existing || (excludeId && existing.id === excludeId);
     return {
@@ -223,8 +208,6 @@ export class AdminProductsController {
 
   @Get(':id')
   async getProductById(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const product = await this.prisma.product.findUnique({
       where: { id },
       include: { category: true, subcategory: true },
@@ -239,11 +222,13 @@ export class AdminProductsController {
 
   @Post()
   async createProduct(@Body() dto: CreateProductDto, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
+    if (!req.darkstoreId) {
+      throw new BadRequestException('Darkstore not selected');
+    }
 
-    // Проверяем, что slug уникален
-    const existing = await this.prisma.product.findUnique({
-      where: { slug: dto.slug },
+    // Проверяем, что slug уникален в рамках даркстора
+    const existing = await this.prisma.product.findFirst({
+      where: { slug: dto.slug, darkstoreId: req.darkstoreId },
     });
 
     if (existing) {
@@ -264,6 +249,7 @@ export class AdminProductsController {
         categoryId: dto.categoryId,
         subcategoryId: dto.subcategoryId,
         cellNumber: dto.cellNumber,
+        darkstoreId: req.darkstoreId,
       },
       include: { category: true, subcategory: true },
     });
@@ -277,17 +263,15 @@ export class AdminProductsController {
     @Body() dto: UpdateProductDto,
     @Req() req: AuthRequest,
   ) {
-    this.checkAdminRole(req);
-
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) {
       throw new Error('Product not found');
     }
 
-    // Проверяем уникальность slug, если он меняется
+    // Проверяем уникальность slug в рамках даркстора, если он меняется
     if (dto.slug) {
-      const existingWithSlug = await this.prisma.product.findUnique({
-        where: { slug: dto.slug },
+      const existingWithSlug = await this.prisma.product.findFirst({
+        where: { slug: dto.slug, darkstoreId: product.darkstoreId },
       });
 
       if (existingWithSlug && existingWithSlug.id !== id) {
@@ -308,8 +292,6 @@ export class AdminProductsController {
 
   @Delete(':id')
   async deleteProduct(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) {
       throw new Error('Product not found');
@@ -330,8 +312,6 @@ export class AdminProductsController {
     @Body() dto: UpdateStockDto,
     @Req() req: AuthRequest,
   ) {
-    this.checkAdminRole(req);
-
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) {
       throw new Error('Product not found');

@@ -1,9 +1,10 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile, DeliveryZone } from './types';
+import { AdminUser, Darkstore, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile, DeliveryZone } from './types';
 
 interface LoginResponse {
   accessToken: string;
   admin: AdminUser;
+  darkstores: Darkstore[];
 }
 
 interface OrdersResponse {
@@ -74,10 +75,11 @@ export const adminAuthApi = {
   createUser: async (data: {
     email: string;
     password: string;
-    role: 'admin' | 'manager';
+    role: 'superadmin' | 'admin' | 'manager';
     name?: string;
     phone?: string;
     permissions?: string[];
+    darkstoreIds?: string[];
   }): Promise<AdminUser> => {
     return http.post<AdminUser>('/v1/admin-auth/create', data);
   },
@@ -85,11 +87,12 @@ export const adminAuthApi = {
   updateUser: async (id: string, data: {
     email?: string;
     password?: string;
-    role?: 'admin' | 'manager';
+    role?: 'superadmin' | 'admin' | 'manager';
     name?: string;
     phone?: string;
     permissions?: string[];
     isActive?: boolean;
+    darkstoreIds?: string[];
   }): Promise<AdminUser> => {
     return http.patch<AdminUser>(`/v1/admin-auth/users/${id}`, data);
   },
@@ -699,5 +702,34 @@ export interface ServerInfo {
 export const adminServerApi = {
   getInfo: async (): Promise<ServerInfo> => {
     return http.get<ServerInfo>('/v1/admin/server/info');
+  },
+};
+
+// ==================== ДАРКСТОРЫ ====================
+
+export const adminDarkstoresApi = {
+  // Получить список дарксторов
+  list: async (): Promise<Darkstore[]> => {
+    return http.get<Darkstore[]>('/v1/admin/darkstores');
+  },
+
+  // Получить даркстор по ID
+  get: async (id: string): Promise<Darkstore> => {
+    return http.get<Darkstore>(`/v1/admin/darkstores/${id}`);
+  },
+
+  // Создать даркстор
+  create: async (data: { name: string; address?: string }): Promise<Darkstore> => {
+    return http.post<Darkstore>('/v1/admin/darkstores', data);
+  },
+
+  // Обновить даркстор
+  update: async (id: string, data: { name?: string; address?: string; isActive?: boolean }): Promise<Darkstore> => {
+    return http.put<Darkstore>(`/v1/admin/darkstores/${id}`, data);
+  },
+
+  // Удалить даркстор
+  delete: async (id: string): Promise<{ success: boolean }> => {
+    return http.delete<{ success: boolean }>(`/v1/admin/darkstores/${id}`);
   },
 };

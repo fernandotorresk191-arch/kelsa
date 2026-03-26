@@ -3,6 +3,7 @@ import { getStoredAccessToken } from "../auth/token";
 
 const ADMIN_TOKEN_KEY = "admin_token";
 const COURIER_TOKEN_KEY = "courier_token";
+const ADMIN_DARKSTORE_KEY = "admin_darkstore_id";
 
 function getAdminToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -19,6 +20,28 @@ function getCourierToken(): string | null {
     return window.localStorage.getItem(COURIER_TOKEN_KEY);
   } catch {
     return null;
+  }
+}
+
+export function getAdminDarkstoreId(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(ADMIN_DARKSTORE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function setAdminDarkstoreId(id: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (id) {
+      window.localStorage.setItem(ADMIN_DARKSTORE_KEY, id);
+    } else {
+      window.localStorage.removeItem(ADMIN_DARKSTORE_KEY);
+    }
+  } catch {
+    // ignore
   }
 }
 
@@ -58,6 +81,14 @@ async function apiRequest<T>(
   
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  // Inject X-Darkstore-Id for admin requests
+  if (isAdminPath) {
+    const darkstoreId = getAdminDarkstoreId();
+    if (darkstoreId) {
+      headers.set("X-Darkstore-Id", darkstoreId);
+    }
   }
 
   if (init.headers) {
@@ -165,6 +196,14 @@ export async function apiUpload<T>(
   
   if (token) {
     headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  // Inject X-Darkstore-Id for admin uploads
+  if (isAdminPath) {
+    const darkstoreId = getAdminDarkstoreId();
+    if (darkstoreId) {
+      headers.set("X-Darkstore-Id", darkstoreId);
+    }
   }
 
   if (init?.headers) {

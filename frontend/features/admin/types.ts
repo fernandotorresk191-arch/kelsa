@@ -1,12 +1,22 @@
+export type Darkstore = {
+  id: string;
+  name: string;
+  address?: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type AdminUser = {
   id: string;
   email: string;
-  role: 'admin' | 'manager';
+  role: 'superadmin' | 'admin' | 'manager';
   name?: string | null;
   phone?: string | null;
   permissions?: string[] | null;
   isActive?: boolean;
   createdAt?: string;
+  darkstores?: Darkstore[];
 };
 
 export enum OrderStatus {

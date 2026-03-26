@@ -66,6 +66,11 @@ const Icons = {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
     </svg>
   ),
+  darkstores: (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+  ),
   users: (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -162,6 +167,14 @@ const navItems: NavItem[] = [
     permission: 'delivery_zones'
   },
   { 
+    href: '/admin/darkstores', 
+    label: 'Дарксторы', 
+    icon: Icons.darkstores,
+    match: (p) => p.startsWith('/admin/darkstores'),
+    section: 'Управление',
+    permission: 'darkstores'
+  },
+  { 
     href: '/admin/users', 
     label: 'Пользователи', 
     icon: Icons.users,
@@ -190,12 +203,13 @@ export const ALL_SECTIONS = [
   { key: 'analytics', label: 'Аналитика' },
   { key: 'couriers', label: 'Курьеры' },
   { key: 'delivery_zones', label: 'Зоны доставки' },
+  { key: 'darkstores', label: 'Дарксторы' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { admin, isLoading, isAuthenticated, logout, hasPermission } = useAdmin();
+  const { admin, isLoading, isAuthenticated, logout, hasPermission, darkstores, currentDarkstore, switchDarkstore } = useAdmin();
 
   const isLoginPage = pathname === '/admin/login';
 
@@ -313,7 +327,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 {admin?.name || admin?.email}
               </p>
               <p className="text-xs text-slate-400 capitalize">
-                {admin?.role === 'admin' ? 'Администратор' : 'Менеджер'}
+                {admin?.role === 'superadmin' ? 'Суперадмин' : admin?.role === 'admin' ? 'Администратор' : 'Менеджер'}
               </p>
             </div>
           </div>
@@ -338,6 +352,23 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </h1>
           </div>
           <div className="flex items-center gap-4">
+            {/* Darkstore switcher */}
+            {darkstores.length > 1 && (
+              <select
+                value={currentDarkstore?.id || ''}
+                onChange={(e) => switchDarkstore(e.target.value)}
+                className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {darkstores.map(ds => (
+                  <option key={ds.id} value={ds.id}>{ds.name}</option>
+                ))}
+              </select>
+            )}
+            {darkstores.length === 1 && (
+              <span className="text-sm text-slate-500">
+                {currentDarkstore?.name}
+              </span>
+            )}
             <span className="inline-flex items-center gap-2 text-sm text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
               Онлайн

@@ -53,15 +53,17 @@ export class OrdersController {
     // 4. Рассчитываем стоимость доставки по зоне доставки (населённый пункт)
     let deliveryFee = 0;
     let courierCost = 0;
+    let darkstoreId: string | null = null;
     const settlementCode = dto.settlement || null;
 
     if (settlementCode) {
-      const deliveryZone = await this.prisma.deliveryZone.findUnique({
-        where: { settlement: settlementCode as any },
+      const deliveryZone = await this.prisma.deliveryZone.findFirst({
+        where: { settlement: settlementCode as any, isActive: true },
       });
 
-      if (deliveryZone && deliveryZone.isActive) {
-        courierCost = deliveryZone.deliveryFee; // Тариф курьера из зоны
+      if (deliveryZone) {
+        courierCost = deliveryZone.deliveryFee;
+        darkstoreId = deliveryZone.darkstoreId;
         if (subtotal < deliveryZone.freeDeliveryFrom) {
           deliveryFee = deliveryZone.deliveryFee;
         }
@@ -80,6 +82,13 @@ export class OrdersController {
     // 6. Прибыль = 0 при создании заказа. Реальная прибыль рассчитывается только после доставки (DELIVERED)
     const profit = 0;
 
+    // Resolve darkstoreId - required field
+    let resolvedDarkstoreId = darkstoreId;
+    if (!resolvedDarkstoreId) {
+      const defaultDs = await this.prisma.darkstore.findFirst({ where: { isActive: true } });
+      resolvedDarkstoreId = defaultDs?.id || 'default-darkstore';
+    }
+
     // 7. Выполняем транзакцию: создаем заказ и обновляем статус корзины
     const createdOrder = await this.prisma.$transaction(async (tx) => {
       const order = await tx.order.create({
@@ -97,6 +106,7 @@ export class OrdersController {
           courierCost,
           profit,
           settlement: settlementCode,
+          darkstore: { connect: { id: resolvedDarkstoreId } },
           items: {
             create: cart.items.map((it) => ({
               productId: it.productId,

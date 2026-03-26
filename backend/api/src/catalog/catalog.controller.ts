@@ -5,19 +5,39 @@ import { PrismaService } from 'prisma/prisma.service';
 export class CatalogController {
   constructor(private readonly prisma: PrismaService) {}
 
+  private async resolveDarkstoreId(settlement?: string): Promise<string | null> {
+    if (!settlement) return null;
+    const zone = await this.prisma.deliveryZone.findFirst({
+      where: { settlement, isActive: true },
+      select: { darkstoreId: true },
+    });
+    return zone?.darkstoreId || null;
+  }
+
   @Get('categories')
-  categories() {
+  async categories(@Query('settlement') settlement?: string) {
+    const darkstoreId = await this.resolveDarkstoreId(settlement);
+    const where: any = { isActive: true, parentId: null };
+    if (darkstoreId) where.darkstoreId = darkstoreId;
+
     return this.prisma.category.findMany({
-      where: { isActive: true, parentId: null },
+      where,
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
       select: { id: true, name: true, slug: true, sort: true, imageUrl: true },
     });
   }
 
   @Get('categories/:slug/subcategories')
-  async subcategories(@Param('slug') slug: string) {
-    const category = await this.prisma.category.findUnique({
-      where: { slug },
+  async subcategories(
+    @Param('slug') slug: string,
+    @Query('settlement') settlement?: string,
+  ) {
+    const darkstoreId = await this.resolveDarkstoreId(settlement);
+    const catWhere: any = { slug };
+    if (darkstoreId) catWhere.darkstoreId = darkstoreId;
+
+    const category = await this.prisma.category.findFirst({
+      where: catWhere,
       select: { id: true },
     });
     
@@ -33,26 +53,51 @@ export class CatalogController {
   }
 
   @Get('promotions')
-  promotions() {
+  async promotions(@Query('settlement') settlement?: string) {
+    const darkstoreId = await this.resolveDarkstoreId(settlement);
+    const where: any = { isActive: true };
+    if (darkstoreId) where.darkstoreId = darkstoreId;
+
     return this.prisma.promotion.findMany({
-      where: { isActive: true },
+      where,
       orderBy: [{ sort: 'asc' }, { createdAt: 'desc' }],
       select: { id: true, title: true, imageUrl: true, url: true, sort: true },
     });
   }
 
   @Get('delivery-settings')
-  async deliverySettings() {
-    // Возвращаем зоны доставки вместо глобальных настроек
-    const zones = await this.prisma.deliveryZone.findMany({
-      where: { isActive: true },
-    });
+  async deliverySettings(@Query('settlement') settlement?: string) {
+    const where: any = { isActive: true };
+    if (settlement) {
+      // Return zone for specific settlement
+      const zone = await this.prisma.deliveryZone.findFirst({
+        where: { settlement, isActive: true },
+      });
+
+      if (!zone) {
+        return { deliveryFee: 0, freeDeliveryFrom: 0, isActive: false, zones: [] };
+      }
+
+      return {
+        deliveryFee: zone.deliveryFee,
+        freeDeliveryFrom: zone.freeDeliveryFrom,
+        isActive: true,
+        zones: [{
+          settlement: zone.settlement,
+          settlementTitle: zone.settlementTitle || zone.settlement,
+          deliveryFee: zone.deliveryFee,
+          freeDeliveryFrom: zone.freeDeliveryFrom,
+        }],
+      };
+    }
+
+    // Return all active zones
+    const zones = await this.prisma.deliveryZone.findMany({ where });
 
     if (zones.length === 0) {
       return { deliveryFee: 0, freeDeliveryFrom: 0, isActive: false, zones: [] };
     }
 
-    // Для обратной совместимости возвращаем первую зону + массив всех зон
     return {
       deliveryFee: zones[0].deliveryFee,
       freeDeliveryFrom: zones[0].freeDeliveryFrom,
@@ -67,7 +112,7 @@ export class CatalogController {
   }
 
   @Get('products')
-  products(
+  async products(
     @Query('categorySlug') categorySlug?: string,
     @Query('subcategorySlug') subcategorySlug?: string,
     @Query('q') q?: string,
@@ -75,9 +120,11 @@ export class CatalogController {
     @Query('offset') offset?: string,
     @Query('sortBy') sortBy?: string,
     @Query('sortOrder') sortOrder?: string,
+    @Query('settlement') settlement?: string,
   ) {
     const take = Math.min(Number(limit ?? 50), 100);
     const skip = Math.max(Number(offset ?? 0), 0);
+    const darkstoreId = await this.resolveDarkstoreId(settlement);
 
     // Определяем порядок сортировки
     let orderBy: any[] = [{ createdAt: 'desc' }];
@@ -85,24 +132,27 @@ export class CatalogController {
       orderBy = [{ price: sortOrder === 'desc' ? 'desc' : 'asc' }];
     }
 
+    const where: any = {
+      isActive: true,
+      stock: { gt: 0 },
+    };
+    if (darkstoreId) where.darkstoreId = darkstoreId;
+
+    if (subcategorySlug) {
+      where.subcategory = { is: { slug: subcategorySlug } };
+    } else if (categorySlug) {
+      where.category = { is: { slug: categorySlug } };
+    }
+
+    if (q) {
+      where.OR = [
+        { title: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ];
+    }
+
     return this.prisma.product.findMany({
-      where: {
-        isActive: true,
-        stock: { gt: 0 }, // Показываем только товары в наличии
-        ...(subcategorySlug 
-          ? { subcategory: { is: { slug: subcategorySlug } } }
-          : categorySlug 
-            ? { category: { is: { slug: categorySlug } } } 
-            : {}),
-        ...(q
-          ? {
-              OR: [
-                { title: { contains: q, mode: 'insensitive' } },
-                { description: { contains: q, mode: 'insensitive' } },
-              ],
-            }
-          : {}),
-      },
+      where,
       orderBy,
       take,
       skip,

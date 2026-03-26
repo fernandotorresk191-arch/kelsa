@@ -11,7 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
 import { EventsService } from '../events/events.service';
 import { PushService } from '../push/push.service';
@@ -43,6 +43,7 @@ class AssignCourierDto {
 
 interface AuthRequest {
   user: { role: string; login?: string };
+  darkstoreId: string | null;
 }
 
 interface OrderItem {
@@ -79,19 +80,13 @@ interface OrderData {
 }
 
 @Controller('v1/admin/orders')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminOrdersController {
   constructor(
     private prisma: PrismaService,
     private eventsService: EventsService,
     private pushService: PushService,
   ) {}
-
-  private checkAdminRole(req: AuthRequest) {
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') {
-      throw new UnauthorizedException('Admin access required');
-    }
-  }
 
   @Get()
   async getOrders(
@@ -100,10 +95,10 @@ export class AdminOrdersController {
     @Query('status') status?: string,
     @Req() req?: AuthRequest,
   ) {
-    this.checkAdminRole(req as AuthRequest);
-
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const where = status ? { status: status as OrderStatus } : {};
+    const where: any = {};
+    if (status) where.status = status as OrderStatus;
+    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 
     const [orders, total] = await Promise.all([
       this.prisma.order.findMany({
@@ -138,13 +133,14 @@ export class AdminOrdersController {
   // ВАЖНО: Этот маршрут должен быть ПЕРЕД @Get(':id'), иначе 'available-couriers' будет интерпретирован как :id
   @Get('available-couriers')
   async getAvailableCouriers(@Req() req: AuthRequest) {
-    this.checkAdminRole(req);
+    const where: any = {
+      isActive: true,
+      status: { in: ['AVAILABLE', 'ACCEPTED'] },
+    };
+    if (req.darkstoreId) where.darkstoreId = req.darkstoreId;
 
     const couriers = await this.prisma.courier.findMany({
-      where: {
-        isActive: true,
-        status: { in: ['AVAILABLE', 'ACCEPTED'] },
-      },
+      where,
       select: {
         id: true,
         fullName: true,
@@ -177,7 +173,6 @@ export class AdminOrdersController {
 
   @Get(':id')
   async getOrderById(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
 
     const order = await this.prisma.order.findUnique({
       where: { id },
@@ -205,8 +200,6 @@ export class AdminOrdersController {
     @Body() dto: UpdateOrderStatusDto,
     @Req() req: AuthRequest,
   ) {
-    this.checkAdminRole(req);
-
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) {
       throw new Error('Order not found');
@@ -343,8 +336,6 @@ export class AdminOrdersController {
     @Body() dto: AssignCourierDto,
     @Req() req: AuthRequest,
   ) {
-    this.checkAdminRole(req);
-
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) {
       throw new BadRequestException('Заказ не найден');
@@ -444,8 +435,6 @@ export class AdminOrdersController {
 
   @Get(':id/print/invoice')
   async printInvoice(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {
@@ -467,8 +456,6 @@ export class AdminOrdersController {
 
   @Get(':id/print/picking')
   async printPickingList(@Param('id') id: string, @Req() req: AuthRequest) {
-    this.checkAdminRole(req);
-
     const order = await this.prisma.order.findUnique({
       where: { id },
       include: {

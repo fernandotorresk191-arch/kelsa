@@ -14,7 +14,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 import { IsString, IsNumber, IsOptional } from 'class-validator';
 import { AdminPurchasesController } from './admin-purchases.controller';
 
@@ -36,7 +36,7 @@ class SetDiscountDto {
 }
 
 @Controller('admin/expiry')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminExpiryController {
   constructor(
     private prisma: PrismaService,

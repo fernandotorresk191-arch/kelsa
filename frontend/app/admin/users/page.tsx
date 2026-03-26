@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { adminAuthApi } from '@/features/admin/api';
-import { AdminUser } from '@/features/admin/types';
+import { AdminUser, Darkstore } from '@/features/admin/types';
 import { ApiError } from '@/shared/api/http';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { ALL_SECTIONS } from '../layout';
 
 export default function UsersPage() {
-  const { admin } = useAdmin();
+  const { admin, darkstores: allDarkstores } = useAdmin();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -21,8 +21,9 @@ export default function UsersPage() {
   const [formPhone, setFormPhone] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPassword, setFormPassword] = useState('');
-  const [formRole, setFormRole] = useState<'admin' | 'manager'>('manager');
+  const [formRole, setFormRole] = useState<'superadmin' | 'admin' | 'manager'>('manager');
   const [formPermissions, setFormPermissions] = useState<string[]>([]);
+  const [formDarkstoreIds, setFormDarkstoreIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
   const loadUsers = useCallback(async () => {
@@ -41,8 +42,8 @@ export default function UsersPage() {
     loadUsers();
   }, [loadUsers]);
 
-  // Restrict page to admin role only
-  if (admin?.role !== 'admin') {
+  // Restrict page to admin/superadmin role only
+  if (admin?.role !== 'admin' && admin?.role !== 'superadmin') {
     return (
       <div className="admin-card p-8 text-center">
         <p className="text-slate-500">Доступ запрещён. Только администратор может управлять пользователями.</p>
@@ -57,6 +58,7 @@ export default function UsersPage() {
     setFormPassword('');
     setFormRole('manager');
     setFormPermissions([]);
+    setFormDarkstoreIds([]);
     setError('');
   };
 
@@ -74,6 +76,7 @@ export default function UsersPage() {
     setFormPassword('');
     setFormRole(user.role);
     setFormPermissions(user.permissions || []);
+    setFormDarkstoreIds(user.darkstores?.map(d => d.id) || []);
     setError('');
     setShowModal(true);
   };
@@ -97,6 +100,7 @@ export default function UsersPage() {
           name: formName,
           phone: formPhone,
           permissions: formRole === 'manager' ? formPermissions : [],
+          darkstoreIds: formRole !== 'superadmin' ? formDarkstoreIds : undefined,
         };
         if (formPassword) data.password = formPassword;
         await adminAuthApi.updateUser(editingUser.id, data);
@@ -113,6 +117,7 @@ export default function UsersPage() {
           name: formName,
           phone: formPhone,
           permissions: formRole === 'manager' ? formPermissions : [],
+          darkstoreIds: formRole !== 'superadmin' ? formDarkstoreIds : undefined,
         });
       }
       setShowModal(false);
@@ -201,6 +206,7 @@ export default function UsersPage() {
               <th>Телефон</th>
               <th>Роль</th>
               <th>Доступы</th>
+              <th>Дарксторы</th>
               <th>Статус</th>
               <th></th>
             </tr>
@@ -212,12 +218,12 @@ export default function UsersPage() {
                 <td>{user.email}</td>
                 <td>{user.phone || '—'}</td>
                 <td>
-                  <span className={`admin-badge ${user.role === 'admin' ? 'admin-status-completed' : 'admin-status-confirmed'}`}>
-                    {user.role === 'admin' ? 'Админ' : 'Менеджер'}
+                  <span className={`admin-badge ${user.role === 'superadmin' ? 'admin-status-delivering' : user.role === 'admin' ? 'admin-status-completed' : 'admin-status-confirmed'}`}>
+                    {user.role === 'superadmin' ? 'Суперадмин' : user.role === 'admin' ? 'Админ' : 'Менеджер'}
                   </span>
                 </td>
                 <td>
-                  {user.role === 'admin' ? (
+                  {user.role === 'superadmin' || user.role === 'admin' ? (
                     <span className="text-xs text-slate-400">Все разделы</span>
                   ) : user.permissions && user.permissions.length > 0 ? (
                     <div className="flex flex-wrap gap-1">
@@ -232,6 +238,21 @@ export default function UsersPage() {
                     </div>
                   ) : (
                     <span className="text-xs text-red-400">Нет доступов</span>
+                  )}
+                </td>
+                <td>
+                  {user.role === 'superadmin' ? (
+                    <span className="text-xs text-slate-400">Все дарксторы</span>
+                  ) : user.darkstores && user.darkstores.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {user.darkstores.map(d => (
+                        <span key={d.id} className="admin-badge admin-status-assembling text-xs">
+                          {d.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
                   )}
                 </td>
                 <td>
@@ -282,7 +303,7 @@ export default function UsersPage() {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-slate-400">
+                <td colSpan={8} className="text-center py-8 text-slate-400">
                   Нет пользователей
                 </td>
               </tr>
@@ -359,11 +380,14 @@ export default function UsersPage() {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Роль</label>
                 <select
                   value={formRole}
-                  onChange={(e) => setFormRole(e.target.value as 'admin' | 'manager')}
+                  onChange={(e) => setFormRole(e.target.value as 'superadmin' | 'admin' | 'manager')}
                   className="admin-input w-full"
                 >
                   <option value="manager">Менеджер</option>
                   <option value="admin">Администратор</option>
+                  {admin?.role === 'superadmin' && (
+                    <option value="superadmin">Суперадмин</option>
+                  )}
                 </select>
               </div>
 
@@ -389,6 +413,38 @@ export default function UsersPage() {
                           className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <span className="text-sm">{section.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {formRole !== 'superadmin' && allDarkstores.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Дарксторы
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {allDarkstores.map(ds => (
+                      <label
+                        key={ds.id}
+                        className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-colors ${
+                          formDarkstoreIds.includes(ds.id)
+                            ? 'border-indigo-500 bg-indigo-50'
+                            : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={formDarkstoreIds.includes(ds.id)}
+                          onChange={() =>
+                            setFormDarkstoreIds(prev =>
+                              prev.includes(ds.id) ? prev.filter(id => id !== ds.id) : [...prev, ds.id]
+                            )
+                          }
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm">{ds.name}</span>
                       </label>
                     ))}
                   </div>

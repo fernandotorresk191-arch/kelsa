@@ -4,30 +4,23 @@ import {
   Query,
   UseGuards,
   Req,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
-import { JwtGuard } from '../auth/jwt.guard';
+import { AdminGuard } from './admin.guard';
 
 @Controller('v1/admin/analytics')
-@UseGuards(JwtGuard)
+@UseGuards(AdminGuard)
 export class AdminAnalyticsController {
   constructor(private prisma: PrismaService) {}
 
-  private checkAdminRole(req: any) {
-    const user = (req as { user?: { role: string } })?.user;
-    if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
-      throw new UnauthorizedException('Admin access required');
-    }
-  }
-
   @Get('dashboard')
   async getDashboard(@Req() req: any) {
-    this.checkAdminRole(req);
+    const darkstoreFilter: any = {};
+    if (req.darkstoreId) darkstoreFilter.darkstoreId = req.darkstoreId;
 
     // Общая статистика — только доставленные заказы для финансовых показателей
-    const deliveredFilter = { status: 'DELIVERED' as const };
-    const totalOrders = await this.prisma.order.count();
+    const deliveredFilter = { status: 'DELIVERED' as const, ...darkstoreFilter };
+    const totalOrders = await this.prisma.order.count({ where: darkstoreFilter });
     const totalDelivered = await this.prisma.order.count({ where: deliveredFilter });
     const aggregates = await this.prisma.order.aggregate({
       where: deliveredFilter,
@@ -43,14 +36,14 @@ export class AdminAnalyticsController {
     // Продажи за последние 7 дней (только доставленные)
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const recentOrders = await this.prisma.order.findMany({
-      where: { createdAt: { gte: sevenDaysAgo }, status: 'DELIVERED' },
+      where: { createdAt: { gte: sevenDaysAgo }, status: 'DELIVERED', ...darkstoreFilter },
       select: { totalAmount: true, createdAt: true },
     });
 
     // Топ товаров по продажам (только доставленные заказы)
     const topProducts = await this.prisma.orderItem.groupBy({
       by: ['productId', 'title'],
-      where: { order: { status: 'DELIVERED' } },
+      where: { order: { status: 'DELIVERED', ...darkstoreFilter } },
       _sum: { qty: true, amount: true },
       orderBy: { _sum: { amount: 'desc' } },
       take: 10,
@@ -58,7 +51,7 @@ export class AdminAnalyticsController {
 
     const todayStart = new Date(new Date().setHours(0, 0, 0, 0));
     const todayOrders = await this.prisma.order.findMany({
-      where: { createdAt: { gte: todayStart }, status: 'DELIVERED' },
+      where: { createdAt: { gte: todayStart }, status: 'DELIVERED', ...darkstoreFilter },
       select: { totalAmount: true, profit: true },
     });
 
@@ -101,7 +94,8 @@ export class AdminAnalyticsController {
     @Query('endDate') endDate?: string,
     @Req() req?: any,
   ) {
-    this.checkAdminRole(req);
+    const darkstoreFilter: any = {};
+    if (req?.darkstoreId) darkstoreFilter.darkstoreId = req.darkstoreId;
 
     const start = startDate
       ? new Date(startDate)
@@ -115,6 +109,7 @@ export class AdminAnalyticsController {
           lte: end,
         },
         status: 'DELIVERED',
+        ...darkstoreFilter,
       },
       select: {
         id: true,
@@ -164,11 +159,12 @@ export class AdminAnalyticsController {
     @Query('limit') limit: string = '20',
     @Req() req?: any,
   ) {
-    this.checkAdminRole(req);
+    const darkstoreFilter: any = {};
+    if (req?.darkstoreId) darkstoreFilter.darkstoreId = req.darkstoreId;
 
     const sales = await this.prisma.orderItem.groupBy({
       by: ['productId', 'title'],
-      where: { order: { status: 'DELIVERED' } },
+      where: { order: { status: 'DELIVERED', ...darkstoreFilter } },
       _sum: { qty: true, amount: true },
       _count: { id: true },
       orderBy: { _sum: { amount: 'desc' } },
@@ -191,7 +187,8 @@ export class AdminAnalyticsController {
     @Query('period') period: string = 'month', // day, week, month, year
     @Req() req?: any,
   ) {
-    this.checkAdminRole(req);
+    const darkstoreFilter: any = {};
+    if (req?.darkstoreId) darkstoreFilter.darkstoreId = req.darkstoreId;
 
     let daysBack = 30;
 
@@ -213,6 +210,7 @@ export class AdminAnalyticsController {
       where: {
         createdAt: { gte: start },
         status: 'DELIVERED',
+        ...darkstoreFilter,
       },
       select: {
         createdAt: true,
@@ -254,7 +252,6 @@ export class AdminAnalyticsController {
     @Query('endDate') endDate?: string,
     @Req() req?: any,
   ) {
-    this.checkAdminRole(req);
 
     const where: any = {};
     if (startDate || endDate) {
