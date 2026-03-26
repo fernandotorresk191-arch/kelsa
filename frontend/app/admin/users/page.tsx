@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { adminAuthApi } from '@/features/admin/api';
-import { AdminUser, Darkstore } from '@/features/admin/types';
+import { AdminUser } from '@/features/admin/types';
 import { ApiError } from '@/shared/api/http';
 import { useAdmin } from '@/components/admin/AdminProvider';
 import { ALL_SECTIONS } from '../layout';
