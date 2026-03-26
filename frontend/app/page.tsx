@@ -86,7 +86,7 @@ export default async function Home() {
               <h3 className="text-lg font-semibold mb-3">Доставка продуктов и товаров</h3>
               <p className="text-muted-foreground">
                 Быстрая доставка продуктов, готовой еды и товаров для дома. Работаем каждый день с
-                8:00 до 23:00.
+                9:00 до 21:00.
               </p>
             </div>
             <div className="bg-white p-6 rounded-lg border">
