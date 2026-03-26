@@ -9,7 +9,7 @@
   "background_color": "#000000",
   "theme_color": "#3b82f6",
   "orientation": "portrait",
-  "icons": [
+  "icons": [ 
     {
       "src": "/icons/cour192.png",
       "sizes": "192x192",
