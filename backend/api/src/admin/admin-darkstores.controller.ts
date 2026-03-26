@@ -21,6 +21,10 @@ class CreateDarkstoreDto {
 
   @IsOptional()
   @IsString()
+  shortName?: string;
+
+  @IsOptional()
+  @IsString()
   address?: string;
 
   @IsOptional()
@@ -32,6 +36,10 @@ class UpdateDarkstoreDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
+  shortName?: string;
 
   @IsOptional()
   @IsString()
@@ -122,6 +130,7 @@ export class AdminDarkstoresController {
     return this.prisma.darkstore.create({
       data: {
         name: dto.name,
+        shortName: dto.shortName || null,
         address: dto.address || null,
         isActive: dto.isActive ?? true,
       },
@@ -140,6 +149,7 @@ export class AdminDarkstoresController {
       where: { id },
       data: {
         ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.shortName !== undefined && { shortName: dto.shortName || null }),
         ...(dto.address !== undefined && { address: dto.address }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },

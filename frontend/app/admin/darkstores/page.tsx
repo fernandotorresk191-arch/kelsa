@@ -17,6 +17,7 @@ export default function DarkstoresPage() {
 
   // Form state
   const [formName, setFormName] = useState('');
+  const [formShortName, setFormShortName] = useState('');
   const [formAddress, setFormAddress] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -46,6 +47,7 @@ export default function DarkstoresPage() {
 
   const resetForm = () => {
     setFormName('');
+    setFormShortName('');
     setFormAddress('');
     setError('');
   };
@@ -59,6 +61,7 @@ export default function DarkstoresPage() {
   const openEdit = (ds: Darkstore) => {
     setEditing(ds);
     setFormName(ds.name);
+    setFormShortName(ds.shortName || '');
     setFormAddress(ds.address || '');
     setError('');
     setShowModal(true);
@@ -73,11 +76,13 @@ export default function DarkstoresPage() {
       if (editing) {
         await adminDarkstoresApi.update(editing.id, {
           name: formName,
+          shortName: formShortName || undefined,
           address: formAddress || undefined,
         });
       } else {
         await adminDarkstoresApi.create({
           name: formName,
+          shortName: formShortName || undefined,
           address: formAddress || undefined,
         });
       }
@@ -153,6 +158,7 @@ export default function DarkstoresPage() {
           <thead>
             <tr>
               <th>Название</th>
+              <th>Сокр. название</th>
               <th>Адрес</th>
               <th>Статус</th>
               <th>Создан</th>
@@ -163,6 +169,7 @@ export default function DarkstoresPage() {
             {darkstores.map(ds => (
               <tr key={ds.id}>
                 <td className="font-medium">{ds.name}</td>
+                <td className="font-mono text-sm">{ds.shortName || '—'}</td>
                 <td>{ds.address || '—'}</td>
                 <td>
                   <button
@@ -245,6 +252,23 @@ export default function DarkstoresPage() {
                   placeholder="Даркстор Центр"
                   required
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Сокращённое латинское название
+                  <span className="ml-1 text-slate-400 font-normal text-xs">(необязательно)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formShortName}
+                  onChange={(e) => setFormShortName(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                  className="admin-input w-full font-mono"
+                  placeholder="msk"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  Используется как префикс в slug категорий и товаров. Только латинские буквы и цифры.
+                </p>
               </div>
 
               <div>

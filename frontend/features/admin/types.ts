@@ -1,6 +1,7 @@
 export type Darkstore = {
   id: string;
   name: string;
+  shortName?: string | null;
   address?: string | null;
   isActive: boolean;
   createdAt: string;

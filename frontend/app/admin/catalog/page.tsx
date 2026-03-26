@@ -5,6 +5,7 @@ import { adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Category } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { resolveMediaUrl } from '@/shared/api/media';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 type CategoryWithCount = Category & { _count: { products: number; subcategories: number } };
 
@@ -407,6 +408,7 @@ function CategoryForm({
   onSuccess: () => void;
   onCancel: () => void;
 }) {
+  const { currentDarkstore } = useAdmin();
   // Для подкатегорий извлекаем базовый slug без префикса родителя
   const getBaseSlug = (fullSlug: string, parentSlug?: string) => {
     if (parentSlug && fullSlug.startsWith(parentSlug + '/')) {
@@ -505,7 +507,7 @@ function CategoryForm({
 
   // Автогенерация slug из названия
   const generateSlug = (name: string) => {
-    return name
+    const base = name
       .toLowerCase()
       .replace(/[а-яё]/g, (char) => {
         const map: Record<string, string> = {
@@ -519,6 +521,8 @@ function CategoryForm({
       })
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+    const shortName = currentDarkstore?.shortName;
+    return shortName && !formData.parentId ? `${shortName}-${base}` : base;
   };
 
   // Фильтруем список категорий для выбора родителя (только корневые категории)

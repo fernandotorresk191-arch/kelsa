@@ -719,12 +719,12 @@ export const adminDarkstoresApi = {
   },
 
   // Создать даркстор
-  create: async (data: { name: string; address?: string }): Promise<Darkstore> => {
+  create: async (data: { name: string; shortName?: string; address?: string }): Promise<Darkstore> => {
     return http.post<Darkstore>('/v1/admin/darkstores', data);
   },
 
   // Обновить даркстор
-  update: async (id: string, data: { name?: string; address?: string; isActive?: boolean }): Promise<Darkstore> => {
+  update: async (id: string, data: { name?: string; shortName?: string; address?: string; isActive?: boolean }): Promise<Darkstore> => {
     return http.put<Darkstore>(`/v1/admin/darkstores/${id}`, data);
   },
 

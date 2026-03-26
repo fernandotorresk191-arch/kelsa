@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { adminProductsApi, adminCategoriesApi, adminUploadApi } from '@/features/admin/api';
 import { Product, Category } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 type CategoryWithCount = Category & { _count: { products: number } };
 
@@ -708,6 +709,7 @@ export default function AdminProductsPage() {
 }
 
 function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCount[]; onSuccess: () => void }) {
+  const { currentDarkstore } = useAdmin();
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
@@ -731,7 +733,7 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
 
   // Автогенерация slug из названия
   const generateSlug = (name: string) => {
-    return name
+    const base = name
       .toLowerCase()
       .replace(/[а-яё]/g, (char) => {
         const map: Record<string, string> = {
@@ -745,6 +747,8 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
       })
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
+    const shortName = currentDarkstore?.shortName;
+    return shortName ? `${shortName}-${base}` : base;
   };
 
   // Проверка уникальности slug
