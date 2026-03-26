@@ -229,7 +229,7 @@ function AccountPageContent() {
                   </div>
                 </div>
                 <Badge
-                  className={`${STATUS_STYLES[order.status]} border text-xs sm:text-sm px-2.5 py-1 transition-all duration-300 shrink-0`}
+                  className={`${STATUS_STYLES[order.status]} border text-xs sm:text-sm px-2.5 py-1 transition-all duration-300 shrink-0 hover:bg-transparent hover:text-inherit`}
                 >
                   {STATUS_LABELS[order.status]}
                 </Badge>

@@ -44,7 +44,7 @@ export default async function Home() {
       </section>
 
       <div className="kelsa-container">
-        <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-5 py-3 text-center text-sm font-medium text-emerald-800">
+        <div className="rounded-xl border px-5 py-3 text-center text-sm font-medium" style={{ backgroundColor: '#6206c72e', borderColor: 'rgb(98, 6, 199)', color: 'rgb(98, 6, 199)' }}>
           🕘 Работаем с 09:00 до 21:00
         </div>
       </div>
