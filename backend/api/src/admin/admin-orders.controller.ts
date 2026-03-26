@@ -191,6 +191,10 @@ export class AdminOrdersController {
       throw new Error('Order not found');
     }
 
+    if (req.darkstoreId && order.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Order not found');
+    }
+
     return order;
   }
 
@@ -203,6 +207,10 @@ export class AdminOrdersController {
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) {
       throw new Error('Order not found');
+    }
+
+    if (req.darkstoreId && order.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Order not found');
     }
 
     // Получаем логин админа из токена
@@ -338,6 +346,10 @@ export class AdminOrdersController {
   ) {
     const order = await this.prisma.order.findUnique({ where: { id } });
     if (!order) {
+      throw new BadRequestException('Заказ не найден');
+    }
+
+    if (req.darkstoreId && order.darkstoreId !== req.darkstoreId) {
       throw new BadRequestException('Заказ не найден');
     }
 

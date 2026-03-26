@@ -70,6 +70,10 @@ export class AdminPromotionsController {
       throw new BadRequestException('Промо не найдено');
     }
 
+    if (req?.darkstoreId && promotion.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Промо не найдено');
+    }
+
     return promotion;
   }
 
@@ -114,6 +118,12 @@ export class AdminPromotionsController {
     },
     @Req() req?: AuthRequest,
   ) {
+    const existing = await this.prisma.promotion.findUnique({ where: { id } });
+    if (!existing) throw new BadRequestException('Промо не найдено');
+    if (req?.darkstoreId && existing.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Промо не найдено');
+    }
+
     return this.prisma.promotion.update({
       where: { id },
       data: {
@@ -128,6 +138,12 @@ export class AdminPromotionsController {
 
   @Delete(':id')
   async deletePromotion(@Param('id') id: string, @Req() req?: AuthRequest) {
+    const existing = await this.prisma.promotion.findUnique({ where: { id } });
+    if (!existing) throw new BadRequestException('Промо не найдено');
+    if (req?.darkstoreId && existing.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Промо не найдено');
+    }
+
     await this.prisma.promotion.delete({
       where: { id },
     });

@@ -11,6 +11,7 @@ import {
   Param,
   UseGuards,
   Query,
+  Req,
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
@@ -35,6 +36,11 @@ class SetDiscountDto {
   discountPercent: number; // 0–100
 }
 
+interface AuthRequest {
+  user: { role?: string };
+  darkstoreId: string | null;
+}
+
 @Controller('admin/expiry')
 @UseGuards(AdminGuard)
 export class AdminExpiryController {
@@ -43,9 +49,16 @@ export class AdminExpiryController {
     private purchasesController: AdminPurchasesController,
   ) {}
 
+  private getDarkstoreFilter(req?: AuthRequest) {
+    if (req?.darkstoreId) {
+      return { purchase: { darkstoreId: req.darkstoreId } };
+    }
+    return {};
+  }
+
   // Получить партии с истекающим сроком годности (в течение 7 дней)
   @Get('expiring')
-  async getExpiringBatches(@Query('days') days = '7') {
+  async getExpiringBatches(@Query('days') days = '7', @Req() req?: AuthRequest) {
     const daysNum = parseInt(days, 10) || 7;
     const today = new Date();
     const futureDate = new Date();
@@ -60,6 +73,7 @@ export class AdminExpiryController {
           lte: futureDate,
           gte: today, // Ещё не просрочены
         },
+        ...this.getDarkstoreFilter(req),
       },
       orderBy: { expiryDate: 'asc' },
       include: {
@@ -87,7 +101,7 @@ export class AdminExpiryController {
 
   // Получить уже просроченные партии
   @Get('expired')
-  async getExpiredBatches() {
+  async getExpiredBatches(@Req() req?: AuthRequest) {
     const today = new Date();
 
     const batches = await this.prisma.batch.findMany({
@@ -98,6 +112,7 @@ export class AdminExpiryController {
           not: null,
           lt: today,
         },
+        ...this.getDarkstoreFilter(req),
       },
       orderBy: { expiryDate: 'asc' },
       include: {
@@ -274,6 +289,7 @@ export class AdminExpiryController {
     @Query('limit') limit = '50',
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Req() req?: AuthRequest,
   ) {
     const pageNum = parseInt(page, 10) || 1;
     const limitNum = parseInt(limit, 10) || 50;
@@ -284,6 +300,9 @@ export class AdminExpiryController {
       where.createdAt = {};
       if (from) where.createdAt.gte = new Date(from);
       if (to) where.createdAt.lte = new Date(to);
+    }
+    if (req?.darkstoreId) {
+      where.batch = { purchase: { darkstoreId: req.darkstoreId } };
     }
 
     const [writeOffs, total] = await Promise.all([
@@ -321,12 +340,15 @@ export class AdminExpiryController {
 
   // Статистика списаний для аналитики
   @Get('stats')
-  async getExpiryStats(@Query('from') from?: string, @Query('to') to?: string) {
+  async getExpiryStats(@Query('from') from?: string, @Query('to') to?: string, @Req() req?: AuthRequest) {
     const where: any = {};
     if (from || to) {
       where.createdAt = {};
       if (from) where.createdAt.gte = new Date(from);
       if (to) where.createdAt.lte = new Date(to);
+    }
+    if (req?.darkstoreId) {
+      where.batch = { purchase: { darkstoreId: req.darkstoreId } };
     }
 
     // Общее количество списанных единиц
@@ -379,6 +401,8 @@ export class AdminExpiryController {
     const weekLater = new Date();
     weekLater.setDate(today.getDate() + 7);
 
+    const dsFilter = this.getDarkstoreFilter(req);
+
     const expiringCount = await this.prisma.batch.count({
       where: {
         status: 'ACTIVE',
@@ -388,6 +412,7 @@ export class AdminExpiryController {
           lte: weekLater,
           gte: today,
         },
+        ...dsFilter,
       },
     });
 
@@ -399,6 +424,7 @@ export class AdminExpiryController {
           not: null,
           lt: today,
         },
+        ...dsFilter,
       },
     });
 

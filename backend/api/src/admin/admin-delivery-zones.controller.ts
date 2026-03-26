@@ -115,6 +115,9 @@ export class AdminDeliveryZonesController {
     if (!existing) {
       throw new BadRequestException('Зона доставки не найдена');
     }
+    if (req.darkstoreId && existing.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Зона доставки не найдена');
+    }
 
     const zone = await this.prisma.deliveryZone.update({
       where: { id },
@@ -132,6 +135,9 @@ export class AdminDeliveryZonesController {
   async deleteDeliveryZone(@Param('id') id: string, @Req() req: AuthRequest) {
     const existing = await this.prisma.deliveryZone.findUnique({ where: { id } });
     if (!existing) {
+      throw new BadRequestException('Зона доставки не найдена');
+    }
+    if (req.darkstoreId && existing.darkstoreId !== req.darkstoreId) {
       throw new BadRequestException('Зона доставки не найдена');
     }
 

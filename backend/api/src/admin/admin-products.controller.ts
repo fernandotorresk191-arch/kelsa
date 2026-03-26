@@ -268,6 +268,10 @@ export class AdminProductsController {
       throw new Error('Product not found');
     }
 
+    if (req.darkstoreId && product.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Product not found');
+    }
+
     // Проверяем уникальность slug в рамках даркстора, если он меняется
     if (dto.slug) {
       const existingWithSlug = await this.prisma.product.findFirst({
@@ -297,6 +301,10 @@ export class AdminProductsController {
       throw new Error('Product not found');
     }
 
+    if (req.darkstoreId && product.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Product not found');
+    }
+
     // Мягкое удаление - просто отключаем товар
     await this.prisma.product.update({
       where: { id },
@@ -315,6 +323,10 @@ export class AdminProductsController {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) {
       throw new Error('Product not found');
+    }
+
+    if (req.darkstoreId && product.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Product not found');
     }
 
     const updated = await this.prisma.product.update({

@@ -227,6 +227,10 @@ export class AdminCouriersController {
       throw new BadRequestException('Курьер не найден');
     }
 
+    if (req.darkstoreId && existingCourier.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Курьер не найден');
+    }
+
     // Проверяем уникальность логина если он меняется
     if (dto.login && dto.login !== existingCourier.login) {
       const courierWithSameLogin = await this.prisma.courier.findUnique({
@@ -286,6 +290,10 @@ export class AdminCouriersController {
     });
 
     if (!existingCourier) {
+      throw new BadRequestException('Курьер не найден');
+    }
+
+    if (req.darkstoreId && existingCourier.darkstoreId !== req.darkstoreId) {
       throw new BadRequestException('Курьер не найден');
     }
 

@@ -236,6 +236,10 @@ export class AdminCategoriesController {
       throw new BadRequestException('Категория не найдена');
     }
 
+    if (req?.darkstoreId && currentCategory.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Категория не найдена');
+    }
+
     let finalSlug = dto.slug || currentCategory.slug;
     let parentId = dto.parentId !== undefined ? dto.parentId : currentCategory.parentId;
 
@@ -294,6 +298,11 @@ export class AdminCategoriesController {
 
   @Delete(':id')
   async deleteCategory(@Param('id') id: string, @Req() req: any) {
+    const category = await this.prisma.category.findUnique({ where: { id } });
+    if (!category) throw new BadRequestException('Категория не найдена');
+    if (req?.darkstoreId && category.darkstoreId !== req.darkstoreId) {
+      throw new BadRequestException('Категория не найдена');
+    }
 
     // Проверяем, есть ли товары в этой категории
     const productsCount = await this.prisma.product.count({
