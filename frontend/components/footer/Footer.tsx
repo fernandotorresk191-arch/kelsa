@@ -82,7 +82,7 @@ const Footer = () => {
 
         {/* Copyright */}
         <div className="border-t mt-8 pt-6 text-xs text-muted-foreground">
-          <p>© 2025 kelsa. Все права защищены.</p>
+          <p>© 2026 kelsa. Все права защищены.</p>
         </div>
       </div>
     </footer>
