@@ -57,10 +57,17 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   const selectSettlement = useCallback((code: string) => {
-    setSelectedCode(code);
+    const previousCode = selectedCode;
     storeSettlement(code);
     setIsDialogOpen(false);
-  }, []);
+    // If the user switched to a different settlement, reload so server-rendered
+    // pages (home, category, search) re-fetch with the new settlement cookie.
+    if (previousCode && previousCode !== code) {
+      window.location.reload();
+      return;
+    }
+    setSelectedCode(code);
+  }, [selectedCode]);
 
   useEffect(() => {
     void refreshSettlements();
