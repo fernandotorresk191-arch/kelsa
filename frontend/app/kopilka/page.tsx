@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import CreateKopilkaForm from "@/components/kopilka/CreateKopilkaForm";
 import KopilkaView from "@/components/kopilka/KopilkaView";
@@ -65,7 +64,6 @@ const FEATURES = [
 ];
 
 export default function KopilkaPage() {
-  const router = useRouter();
   const [kopilkas, setKopilkas] = useState<Kopilka[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);

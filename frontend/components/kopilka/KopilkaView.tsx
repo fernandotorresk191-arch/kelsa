@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import type { Kopilka, KopilkaContribution } from "@/features/kopilka/types";
 import { kopilkaApi } from "@/features/kopilka/api";
 import { Button } from "@/components/ui/button";
@@ -83,15 +83,6 @@ export default function KopilkaView({
   const months = getMonthColumns(kopilka.startMonth, 6);
   const totalSaved = calcTotalSaved(kopilka);
   const progress = Math.min(100, (totalSaved / kopilka.goalAmount) * 100);
-
-  const refresh = useCallback(async () => {
-    try {
-      const updated = await kopilkaApi.get(kopilka.shareId);
-      setKopilka(updated);
-    } catch {
-      // ignore
-    }
-  }, [kopilka.shareId]);
 
   const handleTogglePayment = async (
     contributionId: string,
