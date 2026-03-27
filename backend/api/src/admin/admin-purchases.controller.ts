@@ -346,10 +346,14 @@ export class AdminPurchasesController {
   async getProductBatches(
     @Param('productId') productId: string,
     @Query('status') status?: string,
+    @Req() req?: any,
   ) {
     const where: any = { productId };
     if (status) {
       where.status = status;
+    }
+    if (req?.darkstoreId) {
+      where.purchase = { darkstoreId: req.darkstoreId };
     }
 
     const batches = await this.prisma.batch.findMany({

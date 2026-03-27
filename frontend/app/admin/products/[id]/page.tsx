@@ -7,6 +7,7 @@ import { adminProductsApi, adminCategoriesApi, adminUploadApi, adminPurchasesApi
 import { Product, Category, Batch } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { RichTextEditor } from '@/components/admin/RichTextEditor';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 type CategoryWithCount = Category & { _count: { products: number } };
 
@@ -30,6 +31,7 @@ export default function AdminProductDetailPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [batches, setBatches] = useState<Batch[]>([]);
+  const { currentDarkstore } = useAdmin();
 
   useEffect(() => {
     const pathParts = window.location.pathname.split('/');
@@ -87,7 +89,7 @@ export default function AdminProductDetailPage() {
 
     fetchProduct();
     fetchBatches();
-  }, [productId]);
+  }, [productId, currentDarkstore?.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
