@@ -63,7 +63,7 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
     setIsDialogOpen(false);
     // If the user switched to a different settlement, reload so server-rendered
     // pages (home, category, search) re-fetch with the new settlement cookie.
-    if (previousCode && previousCode !== code) {
+    if (!previousCode || previousCode !== code) {
       window.location.reload();
       return;
     }
