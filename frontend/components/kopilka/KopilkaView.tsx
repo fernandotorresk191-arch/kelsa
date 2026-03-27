@@ -84,6 +84,8 @@ export default function KopilkaView({
   const months = getMonthColumns(kopilka.startMonth, visibleCount);
   const totalSaved = calcTotalSaved(kopilka);
   const progress = Math.min(100, (totalSaved / kopilka.goalAmount) * 100);
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   const handleTogglePayment = async (
     contributionId: string,
@@ -253,7 +255,11 @@ export default function KopilkaView({
                 {months.map((m) => (
                   <th
                     key={m}
-                    className="px-2 py-3 text-xs font-medium text-gray-500 text-center bg-gray-50/50 min-w-[70px]"
+                    className={`px-2 py-3 text-xs font-medium text-center min-w-[70px] ${
+                      m === currentMonth
+                        ? "bg-[#6206c7]/10 text-[#6206c7] font-semibold"
+                        : "text-gray-500 bg-gray-50/50"
+                    }`}
                   >
                     {formatMonth(m)}
                   </th>
@@ -306,7 +312,7 @@ export default function KopilkaView({
                         {months.map((m) => {
                           const isPaid = paid.includes(m);
                           return (
-                            <td key={m} className="px-1 py-1.5 text-center">
+                            <td key={m} className={`px-1 py-1.5 text-center ${m === currentMonth ? "bg-[#6206c7]/5" : ""}`}>
                               <button
                                 onClick={() =>
                                   handleTogglePayment(contribution.id, m)

@@ -69,26 +69,28 @@ export default function KopilkaPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [activeKopilka, setActiveKopilka] = useState<Kopilka | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      const ids = getStoredIds();
-      if (ids.length === 0) {
-        setLoading(false);
-        return;
-      }
-      const results: Kopilka[] = [];
-      for (const id of ids) {
-        try {
-          const k = await kopilkaApi.get(id);
-          results.push(k);
-        } catch {
-          removeStoredId(id);
-        }
-      }
-      setKopilkas(results);
+  const loadKopilkas = async () => {
+    const ids = getStoredIds();
+    if (ids.length === 0) {
+      setKopilkas([]);
       setLoading(false);
+      return;
     }
-    load();
+    const results: Kopilka[] = [];
+    for (const id of ids) {
+      try {
+        const k = await kopilkaApi.get(id);
+        results.push(k);
+      } catch {
+        removeStoredId(id);
+      }
+    }
+    setKopilkas(results);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadKopilkas();
   }, []);
 
   const handleCreated = (k: Kopilka) => {
@@ -114,7 +116,10 @@ export default function KopilkaPage() {
     return (
       <div className="kelsa-container py-6 pb-16">
         <button
-          onClick={() => setActiveKopilka(null)}
+          onClick={() => {
+            setActiveKopilka(null);
+            loadKopilkas();
+          }}
           className="flex items-center gap-1 text-sm text-gray-500 hover:text-[#6206c7] transition-colors mb-4"
         >
           ← Все копилки
