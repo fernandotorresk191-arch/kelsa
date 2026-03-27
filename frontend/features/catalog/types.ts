@@ -15,7 +15,8 @@ export type ProductDto = {
   slug: string;
   description?: string | null;
   imageUrl?: string | null;
-  weightGr?: number | null;
+  weight?: string | null;
+  barcode?: string | null;
   isActive: boolean;
   price: number; // kopeks
   oldPrice?: number | null;

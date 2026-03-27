@@ -76,7 +76,7 @@ export default async function ProductPage({
           <h1 className="text-2xl font-semibold mb-2">{product.title}</h1>
 
           <div className="flex items-center gap-2 mb-6">
-            {product.weightGr && <span className="text-sm text-muted-foreground">{product.weightGr} г</span>}
+            {product.weight && <span className="text-sm text-muted-foreground">{product.weight}</span>}
             {product.category && (
               <Link
                 href={`/category/${product.category.slug}`}

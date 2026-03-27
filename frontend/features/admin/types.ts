@@ -120,7 +120,8 @@ export type Product = {
   slug: string;
   description?: string;
   imageUrl?: string;
-  weightGr?: number;
+  weight?: string;
+  barcode?: string;
   isActive: boolean;
   price: number;
   oldPrice?: number;

@@ -158,11 +158,9 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </Link>
 
         {/* Weight / Volume info */}
-        {product.weightGr && (
+        {product.weight && (
           <div className="text-xs text-gray-400 mb-3">
-            {product.weightGr >= 1000 
-              ? `${(product.weightGr / 1000).toFixed(product.weightGr % 1000 === 0 ? 0 : 1)} кг` 
-              : `${product.weightGr} г`}
+            {product.weight}
           </div>
         )}
 

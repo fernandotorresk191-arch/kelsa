@@ -28,6 +28,8 @@ export default function AdminProductDetailPage() {
     categoryId: '',
     subcategoryId: '',
     cellNumber: '',
+    weight: '',
+    barcode: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [batches, setBatches] = useState<Batch[]>([]);
@@ -70,6 +72,8 @@ export default function AdminProductDetailPage() {
           categoryId: productData.categoryId || '',
           subcategoryId: productData.subcategoryId || '',
           cellNumber: productData.cellNumber || '',
+          weight: productData.weight || '',
+          barcode: productData.barcode || '',
         });
       } catch (error) {
         console.error('Failed to fetch product:', error);
@@ -108,6 +112,8 @@ export default function AdminProductDetailPage() {
         categoryId: formData.categoryId || undefined,
         subcategoryId: formData.subcategoryId || undefined,
         cellNumber: formData.cellNumber || undefined,
+        weight: formData.weight || undefined,
+        barcode: formData.barcode || undefined,
       });
       
       // Возвращаемся с сохранением фильтров из URL
@@ -289,6 +295,35 @@ export default function AdminProductDetailPage() {
                   onChange={(e) => setFormData({ ...formData, cellNumber: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-weight" className="block text-sm font-medium text-gray-700 mb-1">
+                    Вес / Объём
+                  </label>
+                  <input
+                    id="edit-weight"
+                    type="text"
+                    placeholder="Например: 500 г, 1.5 л, 200 мл"
+                    value={formData.weight}
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-barcode" className="block text-sm font-medium text-gray-700 mb-1">
+                    Штрихкод
+                  </label>
+                  <input
+                    id="edit-barcode"
+                    type="text"
+                    placeholder="Например: 4607001234567"
+                    value={formData.barcode}
+                    onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center">

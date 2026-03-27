@@ -26,7 +26,8 @@ export interface Product {
   slug: string;
   description?: string | null;
   imageUrl?: string | null;
-  weightGr?: number | null;
+  weight?: string | null;
+  barcode?: string | null;
   isActive: boolean;
   price: number;
   oldPrice?: number | null;

@@ -723,6 +723,8 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
     categoryId: '',
     subcategoryId: '',
     cellNumber: '',
+    weight: '',
+    barcode: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -796,6 +798,8 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
         categoryId: formData.categoryId,
         subcategoryId: formData.subcategoryId || undefined,
         cellNumber: formData.cellNumber || undefined,
+        weight: formData.weight || undefined,
+        barcode: formData.barcode || undefined,
         isActive: true,
       } as unknown as Parameters<typeof adminProductsApi.createProduct>[0]);
 
@@ -994,6 +998,35 @@ function AddProductForm({ categories, onSuccess }: { categories: CategoryWithCou
                 setImagePreviewUrl(null);
               }}
               label="Изображение"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label htmlFor="product-weight" className="block text-sm font-medium text-gray-700 mb-1">
+              Вес / Объём
+            </label>
+            <input
+              id="product-weight"
+              type="text"
+              placeholder="Например: 500 г, 1.5 л, 200 мл"
+              value={formData.weight}
+              onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label htmlFor="product-barcode" className="block text-sm font-medium text-gray-700 mb-1">
+              Штрихкод
+            </label>
+            <input
+              id="product-barcode"
+              type="text"
+              placeholder="Например: 4607001234567"
+              value={formData.barcode}
+              onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
           </div>
         </div>

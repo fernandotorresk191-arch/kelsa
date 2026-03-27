@@ -255,9 +255,9 @@ export function CartDialog() {
                       <div className="text-xs font-medium line-clamp-3 sm:text-sm sm:line-clamp-2 lg:text-base">
                         {item.product.title}
                       </div>
-                      {item.product.weightGr && (
+                      {item.product.weight && (
                         <div className="mt-1 text-xs text-muted-foreground">
-                          {item.product.weightGr} г
+                          {item.product.weight}
                         </div>
                       )}
 

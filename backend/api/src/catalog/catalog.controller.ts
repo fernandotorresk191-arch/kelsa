@@ -153,6 +153,7 @@ export class CatalogController {
           OR: [
             { title: { contains: q, mode: 'insensitive' } },
             { description: { contains: q, mode: 'insensitive' } },
+            { barcode: { contains: q, mode: 'insensitive' } },
           ],
         };
       }
@@ -181,7 +182,8 @@ export class CatalogController {
         slug: dp.product.slug,
         description: dp.product.description,
         imageUrl: dp.product.imageUrl,
-        weightGr: dp.product.weightGr,
+        weight: dp.product.weight,
+        barcode: dp.product.barcode,
         isActive: dp.product.isActive && dp.isActive,
         price: dp.price,
         oldPrice: dp.oldPrice,
@@ -209,6 +211,7 @@ export class CatalogController {
       where.OR = [
         { title: { contains: q, mode: 'insensitive' } },
         { description: { contains: q, mode: 'insensitive' } },
+        { barcode: { contains: q, mode: 'insensitive' } },
       ];
     }
 

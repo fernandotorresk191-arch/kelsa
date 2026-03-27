@@ -76,7 +76,8 @@ model Product {
   slug        String   @unique
   description String?
   imageUrl    String?
-  weightGr    Int?
+  weight      String?
+  barcode     String?
   isActive    Boolean  @default(true)
 
   // Глобальная категория по умолчанию (используется при создании DarkstoreProduct)

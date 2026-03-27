@@ -36,8 +36,12 @@ class CreateProductDto {
   imageUrl?: string;
 
   @IsOptional()
-  @IsNumber()
-  weightGr?: number;
+  @IsString()
+  weight?: string;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
 
   @IsNumber()
   price: number; // в целых рублях
@@ -84,8 +88,12 @@ class UpdateProductDto {
   imageUrl?: string;
 
   @IsOptional()
-  @IsNumber()
-  weightGr?: number;
+  @IsString()
+  weight?: string;
+
+  @IsOptional()
+  @IsString()
+  barcode?: string;
 
   @IsOptional()
   @IsNumber()
@@ -178,6 +186,7 @@ export class AdminProductsController {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { slug: { contains: search, mode: 'insensitive' } },
+        { barcode: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -276,7 +285,8 @@ export class AdminProductsController {
           slug: dto.slug,
           description: dto.description,
           imageUrl: dto.imageUrl,
-          weightGr: dto.weightGr,
+          weight: dto.weight,
+          barcode: dto.barcode,
           categoryId: dto.categoryId,
           subcategoryId: dto.subcategoryId,
         },
@@ -333,7 +343,8 @@ export class AdminProductsController {
     if (dto.slug !== undefined) globalData.slug = dto.slug;
     if (dto.description !== undefined) globalData.description = dto.description;
     if (dto.imageUrl !== undefined) globalData.imageUrl = dto.imageUrl;
-    if (dto.weightGr !== undefined) globalData.weightGr = dto.weightGr;
+    if (dto.weight !== undefined) globalData.weight = dto.weight;
+    if (dto.barcode !== undefined) globalData.barcode = dto.barcode;
     if (dto.isActive !== undefined) globalData.isActive = dto.isActive;
     // Обновляем дефолтную категорию на товаре
     if (dto.categoryId !== undefined) globalData.categoryId = dto.categoryId;
