@@ -23,14 +23,14 @@ export const cartApi = {
   totals: (token: string) => apiGet<CartTotalsDto>(`/v1/cart/${token}/totals${getSettlementQs()}`),
 
   addItem: (payload: AddCartItemPayload) =>
-    apiPost<CartDto, AddCartItemPayload>("/v1/cart/items", payload),
+    apiPost<CartDto, AddCartItemPayload>(`/v1/cart/items${getSettlementQs()}`, payload),
 
   updateItem: (itemId: string, payload: UpdateCartItemPayload) =>
     apiPatch<CartDto, UpdateCartItemPayload>(
-      `/v1/cart/items/${itemId}`,
+      `/v1/cart/items/${itemId}${getSettlementQs()}`,
       payload
     ),
 
   removeItem: (itemId: string, cartToken: string) =>
-    apiDelete<CartDto>(`/v1/cart/items/${itemId}/${cartToken}`),
+    apiDelete<CartDto>(`/v1/cart/items/${itemId}/${cartToken}${getSettlementQs()}`),
 };

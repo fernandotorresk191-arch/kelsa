@@ -82,7 +82,7 @@ export class CartController {
   }
 
   @Post('items')
-  async add(@Body() dto: AddItemDto) {
+  async add(@Body() dto: AddItemDto, @Query('settlement') settlement?: string) {
     const { cartToken: token, productId, qty } = dto;
 
     // 1. Убедимся, что товар существует
@@ -108,11 +108,11 @@ export class CartController {
     });
 
     // 4. Возвращаем обновленную корзину (рекурсивный вызов метода get этого же контроллера)
-    return this.get(token);
+    return this.get(token, settlement);
   }
 
   @Patch('items/:itemId')
-  async updateQty(@Param('itemId') itemId: string, @Body() dto: UpdateQtyDto) {
+  async updateQty(@Param('itemId') itemId: string, @Body() dto: UpdateQtyDto, @Query('settlement') settlement?: string) {
     const cart = await this.prisma.cart.findUnique({
       where: { token: dto.cartToken },
     });
@@ -124,17 +124,17 @@ export class CartController {
       data: { qty: dto.qty },
     });
 
-    return this.get(dto.cartToken);
+    return this.get(dto.cartToken, settlement);
   }
 
   @Delete('items/:itemId/:token')
-  async remove(@Param('itemId') itemId: string, @Param('token') token: string) {
+  async remove(@Param('itemId') itemId: string, @Param('token') token: string, @Query('settlement') settlement?: string) {
     const cart = await this.prisma.cart.findUnique({ where: { token } });
     if (!cart) throw new NotFoundException('Cart not found');
 
     await this.prisma.cartItem.delete({ where: { id: itemId } });
 
-    return this.get(token);
+    return this.get(token, settlement);
   }
 
   @Get(':token/totals')
