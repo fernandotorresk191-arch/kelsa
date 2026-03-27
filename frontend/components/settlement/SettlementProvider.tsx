@@ -8,6 +8,7 @@ import React, {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 import { authApi } from "features/auth/api";
 import type { SettlementDto } from "features/auth/types";
 import {
@@ -83,11 +84,12 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
   }, [refreshSettlements]);
 
   // Open dialog once settlements are loaded and nothing is selected
+  const pathname = usePathname();
   useEffect(() => {
-    if (settlements.length > 0 && !selectedCode) {
+    if (settlements.length > 0 && !selectedCode && !pathname.startsWith("/kopilka") && !pathname.startsWith("/admin")) {
       setIsDialogOpen(true);
     }
-  }, [settlements, selectedCode]);
+  }, [settlements, selectedCode, pathname]);
 
   useEffect(() => {
     if (!selectedCode) return;
