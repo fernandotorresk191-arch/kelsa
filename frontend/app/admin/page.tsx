@@ -3,10 +3,12 @@
 import { useEffect, useState } from 'react';
 import { adminAnalyticsApi } from '@/features/admin/api';
 import { DashboardStats, OrderStatusLabels } from '@/features/admin/types';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { currentDarkstore } = useAdmin();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -23,7 +25,8 @@ export default function AdminDashboard() {
     };
 
     fetchStats();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDarkstore?.id]);
 
   if (isLoading) {
     return (

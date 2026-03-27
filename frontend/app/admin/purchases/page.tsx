@@ -6,6 +6,7 @@ import { adminPurchasesApi, adminProductsApi, adminCategoriesApi } from '@/featu
 import { Purchase, Product, Category } from '@/features/admin/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 type CategoryWithCount = Category & { _count: { products: number } };
 
@@ -42,6 +43,7 @@ export default function AdminPurchasesPage() {
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [showProductDropdown, setShowProductDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { currentDarkstore } = useAdmin();
 
   // Выбранный товар для добавления
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
@@ -103,7 +105,7 @@ export default function AdminPurchasesPage() {
     fetchCategories();
     fetchProducts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, currentDarkstore?.id]);
 
   // Фильтрация подкатегорий при выборе категории
   useEffect(() => {

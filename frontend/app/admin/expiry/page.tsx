@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { adminExpiryApi } from '@/features/admin/api';
 import { Batch, WriteOff, ExpiryStats } from '@/features/admin/types';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 
 type TabType = 'expiring' | 'expired' | 'history';
@@ -25,6 +26,7 @@ export default function AdminExpiryPage() {
   // Скидка
   const [discountBatchId, setDiscountBatchId] = useState<string | null>(null);
   const [discountValue, setDiscountValue] = useState(0);
+  const { currentDarkstore } = useAdmin();
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -49,7 +51,7 @@ export default function AdminExpiryPage() {
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [daysThreshold]);
+  }, [daysThreshold, currentDarkstore?.id]);
 
   const formatPrice = (rubles: number) => {
     return rubles.toLocaleString('ru-RU') + ' ₽';

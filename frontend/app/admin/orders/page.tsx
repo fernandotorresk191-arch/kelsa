@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { adminOrdersApi, adminChatApi } from '@/features/admin/api';
 import { Order, OrderStatus, OrderStatusLabels } from '@/features/admin/types';
 import { useOrdersSSE, OrderEventData } from '@/features/admin/useOrdersSSE';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 // Статусы с современными стилями
 const StatusStyles: Record<OrderStatus, string> = {
@@ -27,6 +28,7 @@ export default function AdminOrdersPage() {
   const [newOrdersCount, setNewOrdersCount] = useState(0);
   const [recentOrderIds, setRecentOrderIds] = useState<Set<string>>(new Set());
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+  const { currentDarkstore } = useAdmin();
 
   const limit = 20;
 
@@ -121,7 +123,7 @@ export default function AdminOrdersPage() {
     const interval = setInterval(fetchUnreadCounts, 30000);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter]);
+  }, [page, statusFilter, currentDarkstore?.id]);
 
   const totalPages = Math.ceil(total / limit);
 

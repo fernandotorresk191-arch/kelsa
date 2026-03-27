@@ -35,6 +35,7 @@ export default function AdminProductsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const { currentDarkstore } = useAdmin();
 
   const limit = 20;
 
@@ -181,7 +182,8 @@ export default function AdminProductsPage() {
     };
     
     loadProducts();
-  }, [searchParams, page, sortBy, sortOrder]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, page, sortBy, sortOrder, currentDarkstore?.id]);
 
   // Обработчик сортировки
   const handleSort = (column: 'title' | 'category' | 'price' | 'stock' | 'isActive') => {

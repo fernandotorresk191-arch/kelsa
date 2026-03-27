@@ -5,6 +5,7 @@ import { adminPromotionsApi, adminUploadApi } from '@/features/admin/api';
 import { Promotion } from '@/features/admin/types';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { resolveMediaUrl } from '@/shared/api/media';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 export default function AdminPromotionsPage() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
@@ -16,6 +17,7 @@ export default function AdminPromotionsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [promotionToDelete, setPromotionToDelete] = useState<Promotion | null>(null);
+  const { currentDarkstore } = useAdmin();
 
   const fetchPromotions = async () => {
     try {
@@ -31,7 +33,8 @@ export default function AdminPromotionsPage() {
 
   useEffect(() => {
     fetchPromotions();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDarkstore?.id]);
 
   const handleDeleteClick = (promotion: Promotion) => {
     setPromotionToDelete(promotion);

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { adminAnalyticsApi } from '@/features/admin/api';
+import { useAdmin } from '@/components/admin/AdminProvider';
 
 type RevenueData = {
   date: string;
@@ -24,6 +25,7 @@ export default function AdminAnalyticsPage() {
   const [productsSales, setProductsSales] = useState<ProductSalesData[]>([]);
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
   const [isLoading, setIsLoading] = useState(true);
+  const { currentDarkstore } = useAdmin();
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -45,7 +47,7 @@ export default function AdminAnalyticsPage() {
     };
 
     fetchAnalytics();
-  }, [period]);
+  }, [period, currentDarkstore?.id]);
 
   if (isLoading) {
     return <div className="p-6 text-center">Загрузка...</div>;

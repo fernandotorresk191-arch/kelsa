@@ -18,7 +18,7 @@ const initialFormData: ZoneFormData = {
 };
 
 export default function AdminDeliveryZonesPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAdmin();
+  const { isAuthenticated, isLoading: isAuthLoading, currentDarkstore } = useAdmin();
 
   const [zones, setZones] = useState<DeliveryZone[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,7 +49,7 @@ export default function AdminDeliveryZonesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentDarkstore?.id]);
 
   useEffect(() => {
     if (!isAuthLoading && isAuthenticated) {

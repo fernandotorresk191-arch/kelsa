@@ -23,6 +23,7 @@ export default function AdminCatalogPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState<CategoryWithCount | null>(null);
+  const { currentDarkstore } = useAdmin();
 
   const fetchCategories = async () => {
     try {
@@ -39,7 +40,8 @@ export default function AdminCatalogPage() {
 
   useEffect(() => {
     fetchCategories();
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDarkstore?.id]);
 
   const handleDeleteClick = (category: CategoryWithCount) => {
     setCategoryToDelete(category);

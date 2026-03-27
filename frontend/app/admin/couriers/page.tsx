@@ -47,7 +47,7 @@ const isValidPhone = (phone: string): boolean => {
 };
 
 export default function AdminCouriersPage() {
-  const { isAuthenticated, isLoading: isAuthLoading } = useAdmin();
+  const { isAuthenticated, isLoading: isAuthLoading, currentDarkstore } = useAdmin();
   const router = useRouter();
   
   const [couriers, setCouriers] = useState<Courier[]>([]);
@@ -92,7 +92,7 @@ export default function AdminCouriersPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [page, searchQuery, isAuthenticated]);
+  }, [page, searchQuery, isAuthenticated, currentDarkstore?.id]);
 
   useEffect(() => {
     // Загружаем только когда авторизация проверена и пользователь авторизован
