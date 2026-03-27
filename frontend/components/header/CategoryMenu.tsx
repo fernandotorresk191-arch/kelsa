@@ -8,6 +8,7 @@ import { FiGrid, FiChevronDown } from "react-icons/fi";
 import { catalogApi } from "../../features/catalog/api";
 import type { CategoryDto } from "../../features/catalog/types";
 import { useSettlement } from "../settlement/SettlementProvider";
+import { resolveMediaUrl } from "../../shared/api/media";
 
 const CategoryMenu = () => {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
@@ -130,7 +131,7 @@ const CategoryMenu = () => {
             ">
               {category.imageUrl ? (
                 <Image
-                  src={category.imageUrl}
+                  src={resolveMediaUrl(category.imageUrl) || ''}
                   alt={category.name}
                   fill
                   sizes="48px"

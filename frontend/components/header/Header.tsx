@@ -74,16 +74,6 @@ const Header = () => {
             </div>
           </Link>
 
-          {/* Address selection */}
-          <button
-            type="button"
-            className="items-center hidden ml-6 mt-1 text-sm md:flex"
-            onClick={() => setDialogOpen(true)}
-          >
-            <FiMapPin className="mr-1 text-primary" />
-            <span>{selectedSettlement ? selectedSettlement.title : "Укажите адрес доставки"}</span>
-          </button>
-
           {/* Categories dropdown */}
           <div className="hidden md:flex items-center ml-4">
             <CategoryMenu />
@@ -96,6 +86,16 @@ const Header = () => {
 
           {/* Navigation buttons */}
           <div className="flex items-center gap-2">
+            {/* Address selection */}
+            <button
+              type="button"
+              className="items-center hidden p-2 text-sm md:flex hover:text-primary transition-colors"
+              onClick={() => setDialogOpen(true)}
+              title="Выбрать населённый пункт"
+            >
+              <FiMapPin className="mr-1 text-primary" size={20} />
+              <span className="max-w-[120px] truncate">{selectedSettlement ? selectedSettlement.title : "Укажите адрес"}</span>
+            </button>
             <button
               type="button"
               className="items-center hidden p-2 md:flex"
