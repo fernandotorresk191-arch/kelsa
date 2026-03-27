@@ -5,6 +5,7 @@ export type SettlementCode = string;
 export type SettlementDto = {
   code: string;
   title: string;
+  darkstoreId: string;
 };
 
 export type AuthUser = {

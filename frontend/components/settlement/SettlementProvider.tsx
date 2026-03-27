@@ -16,6 +16,7 @@ import {
   getStoredSettlement,
   storeSettlement,
 } from "shared/settlement/storage";
+import { replaceCartToken } from "shared/cart/token";
 
 type SettlementContextValue = {
   settlements: SettlementDto[];
@@ -59,6 +60,25 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
 
   const selectSettlement = useCallback((code: string) => {
     const previousCode = selectedCode;
+
+    // Check if the darkstore changes
+    const oldSettlement = previousCode
+      ? settlements.find((s) => s.code === previousCode)
+      : null;
+    const newSettlement = settlements.find((s) => s.code === code);
+    const darkstoreChanged =
+      oldSettlement &&
+      newSettlement &&
+      oldSettlement.darkstoreId !== newSettlement.darkstoreId;
+
+    if (darkstoreChanged) {
+      const confirmed = window.confirm(
+        "При переключении на другой район доставки корзина будет очищена. Продолжить?",
+      );
+      if (!confirmed) return;
+      replaceCartToken();
+    }
+
     storeSettlement(code);
     setIsDialogOpen(false);
     // If the user switched to a different settlement, reload so server-rendered
@@ -68,7 +88,7 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
       return;
     }
     setSelectedCode(code);
-  }, [selectedCode]);
+  }, [selectedCode, settlements]);
 
   useEffect(() => {
     void refreshSettlements();

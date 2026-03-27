@@ -86,11 +86,12 @@ export class AuthController {
     const zones = await this.prisma.deliveryZone.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'asc' },
-      select: { settlement: true, settlementTitle: true },
+      select: { settlement: true, settlementTitle: true, darkstoreId: true },
     });
     return zones.map((z) => ({
       code: z.settlement,
       title: z.settlementTitle || z.settlement,
+      darkstoreId: z.darkstoreId,
     }));
   }
 
