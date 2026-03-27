@@ -84,6 +84,11 @@ const Header = () => {
             <span>{selectedSettlement ? selectedSettlement.title : "Укажите адрес доставки"}</span>
           </button>
 
+          {/* Categories dropdown */}
+          <div className="hidden md:flex items-center ml-4">
+            <CategoryMenu />
+          </div>
+
           {/* Search with suggestions */}
           <div className="hidden md:block flex-grow">
             <SearchWithSuggestions />
@@ -150,13 +155,6 @@ const Header = () => {
               <FiUser size={22} />
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Categories menu */}
-      <div className="hidden border-t md:block">
-        <div className="kelsa-container">
-          <CategoryMenu />
         </div>
       </div>
 
