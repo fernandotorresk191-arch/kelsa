@@ -10,7 +10,7 @@ import { FiPlus, FiTrash2 } from "react-icons/fi";
 const MONTH_OPTIONS = (() => {
   const now = new Date();
   const options: { value: string; label: string }[] = [];
-  for (let i = 0; i < 12; i++) {
+  for (let i = -6; i <= 12; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
     const label = d.toLocaleDateString("ru-RU", { month: "long", year: "numeric" });
@@ -26,7 +26,7 @@ export default function CreateKopilkaForm({
 }) {
   const [name, setName] = useState("");
   const [goalAmount, setGoalAmount] = useState("");
-  const [startMonth, setStartMonth] = useState(MONTH_OPTIONS[0].value);
+  const [startMonth, setStartMonth] = useState(MONTH_OPTIONS[6].value);
   const [members, setMembers] = useState<string[]>([""]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
