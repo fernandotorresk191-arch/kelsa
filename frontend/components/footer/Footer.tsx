@@ -40,7 +40,7 @@ const Footer = () => {
 
 
           {/* Column 3 - Help */}
-          <div>
+{/*           <div>
             <h3 className="font-semibold text-base mb-4">Помощь</h3>
             <ul className="space-y-2">
               <li>
@@ -59,7 +59,7 @@ const Footer = () => {
                 </Link>
               </li>
             </ul>
-          </div>
+          </div> */}
 
           {/* Column 4 - Contact */}
           <div>
