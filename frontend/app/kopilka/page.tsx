@@ -129,7 +129,7 @@ export default function KopilkaPage() {
       {/* Hero */}
       <div className="text-center py-10 md:py-16">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-[#6206c7] to-[#9333ea] mb-5 shadow-lg shadow-[#6206c7]/20">
-          <span className="text-3xl">🐷</span>
+          <span className="text-3xl">🪙</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
           Копилка

@@ -35,7 +35,7 @@ export default function KopilkaSharePage({
     return (
       <div className="kelsa-container py-20 text-center">
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#6206c7]/10 mb-4 animate-pulse">
-          <span className="text-2xl">🐷</span>
+          <span className="text-2xl">🪙</span>
         </div>
         <p className="text-gray-400">Загрузка копилки...</p>
       </div>

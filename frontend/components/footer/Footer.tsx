@@ -30,6 +30,11 @@ const Footer = () => {
                   Зона доставки
                 </Link>
               </li>
+              <li>
+                <Link href="/kopilka" className="text-sm hover:text-primary transition-colors">
+                  🪙 Копилка
+                </Link>
+              </li>
             </ul>
           </div>
 

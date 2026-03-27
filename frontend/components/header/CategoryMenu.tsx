@@ -43,13 +43,7 @@ const CategoryMenu = () => {
         >
           {category.name}
         </Link>
-      ))}
-      <Link
-        href="/kopilka"
-        className="nav-link whitespace-nowrap flex-shrink-0 text-sm font-medium text-[#6206c7]"
-      >
-        🐷 Копилка
-      </Link>
+      )})}
     </nav>
   );
 };

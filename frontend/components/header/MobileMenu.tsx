@@ -109,14 +109,6 @@ const MobileMenu = ({ onClose, onOpenCart }: MobileMenuProps) => {
 
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/kopilka"
-            className="flex items-center gap-2 text-sm font-medium text-[#6206c7]"
-            onClick={onClose}
-          >
-            <span>🐷</span>
-            <span>Копилка</span>
-          </Link>
-          <Link
             href="/account?tab=favorites"
             className="flex items-center gap-2 text-sm"
             aria-label="Избранное"
