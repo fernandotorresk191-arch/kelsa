@@ -30,6 +30,14 @@ const Footer = () => {
                   Зона доставки
                 </Link>
               </li>
+            </ul>
+          </div>
+
+
+          {/* Column 3 - Help */}
+          <div>
+            <h3 className="font-semibold text-base mb-4">Сервисы</h3>
+            <ul className="space-y-2">
               <li>
                 <Link href="/kopilka" className="text-sm hover:text-primary transition-colors">
                   🪙 Копилка
@@ -37,29 +45,6 @@ const Footer = () => {
               </li>
             </ul>
           </div>
-
-
-          {/* Column 3 - Help */}
-{/*           <div>
-            <h3 className="font-semibold text-base mb-4">Помощь</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/faq" className="text-sm hover:text-primary transition-colors">
-                  Вопросы и ответы
-                </Link>
-              </li>
-              <li>
-                <Link href="/terms" className="text-sm hover:text-primary transition-colors">
-                  Условия обслуживания
-                </Link>
-              </li>
-              <li>
-                <Link href="/return" className="text-sm hover:text-primary transition-colors">
-                  Возврат и обмен
-                </Link>
-              </li>
-            </ul>
-          </div> */}
 
           {/* Column 4 - Contact */}
           <div>
