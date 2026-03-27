@@ -159,68 +159,9 @@ export class AdminProductsController {
   ) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    if (req?.darkstoreId) {
-      // Фильтруем через DarkstoreProduct для конкретного даркстора
-      const dpWhere: any = { darkstoreId: req.darkstoreId };
-
-      if (categoryId) {
-        const category = await this.prisma.category.findUnique({
-          where: { id: categoryId },
-          select: { parentId: true },
-        });
-        if (category?.parentId) {
-          dpWhere.subcategoryId = categoryId;
-        } else {
-          dpWhere.categoryId = categoryId;
-        }
-      }
-
-      if (search) {
-        dpWhere.product = {
-          OR: [
-            { title: { contains: search, mode: 'insensitive' } },
-            { slug: { contains: search, mode: 'insensitive' } },
-          ],
-        };
-        // Также ищем по cellNumber в DarkstoreProduct
-        dpWhere.OR = [
-          { product: { OR: [
-            { title: { contains: search, mode: 'insensitive' } },
-            { slug: { contains: search, mode: 'insensitive' } },
-          ]}},
-          { cellNumber: { contains: search, mode: 'insensitive' } },
-        ];
-        delete dpWhere.product;
-      }
-
-      const [darkstoreProducts, total] = await Promise.all([
-        this.prisma.darkstoreProduct.findMany({
-          where: dpWhere,
-          skip,
-          take: parseInt(limit),
-          include: {
-            product: { include: { category: true, subcategory: true } },
-            category: true,
-            subcategory: true,
-          },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.prisma.darkstoreProduct.count({ where: dpWhere }),
-      ]);
-
-      return {
-        data: darkstoreProducts.map((dp) => flattenProduct(dp.product, dp)),
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          totalPages: Math.ceil(total / parseInt(limit)),
-        },
-      };
-    }
-
-    // Суперадмин без даркстора — показываем все глобальные товары
+    // Всегда запрашиваем глобальные товары, обогащаем данными DarkstoreProduct если даркстор выбран
     const where: any = {};
+
     if (categoryId) {
       const category = await this.prisma.category.findUnique({
         where: { id: categoryId },
@@ -245,14 +186,24 @@ export class AdminProductsController {
         where,
         skip,
         take: parseInt(limit),
-        include: { category: true, subcategory: true },
+        include: {
+          category: true,
+          subcategory: true,
+          darkstoreProducts: req?.darkstoreId
+            ? { where: { darkstoreId: req.darkstoreId }, include: { category: true, subcategory: true } }
+            : false,
+        },
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.product.count({ where }),
     ]);
 
     return {
-      data: products,
+      data: products.map((p) => {
+        const dp = req?.darkstoreId ? (p as any).darkstoreProducts?.[0] ?? null : null;
+        const { darkstoreProducts, ...product } = p as any;
+        return req?.darkstoreId ? flattenProduct(product, dp) : product;
+      }),
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
