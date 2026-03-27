@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import PromoCarousel from "../components/promotions/PromoCarousel";
 import ProductSection from "../components/sections/ProductSection";
 import CategoryButtons from "../components/sections/CategoryButtons";
+import { WorkHoursBanner } from "../components/sections/WorkHoursBanner";
 
 import { catalogApi } from "../features/catalog/api";
 
@@ -43,11 +44,7 @@ export default async function Home() {
         </div>
       </section>
 
-      <div className="kelsa-container">
-        <div className="rounded-xl border px-5 py-3 text-center text-sm font-medium" style={{ backgroundColor: '#6206c72e', borderColor: 'rgb(98, 6, 199)', color: 'rgb(98, 6, 199)' }}>
-          🕘 Работаем с 09:00 до 21:00
-        </div>
-      </div>
+      <WorkHoursBanner />
 
 
 
