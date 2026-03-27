@@ -15,6 +15,7 @@ import { EventsModule } from './events/events.module';
 import { UploadModule } from './upload/upload.module';
 import { PushModule } from './push/push.module';
 import { ChatModule } from './chat/chat.module';
+import { KopilkaModule } from './kopilka/kopilka.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { JwtGuard } from './auth/jwt.guard';
@@ -40,6 +41,7 @@ import { JwtGuard } from './auth/jwt.guard';
     UploadModule,
     PushModule,
     ChatModule,
+    KopilkaModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

@@ -435,6 +435,38 @@ model Courier {
   orders        Order[]       // Заказы курьера
 }
 
+// ==================== КОПИЛКА (Savings Groups) ====================
+
+model Kopilka {
+  id          String   @id @default(cuid())
+  shareId     String   @unique @default(cuid())
+  name        String
+  goalAmount  Int
+  startMonth  String   // "2025-11" format
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  members KopilkaMember[]
+}
+
+model KopilkaMember {
+  id        String @id @default(cuid())
+  kopilkaId String
+  name      String
+
+  kopilka       Kopilka              @relation(fields: [kopilkaId], references: [id], onDelete: Cascade)
+  contributions KopilkaContribution[]
+}
+
+model KopilkaContribution {
+  id         String @id @default(cuid())
+  memberId   String
+  amount     Int
+  paidMonths String @default("[]") // JSON array: ["2025-11","2025-12"]
+
+  member KopilkaMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
 // ==================== НАСТРОЙКИ ДОСТАВКИ ====================
 
 // DeliverySettings removed — replaced by DeliveryZone per settlement
