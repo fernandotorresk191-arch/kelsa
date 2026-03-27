@@ -34,14 +34,18 @@ function formatMonth(m: string): string {
   return `${MONTH_NAMES_SHORT[month]} ${year.slice(2)}`;
 }
 
-function getMonthColumns(startMonth: string, count = 6): string[] {
+function getMonthColumns(startMonth: string): string[] {
   const [y, m] = startMonth.split("-").map(Number);
+  const start = new Date(y, m - 1, 1);
+  const now = new Date();
+  const end = new Date(now.getFullYear(), now.getMonth() + 12, 1);
   const months: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const d = new Date(y, m - 1 + i, 1);
+  const d = new Date(start);
+  while (d <= end) {
     months.push(
       `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
     );
+    d.setMonth(d.getMonth() + 1);
   }
   return months;
 }
@@ -80,7 +84,7 @@ export default function KopilkaView({
   const [newMemberName, setNewMemberName] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const months = getMonthColumns(kopilka.startMonth, 6);
+  const months = getMonthColumns(kopilka.startMonth);
   const totalSaved = calcTotalSaved(kopilka);
   const progress = Math.min(100, (totalSaved / kopilka.goalAmount) * 100);
 
