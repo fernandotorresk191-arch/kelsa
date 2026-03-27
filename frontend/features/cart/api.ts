@@ -1,5 +1,6 @@
 import { apiDelete, apiGet, apiPatch, apiPost } from "shared/api/http";
 import type { CartDto, CartTotalsDto } from "./types";
+import { getStoredSettlement } from "shared/settlement/storage";
 
 export type AddCartItemPayload = {
   cartToken: string;
@@ -12,9 +13,14 @@ export type UpdateCartItemPayload = {
   qty: number;
 };
 
+function getSettlementQs(): string {
+  const s = getStoredSettlement();
+  return s?.code ? `?settlement=${encodeURIComponent(s.code)}` : '';
+}
+
 export const cartApi = {
-  get: (token: string) => apiGet<CartDto>(`/v1/cart/${token}`),
-  totals: (token: string) => apiGet<CartTotalsDto>(`/v1/cart/${token}/totals`),
+  get: (token: string) => apiGet<CartDto>(`/v1/cart/${token}${getSettlementQs()}`),
+  totals: (token: string) => apiGet<CartTotalsDto>(`/v1/cart/${token}/totals${getSettlementQs()}`),
 
   addItem: (payload: AddCartItemPayload) =>
     apiPost<CartDto, AddCartItemPayload>("/v1/cart/items", payload),

@@ -11,6 +11,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { AddItemDto, UpdateQtyDto } from './dto';
@@ -19,8 +20,49 @@ import { AddItemDto, UpdateQtyDto } from './dto';
 export class CartController {
   constructor(private readonly prisma: PrismaService) {}
 
+  // Резолвим darkstoreId по settlement для обогащения продуктов ценами
+  private async resolveDarkstoreId(settlement?: string): Promise<string | null> {
+    if (!settlement) return null;
+    const zone = await this.prisma.deliveryZone.findFirst({
+      where: { settlement, isActive: true },
+      select: { darkstoreId: true },
+    });
+    return zone?.darkstoreId || null;
+  }
+
+  // Обогащаем продукты ценами из DarkstoreProduct
+  private async enrichCartWithPrices(cart: any, darkstoreId: string | null) {
+    if (!darkstoreId || !cart.items || cart.items.length === 0) return cart;
+
+    const productIds = cart.items.map((it: any) => it.productId);
+    const dpList = await this.prisma.darkstoreProduct.findMany({
+      where: { darkstoreId, productId: { in: productIds } },
+    });
+    const dpMap = new Map(dpList.map((dp) => [dp.productId, dp]));
+
+    return {
+      ...cart,
+      items: cart.items.map((item: any) => {
+        const dp = dpMap.get(item.productId);
+        if (dp && item.product) {
+          return {
+            ...item,
+            product: {
+              ...item.product,
+              price: dp.price,
+              oldPrice: dp.oldPrice,
+            },
+          };
+        }
+        return item;
+      }),
+    };
+  }
+
   @Get(':token')
-  async get(@Param('token') token: string) {
+  async get(@Param('token') token: string, @Query('settlement') settlement?: string) {
+    const darkstoreId = await this.resolveDarkstoreId(settlement);
+
     const cart = await this.prisma.cart.findUnique({
       where: { token },
       include: {
@@ -32,12 +74,11 @@ export class CartController {
     });
 
     if (!cart) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const created = await this.prisma.cart.create({ data: { token } });
       return { ...created, items: [] };
     }
 
-    return cart;
+    return this.enrichCartWithPrices(cart, darkstoreId);
   }
 
   @Post('items')
@@ -97,10 +138,9 @@ export class CartController {
   }
 
   @Get(':token/totals')
-  async totals(@Param('token') token: string) {
-    const cart = await this.get(token); // Переиспользуем логику получения корзины
+  async totals(@Param('token') token: string, @Query('settlement') settlement?: string) {
+    const cart = await this.get(token, settlement);
 
-    // Т.к. get() может вернуть тип с items=[], TypeScript поймет структуру
     const total = cart.items.reduce(
       (sum, it) => sum + (it.product.price ?? 0) * it.qty,
       0,

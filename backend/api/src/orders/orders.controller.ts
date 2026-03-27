@@ -44,16 +44,12 @@ export class OrdersController {
       throw new BadRequestException('Cart is empty');
     }
 
-    // 3. Считаем сумму товаров
-    const subtotal = cart.items.reduce(
-      (sum, it) => sum + (it.product.price ?? 0) * it.qty,
-      0,
-    );
-
-    // 4. Рассчитываем стоимость доставки по зоне доставки (населённый пункт)
+    // 3. Считаем сумму товаров (используем цены из DarkstoreProduct если есть даркстор)
+    let subtotal = 0;
+    let purchaseCost = 0;
+    let darkstoreId: string | null = null;
     let deliveryFee = 0;
     let courierCost = 0;
-    let darkstoreId: string | null = null;
     const settlementCode = dto.settlement || null;
 
     if (settlementCode) {
@@ -64,17 +60,41 @@ export class OrdersController {
       if (deliveryZone) {
         courierCost = deliveryZone.deliveryFee;
         darkstoreId = deliveryZone.darkstoreId;
-        if (subtotal < deliveryZone.freeDeliveryFrom) {
-          deliveryFee = deliveryZone.deliveryFee;
-        }
       }
     }
 
-    // 5. Рассчитываем себестоимость товаров (закупочная цена)
-    let purchaseCost = 0;
+    // Подтягиваем цены из DarkstoreProduct для этого даркстора
+    const itemPrices: Map<string, { price: number; purchasePrice: number }> = new Map();
+    if (darkstoreId) {
+      const dpList = await this.prisma.darkstoreProduct.findMany({
+        where: {
+          darkstoreId,
+          productId: { in: cart.items.map((it) => it.productId) },
+        },
+      });
+      for (const dp of dpList) {
+        itemPrices.set(dp.productId, {
+          price: dp.price,
+          purchasePrice: dp.purchasePrice ?? 0,
+        });
+      }
+    }
+
     for (const item of cart.items) {
-      const product = item.product;
-      purchaseCost += (product.purchasePrice ?? 0) * item.qty;
+      const dp = itemPrices.get(item.productId);
+      const price = dp?.price ?? 0;
+      subtotal += price * item.qty;
+      purchaseCost += (dp?.purchasePrice ?? 0) * item.qty;
+    }
+
+    // 4. Рассчитываем стоимость доставки
+    if (darkstoreId && settlementCode) {
+      const deliveryZone = await this.prisma.deliveryZone.findFirst({
+        where: { settlement: settlementCode as any, isActive: true },
+      });
+      if (deliveryZone && subtotal < deliveryZone.freeDeliveryFrom) {
+        deliveryFee = deliveryZone.deliveryFee;
+      }
     }
 
     const total = subtotal + deliveryFee;
@@ -108,13 +128,17 @@ export class OrdersController {
           settlement: settlementCode,
           darkstore: { connect: { id: resolvedDarkstoreId } },
           items: {
-            create: cart.items.map((it) => ({
-              productId: it.productId,
-              title: it.product.title,
-              price: it.product.price ?? 0,
-              qty: it.qty,
-              amount: (it.product.price ?? 0) * it.qty,
-            })),
+            create: cart.items.map((it) => {
+              const dp = itemPrices.get(it.productId);
+              const price = dp?.price ?? 0;
+              return {
+                productId: it.productId,
+                title: it.product.title,
+                price,
+                qty: it.qty,
+                amount: price * it.qty,
+              };
+            }),
           },
         },
         include: { items: true },

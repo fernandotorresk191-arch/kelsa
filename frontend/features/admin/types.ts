@@ -129,6 +129,8 @@ export type Product = {
   categoryId?: string;
   subcategoryId?: string;
   cellNumber?: string;
+  darkstoreProductId?: string;
+  isActiveInDarkstore?: boolean;
   createdAt: string;
   updatedAt: string;
   category?: {

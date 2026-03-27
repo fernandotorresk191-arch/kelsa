@@ -98,25 +98,28 @@ export class AdminPurchasesController {
   }
 
   // Пересчёт цены товара по активной партии (FIFO: ближайший срок годности)
-  // Вызывается после создания закупки, изменения скидки, списания
+  // Обновляет DarkstoreProduct для конкретного даркстора
   async recalculateProductPrice(
     productId: string,
+    darkstoreId: string,
     tx?: any,
   ): Promise<void> {
     const db = tx || this.prisma;
 
     // Находим активную партию (FIFO — ближайший срок годности, затем по дате создания)
+    // Фильтруем по даркстору через purchase
     const activeBatch = await db.batch.findFirst({
       where: {
         productId,
         status: 'ACTIVE',
         remainingQty: { gt: 0 },
+        purchase: { darkstoreId },
       },
       orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
     });
 
     if (!activeBatch || activeBatch.sellingPrice === 0) {
-      // Нет активной партии с ценой — не меняем цену товара
+      // Нет активной партии с ценой — не меняем цену
       return;
     }
 
@@ -131,9 +134,15 @@ export class AdminPurchasesController {
       oldPrice = activeBatch.sellingPrice;
     }
 
-    await db.product.update({
-      where: { id: productId },
-      data: {
+    await db.darkstoreProduct.upsert({
+      where: { productId_darkstoreId: { productId, darkstoreId } },
+      update: {
+        price: effectivePrice,
+        oldPrice,
+      },
+      create: {
+        productId,
+        darkstoreId,
         price: effectivePrice,
         oldPrice,
       },
@@ -197,7 +206,6 @@ export class AdminPurchasesController {
                 id: true,
                 title: true,
                 imageUrl: true,
-                cellNumber: true,
                 category: { select: { id: true, name: true } },
               },
             },
@@ -299,13 +307,20 @@ export class AdminPurchasesController {
           },
         });
 
-        // Обновляем остаток и закупочную цену в товаре
-        await tx.product.update({
-          where: { id: item.productId },
-          data: {
+        // Обновляем остаток и закупочную цену в DarkstoreProduct
+        await tx.darkstoreProduct.upsert({
+          where: { productId_darkstoreId: { productId: item.productId, darkstoreId: req.darkstoreId } },
+          update: {
             stock: { increment: item.quantity },
             purchasePrice: item.purchasePrice,
-            cellNumber: item.cellNumber, // Обновляем номер ячейки
+            cellNumber: item.cellNumber,
+          },
+          create: {
+            productId: item.productId,
+            darkstoreId: req.darkstoreId,
+            stock: item.quantity,
+            purchasePrice: item.purchasePrice,
+            cellNumber: item.cellNumber,
           },
         });
 
@@ -316,7 +331,7 @@ export class AdminPurchasesController {
 
       // Пересчитываем цену продажи для каждого затронутого товара
       for (const productId of affectedProductIds) {
-        await this.recalculateProductPrice(productId, tx);
+        await this.recalculateProductPrice(productId, req.darkstoreId, tx);
       }
 
       return newPurchase;
@@ -379,7 +394,7 @@ export class AdminPurchasesController {
       where: { batchCode: code },
       include: {
         product: {
-          select: { id: true, title: true, imageUrl: true, cellNumber: true },
+          select: { id: true, title: true, imageUrl: true },
         },
         purchase: {
           select: { id: true, purchaseNumber: true, createdAt: true },
@@ -488,8 +503,8 @@ export class AdminPurchasesController {
       const affectedProductIds: string[] = [];
 
       for (const batch of purchase.batches) {
-        await tx.product.update({
-          where: { id: batch.productId },
+        await tx.darkstoreProduct.updateMany({
+          where: { productId: batch.productId, darkstoreId: purchase.darkstoreId },
           data: {
             stock: { decrement: batch.remainingQty },
           },
@@ -505,7 +520,7 @@ export class AdminPurchasesController {
 
       // Пересчитываем цены затронутых товаров
       for (const productId of affectedProductIds) {
-        await this.recalculateProductPrice(productId, tx);
+        await this.recalculateProductPrice(productId, purchase.darkstoreId, tx);
       }
     });
 

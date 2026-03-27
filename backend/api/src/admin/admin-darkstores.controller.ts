@@ -64,7 +64,7 @@ export class AdminDarkstoresController {
         include: {
           _count: {
             select: {
-              products: true,
+              darkstoreProducts: true,
               orders: true,
               couriers: true,
               deliveryZones: true,
@@ -77,24 +77,24 @@ export class AdminDarkstoresController {
 
     const assignments = await this.prisma.adminUserDarkstore.findMany({
       where: { adminUserId: req.user.sub },
+      select: { darkstoreId: true },
+    });
+
+    return this.prisma.darkstore.findMany({
+      where: { id: { in: assignments.map((a) => a.darkstoreId) } },
+      orderBy: { createdAt: 'asc' },
       include: {
-        darkstore: {
-          include: {
-            _count: {
-              select: {
-                products: true,
-                orders: true,
-                couriers: true,
-                deliveryZones: true,
-                staff: true,
-              },
-            },
+        _count: {
+          select: {
+            darkstoreProducts: true,
+            orders: true,
+            couriers: true,
+            deliveryZones: true,
+            staff: true,
           },
         },
       },
     });
-
-    return assignments.map((a) => a.darkstore);
   }
 
   @Get(':id')
@@ -104,7 +104,7 @@ export class AdminDarkstoresController {
       include: {
         _count: {
           select: {
-            products: true,
+            darkstoreProducts: true,
             orders: true,
             categories: true,
             couriers: true,

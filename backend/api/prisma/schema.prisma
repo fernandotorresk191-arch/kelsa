@@ -17,15 +17,15 @@ model Darkstore {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  categories    Category[]
-  products      Product[]
-  promotions    Promotion[]
-  orders        Order[]
-  purchases     Purchase[]
-  deliveryZones DeliveryZone[]
-  couriers      Courier[]
-  carts         Cart[]
-  staff         AdminUserDarkstore[]
+  categories         Category[]
+  promotions         Promotion[]
+  orders             Order[]
+  purchases          Purchase[]
+  deliveryZones      DeliveryZone[]
+  couriers           Courier[]
+  carts              Cart[]
+  staff              AdminUserDarkstore[]
+  darkstoreProducts  DarkstoreProduct[]
 }
 
 // Связь many-to-many: один AdminUser может работать в нескольких дарксторах
@@ -64,6 +64,8 @@ model Category {
   
   products  Product[]
   productsAsSubcategory Product[] @relation("ProductSubcategory")
+  darkstoreProducts DarkstoreProduct[]
+  darkstoreProductsAsSubcategory DarkstoreProduct[] @relation("DarkstoreProductSubcategory")
 
   @@unique([slug, darkstoreId])
 }
@@ -71,38 +73,61 @@ model Category {
 model Product {
   id          String   @id @default(cuid())
   title       String
-  slug        String
+  slug        String   @unique
   description String?
   imageUrl    String?
   weightGr    Int?
   isActive    Boolean  @default(true)
 
-  price         Int      // Цена продажи (целые рубли) — определяется активной партией
-  oldPrice      Int?     // Старая цена для отображения скидки (целые рубли)
-  purchasePrice Int?     // Закупочная цена последней партии (целые рубли)
-  stock         Int      @default(0) // остатки товара на складе
-  cellNumber    String?  // номер ячейки на складе (например: A1, B2, C3)
-
+  // Глобальная категория по умолчанию (используется при создании DarkstoreProduct)
   categoryId  String?
   category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   
-  // Подкатегория (необязательная)
   subcategoryId String?
   subcategory   Category? @relation("ProductSubcategory", fields: [subcategoryId], references: [id], onDelete: SetNull)
   
-  // Даркстор
-  darkstoreId String
-  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
-  
-  cartItems   CartItem[]
-  orderItems  OrderItem[]
-  favorites   Favorite[]
-  batches     Batch[]
+  cartItems          CartItem[]
+  orderItems         OrderItem[]
+  favorites          Favorite[]
+  batches            Batch[]
+  darkstoreProducts  DarkstoreProduct[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
 
-  @@unique([slug, darkstoreId])
+// Привязка товара к даркстору: цены, остатки, ячейка, категория — всё per-darkstore
+model DarkstoreProduct {
+  id            String   @id @default(cuid())
+  
+  productId     String
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  darkstoreId   String
+  darkstore     Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
+  
+  // Ценообразование (из партий)
+  price         Int      @default(0)  // Цена продажи (целые рубли)
+  oldPrice      Int?     // Старая цена для отображения скидки
+  purchasePrice Int?     // Закупочная цена последней партии
+  
+  // Складские данные
+  stock         Int      @default(0)  // Остатки на этом складе
+  cellNumber    String?  // Номер ячейки хранения
+  
+  // Категория в этом дарксторе (может отличаться)
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  
+  subcategoryId String?
+  subcategory   Category? @relation("DarkstoreProductSubcategory", fields: [subcategoryId], references: [id], onDelete: SetNull)
+  
+  isActive      Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([productId, darkstoreId])
 }
 
 model Promotion {

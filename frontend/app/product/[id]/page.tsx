@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cookies } from "next/headers";
 
 import { Badge } from "../../../components/ui/badge";
 import { catalogApi } from "../../../features/catalog/api";
@@ -11,6 +12,15 @@ import { BackButton } from "../../../components/product/BackButton";
 
 export const dynamic = "force-dynamic";
 
+function getSettlementCode(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(decodeURIComponent(raw))?.code;
+  } catch {
+    return undefined;
+  }
+}
+
 export default async function ProductPage({
   params,
 }: {
@@ -20,8 +30,11 @@ export default async function ProductPage({
   const { id } = await params;
   const decodedId = decodeURIComponent(id);
 
-  // Fetch a chunk of products and locate the one by id.
-  const allProducts = await catalogApi.products({ limit: 500, offset: 0 });
+  const cookieStore = await cookies();
+  const settlement = getSettlementCode(cookieStore.get("kelsa_settlement")?.value);
+
+  // Fetch products for current settlement (with prices from DarkstoreProduct)
+  const allProducts = await catalogApi.products({ limit: 500, offset: 0, settlement });
   const product = allProducts.find((p) => p.id === decodedId);
 
   if (!product) {
@@ -37,7 +50,7 @@ export default async function ProductPage({
 
   const relatedProducts =
     product.category?.slug
-      ? (await catalogApi.products({ categorySlug: product.category.slug, limit: 8, offset: 0 }))
+      ? (await catalogApi.products({ categorySlug: product.category.slug, limit: 8, offset: 0, settlement }))
           .filter((p) => p.id !== product.id)
       : allProducts.filter((p) => p.id !== product.id).slice(0, 8);
 

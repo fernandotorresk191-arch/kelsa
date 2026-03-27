@@ -82,18 +82,30 @@ export class AdminExpiryController {
             id: true,
             title: true,
             imageUrl: true,
-            cellNumber: true,
-            price: true,
           },
         },
         purchase: {
-          select: { purchaseNumber: true },
+          select: { purchaseNumber: true, darkstoreId: true },
         },
       },
     });
 
+    // Enrich batches with cellNumber/price from DarkstoreProduct
+    const enriched = await Promise.all(
+      batches.map(async (b) => {
+        const dp = await this.prisma.darkstoreProduct.findUnique({
+          where: { productId_darkstoreId: { productId: b.productId, darkstoreId: b.purchase.darkstoreId } },
+          select: { cellNumber: true, price: true },
+        });
+        return {
+          ...b,
+          product: { ...b.product, cellNumber: dp?.cellNumber ?? null, price: dp?.price ?? 0 },
+        };
+      }),
+    );
+
     return {
-      data: batches,
+      data: enriched,
       total: batches.length,
       daysThreshold: daysNum,
     };
@@ -121,12 +133,10 @@ export class AdminExpiryController {
             id: true,
             title: true,
             imageUrl: true,
-            cellNumber: true,
-            price: true,
           },
         },
         purchase: {
-          select: { purchaseNumber: true },
+          select: { purchaseNumber: true, darkstoreId: true },
         },
       },
     });
@@ -143,8 +153,22 @@ export class AdminExpiryController {
       });
     }
 
+    // Enrich batches with cellNumber/price from DarkstoreProduct
+    const enriched = await Promise.all(
+      batches.map(async (b) => {
+        const dp = await this.prisma.darkstoreProduct.findUnique({
+          where: { productId_darkstoreId: { productId: b.productId, darkstoreId: b.purchase.darkstoreId } },
+          select: { cellNumber: true, price: true },
+        });
+        return {
+          ...b,
+          product: { ...b.product, cellNumber: dp?.cellNumber ?? null, price: dp?.price ?? 0 },
+        };
+      }),
+    );
+
     return {
-      data: batches,
+      data: enriched,
       total: batches.length,
     };
   }
@@ -163,6 +187,7 @@ export class AdminExpiryController {
       where: { id: batchId },
       include: {
         product: { select: { id: true, title: true } },
+        purchase: { select: { darkstoreId: true } },
       },
     });
 
@@ -181,7 +206,7 @@ export class AdminExpiryController {
     });
 
     // Пересчитываем цену товара (если эта партия — активная FIFO)
-    await this.purchasesController.recalculateProductPrice(batch.productId);
+    await this.purchasesController.recalculateProductPrice(batch.productId, batch.purchase.darkstoreId);
 
     return {
       success: true,
@@ -197,6 +222,7 @@ export class AdminExpiryController {
       where: { id: dto.batchId },
       include: {
         product: { select: { id: true, title: true } },
+        purchase: { select: { darkstoreId: true } },
       },
     });
 
@@ -231,18 +257,18 @@ export class AdminExpiryController {
         },
       });
 
-      // Уменьшаем общий остаток товара
-      await tx.product.update({
-        where: { id: batch.productId },
-        data: {
-          stock: { decrement: dto.quantity },
-        },
+      // Уменьшаем остаток в DarkstoreProduct
+      const darkstoreId = batch.purchase.darkstoreId;
+      await tx.darkstoreProduct.updateMany({
+        where: { productId: batch.productId, darkstoreId },
+        data: { stock: { decrement: dto.quantity } },
       });
 
       // Если партия полностью списана, пересчитываем цену товара
       if (newRemainingQty === 0) {
         await this.purchasesController.recalculateProductPrice(
           batch.productId,
+          darkstoreId,
           tx,
         );
       }

@@ -15,8 +15,9 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'prisma/prisma.service';
 import { AdminGuard } from './admin.guard';
-import { IsString, IsOptional, IsNumber, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsNumber, MinLength, IsBoolean } from 'class-validator';
 
+// DTO для создания глобального товара + привязки к даркстору
 class CreateProductDto {
   @IsString()
   @MinLength(3)
@@ -62,6 +63,7 @@ class CreateProductDto {
   cellNumber?: string;
 }
 
+// DTO для обновления глобальных полей товара
 class UpdateProductDto {
   @IsOptional()
   @IsString()
@@ -123,6 +125,25 @@ interface AuthRequest {
   darkstoreId: string | null;
 }
 
+// Хелпер: собрать «плоский» продукт с данными из DarkstoreProduct (для совместимости с фронтом)
+function flattenProduct(product: any, dp?: any) {
+  return {
+    ...product,
+    price: dp?.price ?? 0,
+    oldPrice: dp?.oldPrice ?? null,
+    purchasePrice: dp?.purchasePrice ?? null,
+    stock: dp?.stock ?? 0,
+    cellNumber: dp?.cellNumber ?? null,
+    // Категория берётся из DarkstoreProduct если есть, иначе из Product
+    categoryId: dp?.categoryId ?? product.categoryId,
+    subcategoryId: dp?.subcategoryId ?? product.subcategoryId,
+    category: dp?.category ?? product.category,
+    subcategory: dp?.subcategory ?? product.subcategory,
+    darkstoreProductId: dp?.id ?? null,
+    isActiveInDarkstore: dp?.isActive ?? false,
+  };
+}
+
 @Controller('v1/admin/products')
 @UseGuards(AdminGuard)
 export class AdminProductsController {
@@ -138,31 +159,84 @@ export class AdminProductsController {
   ) {
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Формируем условия поиска
+    if (req?.darkstoreId) {
+      // Фильтруем через DarkstoreProduct для конкретного даркстора
+      const dpWhere: any = { darkstoreId: req.darkstoreId };
+
+      if (categoryId) {
+        const category = await this.prisma.category.findUnique({
+          where: { id: categoryId },
+          select: { parentId: true },
+        });
+        if (category?.parentId) {
+          dpWhere.subcategoryId = categoryId;
+        } else {
+          dpWhere.categoryId = categoryId;
+        }
+      }
+
+      if (search) {
+        dpWhere.product = {
+          OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { slug: { contains: search, mode: 'insensitive' } },
+          ],
+        };
+        // Также ищем по cellNumber в DarkstoreProduct
+        dpWhere.OR = [
+          { product: { OR: [
+            { title: { contains: search, mode: 'insensitive' } },
+            { slug: { contains: search, mode: 'insensitive' } },
+          ]}},
+          { cellNumber: { contains: search, mode: 'insensitive' } },
+        ];
+        delete dpWhere.product;
+      }
+
+      const [darkstoreProducts, total] = await Promise.all([
+        this.prisma.darkstoreProduct.findMany({
+          where: dpWhere,
+          skip,
+          take: parseInt(limit),
+          include: {
+            product: { include: { category: true, subcategory: true } },
+            category: true,
+            subcategory: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.darkstoreProduct.count({ where: dpWhere }),
+      ]);
+
+      return {
+        data: darkstoreProducts.map((dp) => flattenProduct(dp.product, dp)),
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit)),
+        },
+      };
+    }
+
+    // Суперадмин без даркстора — показываем все глобальные товары
     const where: any = {};
-    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
-    
     if (categoryId) {
-      // Проверяем, является ли переданный ID подкатегорией
       const category = await this.prisma.category.findUnique({
         where: { id: categoryId },
         select: { parentId: true },
       });
-      
       if (category?.parentId) {
-        // Это подкатегория - фильтруем по subcategoryId
         where.subcategoryId = categoryId;
       } else {
-        // Это корневая категория - фильтруем по categoryId
         where.categoryId = categoryId;
       }
     }
-    
+
     if (search) {
       where.OR = [
         { title: { contains: search, mode: 'insensitive' } },
         { slug: { contains: search, mode: 'insensitive' } },
-        { cellNumber: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -192,12 +266,9 @@ export class AdminProductsController {
   async checkSlug(
     @Param('slug') slug: string,
     @Query('excludeId') excludeId?: string,
-    @Req() req?: AuthRequest,
   ) {
-    const where: any = { slug };
-    if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
-
-    const existing = await this.prisma.product.findFirst({ where });
+    // Slug теперь глобально уникален
+    const existing = await this.prisma.product.findUnique({ where: { slug } });
 
     const isAvailable = !existing || (excludeId && existing.id === excludeId);
     return {
@@ -214,7 +285,16 @@ export class AdminProductsController {
     });
 
     if (!product) {
-      throw new Error('Product not found');
+      throw new BadRequestException('Product not found');
+    }
+
+    // Если выбран даркстор — подтягиваем per-darkstore данные
+    if (req.darkstoreId) {
+      const dp = await this.prisma.darkstoreProduct.findUnique({
+        where: { productId_darkstoreId: { productId: id, darkstoreId: req.darkstoreId } },
+        include: { category: true, subcategory: true },
+      });
+      return flattenProduct(product, dp);
     }
 
     return product;
@@ -226,9 +306,9 @@ export class AdminProductsController {
       throw new BadRequestException('Darkstore not selected');
     }
 
-    // Проверяем, что slug уникален в рамках даркстора
-    const existing = await this.prisma.product.findFirst({
-      where: { slug: dto.slug, darkstoreId: req.darkstoreId },
+    // Проверяем глобальную уникальность slug
+    const existing = await this.prisma.product.findUnique({
+      where: { slug: dto.slug },
     });
 
     if (existing) {
@@ -237,24 +317,39 @@ export class AdminProductsController {
       );
     }
 
-    const product = await this.prisma.product.create({
-      data: {
-        title: dto.title,
-        slug: dto.slug,
-        description: dto.description,
-        imageUrl: dto.imageUrl,
-        weightGr: dto.weightGr,
-        price: dto.price,
-        oldPrice: dto.oldPrice,
-        categoryId: dto.categoryId,
-        subcategoryId: dto.subcategoryId,
-        cellNumber: dto.cellNumber,
-        darkstoreId: req.darkstoreId,
-      },
-      include: { category: true, subcategory: true },
+    // Создаём глобальный товар + привязку к даркстору в транзакции
+    const result = await this.prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data: {
+          title: dto.title,
+          slug: dto.slug,
+          description: dto.description,
+          imageUrl: dto.imageUrl,
+          weightGr: dto.weightGr,
+          categoryId: dto.categoryId,
+          subcategoryId: dto.subcategoryId,
+        },
+        include: { category: true, subcategory: true },
+      });
+
+      const dp = await tx.darkstoreProduct.create({
+        data: {
+          productId: product.id,
+          darkstoreId: req.darkstoreId!,
+          price: dto.price,
+          oldPrice: dto.oldPrice,
+          stock: dto.stock ?? 0,
+          cellNumber: dto.cellNumber,
+          categoryId: dto.categoryId,
+          subcategoryId: dto.subcategoryId,
+        },
+        include: { category: true, subcategory: true },
+      });
+
+      return flattenProduct(product, dp);
     });
 
-    return product;
+    return result;
   }
 
   @Put(':id')
@@ -265,17 +360,13 @@ export class AdminProductsController {
   ) {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) {
-      throw new Error('Product not found');
-    }
-
-    if (req.darkstoreId && product.darkstoreId !== req.darkstoreId) {
       throw new BadRequestException('Product not found');
     }
 
-    // Проверяем уникальность slug в рамках даркстора, если он меняется
-    if (dto.slug) {
-      const existingWithSlug = await this.prisma.product.findFirst({
-        where: { slug: dto.slug, darkstoreId: product.darkstoreId },
+    // Проверяем глобальную уникальность slug, если он меняется
+    if (dto.slug && dto.slug !== product.slug) {
+      const existingWithSlug = await this.prisma.product.findUnique({
+        where: { slug: dto.slug },
       });
 
       if (existingWithSlug && existingWithSlug.id !== id) {
@@ -285,33 +376,83 @@ export class AdminProductsController {
       }
     }
 
-    const updated = await this.prisma.product.update({
-      where: { id },
-      data: dto,
-      include: { category: true, subcategory: true },
+    // Разделяем глобальные и per-darkstore поля
+    const globalData: any = {};
+    if (dto.title !== undefined) globalData.title = dto.title;
+    if (dto.slug !== undefined) globalData.slug = dto.slug;
+    if (dto.description !== undefined) globalData.description = dto.description;
+    if (dto.imageUrl !== undefined) globalData.imageUrl = dto.imageUrl;
+    if (dto.weightGr !== undefined) globalData.weightGr = dto.weightGr;
+    if (dto.isActive !== undefined) globalData.isActive = dto.isActive;
+    // Обновляем дефолтную категорию на товаре
+    if (dto.categoryId !== undefined) globalData.categoryId = dto.categoryId;
+    if (dto.subcategoryId !== undefined) globalData.subcategoryId = dto.subcategoryId;
+
+    const perDarkstoreData: any = {};
+    if (dto.price !== undefined) perDarkstoreData.price = dto.price;
+    if (dto.oldPrice !== undefined) perDarkstoreData.oldPrice = dto.oldPrice;
+    if (dto.stock !== undefined) perDarkstoreData.stock = dto.stock;
+    if (dto.cellNumber !== undefined) perDarkstoreData.cellNumber = dto.cellNumber;
+    if (dto.categoryId !== undefined) perDarkstoreData.categoryId = dto.categoryId;
+    if (dto.subcategoryId !== undefined) perDarkstoreData.subcategoryId = dto.subcategoryId;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Обновляем глобальные поля
+      const updated = await tx.product.update({
+        where: { id },
+        data: Object.keys(globalData).length > 0 ? globalData : undefined,
+        include: { category: true, subcategory: true },
+      });
+
+      // Обновляем per-darkstore поля (если даркстор выбран)
+      let dp: any = null;
+      if (req.darkstoreId && Object.keys(perDarkstoreData).length > 0) {
+        dp = await tx.darkstoreProduct.upsert({
+          where: { productId_darkstoreId: { productId: id, darkstoreId: req.darkstoreId } },
+          update: perDarkstoreData,
+          create: {
+            productId: id,
+            darkstoreId: req.darkstoreId,
+            ...perDarkstoreData,
+          },
+          include: { category: true, subcategory: true },
+        });
+      } else if (req.darkstoreId) {
+        dp = await tx.darkstoreProduct.findUnique({
+          where: { productId_darkstoreId: { productId: id, darkstoreId: req.darkstoreId } },
+          include: { category: true, subcategory: true },
+        });
+      }
+
+      return flattenProduct(updated, dp);
     });
 
-    return updated;
+    return result;
   }
 
   @Delete(':id')
   async deleteProduct(@Param('id') id: string, @Req() req: AuthRequest) {
     const product = await this.prisma.product.findUnique({ where: { id } });
     if (!product) {
-      throw new Error('Product not found');
-    }
-
-    if (req.darkstoreId && product.darkstoreId !== req.darkstoreId) {
       throw new BadRequestException('Product not found');
     }
 
-    // Мягкое удаление - просто отключаем товар
+    // Мягкое удаление: если даркстор выбран — отключаем только в этом дарксторе
+    if (req.darkstoreId) {
+      await this.prisma.darkstoreProduct.updateMany({
+        where: { productId: id, darkstoreId: req.darkstoreId },
+        data: { isActive: false },
+      });
+      return { success: true, message: 'Product disabled in this darkstore' };
+    }
+
+    // Суперадмин без даркстора — глобальное отключение
     await this.prisma.product.update({
       where: { id },
       data: { isActive: false },
     });
 
-    return { success: true, message: 'Product disabled' };
+    return { success: true, message: 'Product disabled globally' };
   }
 
   @Patch(':id/stock')
@@ -320,20 +461,57 @@ export class AdminProductsController {
     @Body() dto: UpdateStockDto,
     @Req() req: AuthRequest,
   ) {
-    const product = await this.prisma.product.findUnique({ where: { id } });
-    if (!product) {
-      throw new Error('Product not found');
+    if (!req.darkstoreId) {
+      throw new BadRequestException('Darkstore not selected — stock is per-darkstore');
     }
 
-    if (req.darkstoreId && product.darkstoreId !== req.darkstoreId) {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+    if (!product) {
       throw new BadRequestException('Product not found');
     }
 
-    const updated = await this.prisma.product.update({
-      where: { id },
-      data: { stock: dto.quantity },
+    const dp = await this.prisma.darkstoreProduct.upsert({
+      where: { productId_darkstoreId: { productId: id, darkstoreId: req.darkstoreId } },
+      update: { stock: dto.quantity },
+      create: { productId: id, darkstoreId: req.darkstoreId, stock: dto.quantity },
     });
 
-    return { success: true, stock: updated.stock };
+    return { success: true, stock: dp.stock };
+  }
+
+  // Добавить существующий товар в даркстор
+  @Post(':id/add-to-darkstore')
+  async addProductToDarkstore(@Param('id') id: string, @Req() req: AuthRequest) {
+    if (!req.darkstoreId) {
+      throw new BadRequestException('Darkstore not selected');
+    }
+
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: { category: true, subcategory: true },
+    });
+    if (!product) {
+      throw new BadRequestException('Product not found');
+    }
+
+    // Проверяем, не привязан ли уже
+    const existing = await this.prisma.darkstoreProduct.findUnique({
+      where: { productId_darkstoreId: { productId: id, darkstoreId: req.darkstoreId } },
+    });
+    if (existing) {
+      throw new BadRequestException('Товар уже добавлен в этот даркстор');
+    }
+
+    const dp = await this.prisma.darkstoreProduct.create({
+      data: {
+        productId: id,
+        darkstoreId: req.darkstoreId,
+        categoryId: product.categoryId,
+        subcategoryId: product.subcategoryId,
+      },
+      include: { category: true, subcategory: true },
+    });
+
+    return flattenProduct(product, dp);
   }
 }

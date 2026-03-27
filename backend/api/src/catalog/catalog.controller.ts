@@ -132,11 +132,72 @@ export class CatalogController {
       orderBy = [{ price: sortOrder === 'desc' ? 'desc' : 'asc' }];
     }
 
+    if (darkstoreId) {
+      // Запрос через DarkstoreProduct для конкретного даркстора
+      const dpWhere: any = {
+        darkstoreId,
+        isActive: true,
+        stock: { gt: 0 },
+        product: { isActive: true },
+      };
+
+      if (subcategorySlug) {
+        dpWhere.subcategory = { is: { slug: subcategorySlug } };
+      } else if (categorySlug) {
+        dpWhere.category = { is: { slug: categorySlug } };
+      }
+
+      if (q) {
+        dpWhere.product = {
+          ...dpWhere.product,
+          OR: [
+            { title: { contains: q, mode: 'insensitive' } },
+            { description: { contains: q, mode: 'insensitive' } },
+          ],
+        };
+      }
+
+      let dpOrderBy: any[] = [{ product: { createdAt: 'desc' } }];
+      if (sortBy === 'price') {
+        dpOrderBy = [{ price: sortOrder === 'desc' ? 'desc' : 'asc' }];
+      }
+
+      const darkstoreProducts = await this.prisma.darkstoreProduct.findMany({
+        where: dpWhere,
+        orderBy: dpOrderBy,
+        take,
+        skip,
+        include: {
+          product: true,
+          category: { select: { id: true, name: true, slug: true } },
+          subcategory: { select: { id: true, name: true, slug: true } },
+        },
+      });
+
+      // Возвращаем в формате, совместимом с текущим фронтом
+      return darkstoreProducts.map((dp) => ({
+        id: dp.product.id,
+        title: dp.product.title,
+        slug: dp.product.slug,
+        description: dp.product.description,
+        imageUrl: dp.product.imageUrl,
+        weightGr: dp.product.weightGr,
+        isActive: dp.product.isActive && dp.isActive,
+        price: dp.price,
+        oldPrice: dp.oldPrice,
+        categoryId: dp.categoryId,
+        category: dp.category,
+        subcategoryId: dp.subcategoryId,
+        subcategory: dp.subcategory,
+        createdAt: dp.product.createdAt,
+        updatedAt: dp.product.updatedAt,
+      }));
+    }
+
+    // Без settlement — возвращаем глобальные товары (без цен/остатков)
     const where: any = {
       isActive: true,
-      stock: { gt: 0 },
     };
-    if (darkstoreId) where.darkstoreId = darkstoreId;
 
     if (subcategorySlug) {
       where.subcategory = { is: { slug: subcategorySlug } };

@@ -13,7 +13,7 @@
 ### Новые модели
 | Модель | Описание |
 |--------|----------|
-| `Darkstore` | id (cuid), name, address?, isActive, createdAt, updatedAt |
+| `Darkstore` | id (cuid), name, shortName?, address?, isActive, createdAt, updatedAt |
 | `AdminUserDarkstore` | Связь M:N между AdminUser и Darkstore (adminUserId + darkstoreId) |
 
 ### Поле `darkstoreId` добавлено в модели:
@@ -88,7 +88,7 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 ## Frontend: Изменения
 
 ### Типы (`features/admin/types.ts`)
-- Добавлен тип `Darkstore` (id, name, address, isActive, createdAt, updatedAt)
+- Добавлен тип `Darkstore` (id, name, shortName?, address?, isActive, createdAt, updatedAt)
 - `AdminUser.role` расширен: `'superadmin' | 'admin' | 'manager'`
 - `AdminUser.darkstores?: Darkstore[]`
 
@@ -99,13 +99,14 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 ### API (`features/admin/api.ts`)
 - `LoginResponse` включает `darkstores: Darkstore[]`
 - `createUser` / `updateUser` — роль `'superadmin'`, поле `darkstoreIds`
-- Новый `adminDarkstoresApi` — CRUD для дарксторов
+- Новый `adminDarkstoresApi` — CRUD для дарксторов (create/update поддерживают `shortName`)
 
 ### Провайдер (`components/admin/AdminProvider.tsx`)
-- Контекст расширен: `darkstores`, `currentDarkstore`, `switchDarkstore`
+- Контекст расширен: `darkstores`, `currentDarkstore`, `switchDarkstore`, `refreshDarkstores`
 - При логине/checkAuth загружаются дарксторы из ответа API
 - Выбранный даркстор сохраняется в localStorage
 - `hasPermission`: superadmin и admin имеют полный доступ
+- `refreshDarkstores()`: перезагрузка списка дарксторов (используется после CRUD операций)
 
 ### Layout (`app/admin/layout.tsx`)
 - Переключатель дарксторов в шапке (dropdown при >1 дарксторе)

@@ -260,6 +260,10 @@ export const adminProductsApi = {
       `/v1/admin/products/check-slug/${encodeURIComponent(slug)}${params}`
     );
   },
+
+  addProductToDarkstore: async (id: string): Promise<Product> => {
+    return http.post<Product>(`/v1/admin/products/${id}/add-to-darkstore`, {});
+  },
 };
 
 export const adminAnalyticsApi = {

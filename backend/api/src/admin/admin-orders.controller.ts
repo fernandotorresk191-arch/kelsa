@@ -246,9 +246,9 @@ export class AdminOrdersController {
 
         const affectedProductIds: string[] = [];
         for (const item of updated.items) {
-          // Уменьшаем общий остаток товара
-          await tx.product.update({
-            where: { id: item.productId },
+          // Уменьшаем остаток товара в DarkstoreProduct
+          await tx.darkstoreProduct.updateMany({
+            where: { productId: item.productId, darkstoreId: order.darkstoreId },
             data: { stock: { decrement: item.qty } },
           });
 
@@ -259,6 +259,7 @@ export class AdminOrdersController {
               productId: item.productId,
               status: 'ACTIVE',
               remainingQty: { gt: 0 },
+              purchase: { darkstoreId: order.darkstoreId },
             },
             orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
           });
@@ -284,10 +285,10 @@ export class AdminOrdersController {
           }
         }
 
-        // Пересчитываем цену товара по активной партии (FIFO)
+        // Пересчитываем цену товара по активной партии (FIFO) через DarkstoreProduct
         for (const productId of affectedProductIds) {
           const activeBatch = await tx.batch.findFirst({
-            where: { productId, status: 'ACTIVE', remainingQty: { gt: 0 } },
+            where: { productId, status: 'ACTIVE', remainingQty: { gt: 0 }, purchase: { darkstoreId: order.darkstoreId } },
             orderBy: [{ expiryDate: 'asc' }, { createdAt: 'asc' }],
           });
           if (activeBatch && activeBatch.sellingPrice > 0) {
@@ -299,8 +300,8 @@ export class AdminOrdersController {
               );
               oldPriceVal = activeBatch.sellingPrice;
             }
-            await tx.product.update({
-              where: { id: productId },
+            await tx.darkstoreProduct.updateMany({
+              where: { productId, darkstoreId: order.darkstoreId },
               data: { price: effectivePrice, oldPrice: oldPriceVal },
             });
           }
