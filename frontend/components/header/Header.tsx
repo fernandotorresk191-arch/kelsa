@@ -68,7 +68,7 @@ const Header = () => {
                 src="/kelsa-logo.svg"
                 alt="Kelsa"
                 fill
-                style={{ objectFit: 'contain' }}
+                style={{ objectFit: 'contain', top:'-2px' }}
                 priority
               />
             </div>
