@@ -43,7 +43,7 @@ const CategoryMenu = () => {
         >
           {category.name}
         </Link>
-      )})}
+      ))}
     </nav>
   );
 };
