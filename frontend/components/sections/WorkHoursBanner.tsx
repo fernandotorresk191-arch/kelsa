@@ -60,8 +60,8 @@ export function WorkHoursBanner() {
         <div
           className="rounded-xl border px-5 py-3 text-center text-sm font-medium"
           style={{
-            backgroundColor: "hsl(270 96% 40% / 0.12)",
-            borderColor: "hsl(270 96% 40%)",
+            backgroundColor: "#f7f2fd",
+            borderColor: "#e8daf7",
             color: "hsl(270 96% 40%)",
           }}
         >
