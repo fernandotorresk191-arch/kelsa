@@ -5,6 +5,9 @@ export const kopilkaApi = {
   create: (payload: CreateKopilkaPayload) =>
     apiPost<Kopilka, CreateKopilkaPayload>("/v1/kopilka", payload),
 
+  getMy: () =>
+    apiGet<Kopilka[]>("/v1/kopilka/my"),
+
   get: (shareId: string) =>
     apiGet<Kopilka>(`/v1/kopilka/${shareId}`),
 

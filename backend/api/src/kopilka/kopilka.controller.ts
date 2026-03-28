@@ -7,9 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { IsArray, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import { PrismaService } from 'prisma/prisma.service';
+import { JwtGuard } from '../auth/jwt.guard';
 
 /* ---------- DTO ---------- */
 
@@ -64,14 +67,30 @@ class UpdateKopilkaDto {
 export class KopilkaController {
   constructor(private readonly prisma: PrismaService) {}
 
+  /* ── Get my kopilkas (authenticated) ── */
+  @UseGuards(JwtGuard)
+  @Get('my')
+  async getMy(@Req() req: any) {
+    const userId = req.user?.sub as string;
+    const kopilkas = await this.prisma.kopilka.findMany({
+      where: { userId },
+      include: { members: { include: { contributions: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    return kopilkas;
+  }
+
   /* ── Create kopilka ── */
+  @UseGuards(JwtGuard)
   @Post()
-  async create(@Body() dto: CreateKopilkaDto) {
+  async create(@Req() req: any, @Body() dto: CreateKopilkaDto) {
+    const userId = req.user?.sub as string;
     const kopilka = await this.prisma.kopilka.create({
       data: {
         name: dto.name,
         goalAmount: dto.goalAmount,
         startMonth: dto.startMonth,
+        userId,
         members: {
           create: dto.members.map((name) => ({ name })),
         },

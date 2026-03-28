@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import CreateKopilkaForm from "@/components/kopilka/CreateKopilkaForm";
 import KopilkaView from "@/components/kopilka/KopilkaView";
 import { kopilkaApi } from "@/features/kopilka/api";
 import type { Kopilka } from "@/features/kopilka/types";
+import { useAuth } from "@/components/auth/AuthProvider";
 import {
   FiTarget,
   FiUsers,
@@ -14,31 +15,8 @@ import {
   FiPlus,
   FiArrowRight,
   FiTrash2,
+  FiLogIn,
 } from "react-icons/fi";
-
-const STORAGE_KEY = "kelsa_kopilka_ids";
-
-function getStoredIds(): string[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function storeId(shareId: string) {
-  const ids = getStoredIds();
-  if (!ids.includes(shareId)) {
-    ids.push(shareId);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-  }
-}
-
-function removeStoredId(shareId: string) {
-  const ids = getStoredIds().filter((id) => id !== shareId);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(ids));
-}
 
 const FEATURES = [
   {
@@ -64,41 +42,35 @@ const FEATURES = [
 ];
 
 export default function KopilkaPage() {
+  const { user, isReady } = useAuth();
   const [kopilkas, setKopilkas] = useState<Kopilka[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [activeKopilka, setActiveKopilka] = useState<Kopilka | null>(null);
   const [confirmDeleteKopilka, setConfirmDeleteKopilka] = useState<{ shareId: string; name: string } | null>(null);
 
-  const loadKopilkas = async () => {
-    const ids = getStoredIds();
-    if (ids.length === 0) {
+  const loadKopilkas = useCallback(async () => {
+    if (!user) {
       setKopilkas([]);
       setLoading(false);
       return;
     }
-    const results: Kopilka[] = [];
-    for (const id of ids) {
-      try {
-        const k = await kopilkaApi.get(id);
-        results.push(k);
-      } catch (err: unknown) {
-        // Удаляем из localStorage только если копилка реально не найдена (404)
-        if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 404) {
-          removeStoredId(id);
-        }
-      }
+    setLoading(true);
+    try {
+      const results = await kopilkaApi.getMy();
+      setKopilkas(results);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
     }
-    setKopilkas(results);
-    setLoading(false);
-  };
+  }, [user]);
 
   useEffect(() => {
-    loadKopilkas();
-  }, []);
+    if (isReady) loadKopilkas();
+  }, [isReady, loadKopilkas]);
 
   const handleCreated = (k: Kopilka) => {
-    storeId(k.shareId);
     setKopilkas((prev) => [...prev, k]);
     setShowCreate(false);
     setActiveKopilka(k);
@@ -107,7 +79,6 @@ export default function KopilkaPage() {
   const handleDelete = async (shareId: string) => {
     try {
       await kopilkaApi.remove(shareId);
-      removeStoredId(shareId);
       setKopilkas((prev) => prev.filter((k) => k.shareId !== shareId));
       if (activeKopilka?.shareId === shareId) setActiveKopilka(null);
     } catch {
@@ -167,7 +138,26 @@ export default function KopilkaPage() {
       </div>
 
       {/* My Kopilkas */}
-      {loading ? (
+      {!user ? (
+        <div className="text-center py-10">
+          <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 max-w-sm mx-auto">
+            <div className="w-14 h-14 rounded-2xl bg-[#6206c7]/10 flex items-center justify-center mx-auto mb-4">
+              <FiLogIn size={24} className="text-[#6206c7]" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Войдите в аккаунт</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              Чтобы создавать копилки и отслеживать накопления, необходимо авторизоваться
+            </p>
+            <a
+              href="/account"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#6206c7] hover:bg-[#5205A8] text-white text-sm font-medium shadow-lg shadow-[#6206c7]/20 transition-all"
+            >
+              <FiLogIn size={16} />
+              Войти
+            </a>
+          </div>
+        </div>
+      ) : loading ? (
         <div className="text-center py-10 text-gray-400">Загрузка...</div>
       ) : (
         <>
