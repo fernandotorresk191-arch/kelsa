@@ -82,8 +82,11 @@ export default function KopilkaPage() {
       try {
         const k = await kopilkaApi.get(id);
         results.push(k);
-      } catch {
-        removeStoredId(id);
+      } catch (err: unknown) {
+        // Удаляем из localStorage только если копилка реально не найдена (404)
+        if (err && typeof err === "object" && "status" in err && (err as { status: number }).status === 404) {
+          removeStoredId(id);
+        }
       }
     }
     setKopilkas(results);
