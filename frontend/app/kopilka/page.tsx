@@ -68,6 +68,7 @@ export default function KopilkaPage() {
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [activeKopilka, setActiveKopilka] = useState<Kopilka | null>(null);
+  const [confirmDeleteKopilka, setConfirmDeleteKopilka] = useState<{ shareId: string; name: string } | null>(null);
 
   const loadKopilkas = async () => {
     const ids = getStoredIds();
@@ -215,7 +216,7 @@ export default function KopilkaPage() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(k.shareId);
+                            setConfirmDeleteKopilka({ shareId: k.shareId, name: k.name });
                           }}
                           className="p-1.5 text-gray-300 hover:text-red-500 transition-colors rounded"
                           title="Удалить копилку"
@@ -295,6 +296,50 @@ export default function KopilkaPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Confirm delete kopilka modal */}
+      {confirmDeleteKopilka && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.4)" }}
+          onClick={() => setConfirmDeleteKopilka(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                <FiTrash2 size={18} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Удалить копилку?</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  «{confirmDeleteKopilka.name}» и все данные будут удалены безвозвратно.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setConfirmDeleteKopilka(null)}
+                className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={async () => {
+                  const { shareId } = confirmDeleteKopilka;
+                  setConfirmDeleteKopilka(null);
+                  await handleDelete(shareId);
+                }}
+                className="flex-1 h-10 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors"
+              >
+                Да, удалить
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
