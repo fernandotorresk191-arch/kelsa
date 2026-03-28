@@ -80,6 +80,7 @@ export default function KopilkaView({
   const [newMemberName, setNewMemberName] = useState("");
   const [copied, setCopied] = useState(false);
   const [visibleCount, setVisibleCount] = useState(6);
+  const [confirmDeleteMember, setConfirmDeleteMember] = useState<{ id: string; name: string } | null>(null);
 
   const months = getMonthColumns(kopilka.startMonth, visibleCount);
   const totalSaved = calcTotalSaved(kopilka);
@@ -190,6 +191,7 @@ export default function KopilkaView({
   };
 
   return (
+    <>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -284,7 +286,7 @@ export default function KopilkaView({
                         </span>
                         {!isReadonly && (
                           <button
-                            onClick={() => handleRemoveMember(member.id)}
+                            onClick={() => setConfirmDeleteMember({ id: member.id, name: member.name })}
                             className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
                             title="Удалить участника"
                           >
@@ -503,5 +505,50 @@ export default function KopilkaView({
         </div>
       </div>
     </div>
+
+      {/* Confirm delete member modal */}
+      {confirmDeleteMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.4)" }}
+          onClick={() => setConfirmDeleteMember(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
+                <FiTrash2 size={18} className="text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Удалить участника?</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  «{confirmDeleteMember.name}» и все его взносы будут удалены безвозвратно.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setConfirmDeleteMember(null)}
+                className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={async () => {
+                  const id = confirmDeleteMember.id;
+                  setConfirmDeleteMember(null);
+                  await handleRemoveMember(id);
+                }}
+                className="flex-1 h-10 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition-colors"
+              >
+                Да, удалить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
