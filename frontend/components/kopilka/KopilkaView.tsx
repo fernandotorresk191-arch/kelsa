@@ -296,7 +296,9 @@ export default function KopilkaView({
                   </tr>
 
                   {/* Contribution rows */}
-                  {member.contributions.map((contribution) => {
+                  {[...member.contributions]
+                    .sort((a, b) => b.amount - a.amount)
+                    .map((contribution) => {
                     const paid = getPaidMonths(contribution);
                     return (
                       <tr
