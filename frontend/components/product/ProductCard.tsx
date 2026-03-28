@@ -168,8 +168,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         <div className="mt-auto">
           {quantityInCart > 0 ? (
             /* Контролы количества когда товар в корзине */
-            <div className="flex items-center justify-between bg-gray-50 rounded-full p-1 
-                           border border-gray-100">
+            <div className="flex items-center justify-between bg-[#f7f2fd] rounded-full p-1 
+                           border-2 border-[#e8daf7]">
               <button
                 type="button"
                 onClick={handleDecrement}
