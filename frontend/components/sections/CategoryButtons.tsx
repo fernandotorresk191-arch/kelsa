@@ -15,7 +15,7 @@ const CategoryButtons: React.FC<CategoryButtonsProps> = ({ categories }) => {
 
   return (
     <div className="py-6 overflow-hidden">
-      <h2 className="text-[28px] font-bold leading-[30px] tracking-[-0.6px] text-[#404040] mb-5">Категории</h2>
+      <h2 className="text-[21px] xl:text-[24px] font-bold leading-[24px] xl:leading-[28px] tracking-[-0.3px] xl:tracking-[-0.4px] text-[#404040] mb-5">Категории</h2>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-5 gap-3">
         {categoriesToShow.map((category) => {
