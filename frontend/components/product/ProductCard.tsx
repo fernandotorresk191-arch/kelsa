@@ -213,7 +213,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             /* Кнопка добавления когда товара нет в корзине */
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
-                <span className="font-bold text-lg text-gray-900">{product.price} ₽</span>
+                <span className="font-bold text-lg text-gray-700">{product.price} ₽</span>
                 {hasDiscount && (
                   <span className="text-xs text-gray-400 line-through">
                     {product.oldPrice} ₽
