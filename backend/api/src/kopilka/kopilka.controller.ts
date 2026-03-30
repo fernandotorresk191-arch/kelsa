@@ -73,7 +73,7 @@ export class KopilkaController {
   async getMy(@Req() req: any) {
     const userId = req.user?.sub as string;
     const kopilkas = await this.prisma.kopilka.findMany({
-      where: { userId },
+      where: { userId } as any,
       include: { members: { include: { contributions: true } } },
       orderBy: { createdAt: 'desc' },
     });
@@ -94,7 +94,7 @@ export class KopilkaController {
         members: {
           create: dto.members.map((name) => ({ name })),
         },
-      },
+      } as any,
       include: { members: { include: { contributions: true } } },
     });
     return kopilka;
