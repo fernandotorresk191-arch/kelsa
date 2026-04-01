@@ -94,8 +94,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                     shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]
                     transition-all duration-300 ease-out">
       
-      {/* Quantity badge - показываем только если товар в корзине */}
-      {quantityInCart > 0 && (
+      {/* Quantity badge - показываем только если товар в корзине и лимит НЕ достигнут */}
+      {quantityInCart > 0 && !atStockLimit && (
         <div className="absolute top-3 left-3 z-20 flex items-center justify-center 
                         min-w-[28px] h-7 px-2 rounded-full bg-[#6206c7] text-white 
                         text-sm font-semibold shadow-lg
@@ -147,6 +147,20 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           ) : (
             <div className="flex items-center justify-center w-full h-full text-gray-300">
               <span className="text-sm">Нет фото</span>
+            </div>
+          )}
+
+          {/* «Больше нет» overlay — когда достигнут лимит остатка */}
+          {atStockLimit && quantityInCart > 0 && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center
+                            bg-black/50 rounded-2xl select-none
+                            animate-in fade-in duration-200">
+              <span className="text-[40px] font-bold leading-none text-white drop-shadow-lg">
+                {quantityInCart}
+              </span>
+              <span className="mt-1 text-sm font-bold text-white drop-shadow-lg">
+                Больше нет
+              </span>
             </div>
           )}
         </div>
