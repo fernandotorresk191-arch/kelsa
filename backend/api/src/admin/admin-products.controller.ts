@@ -65,6 +65,10 @@ class CreateProductDto {
   @IsOptional()
   @IsString()
   cellNumber?: string;
+
+  @IsOptional()
+  @IsNumber()
+  maxPerOrder?: number;
 }
 
 // DTO для обновления глобальных полей товара
@@ -121,6 +125,10 @@ class UpdateProductDto {
   @IsOptional()
   @IsString()
   cellNumber?: string;
+
+  @IsOptional()
+  @IsNumber()
+  maxPerOrder?: number;
 }
 
 class UpdateStockDto {
@@ -149,6 +157,7 @@ function flattenProduct(product: any, dp?: any) {
     subcategory: dp?.subcategory ?? product.subcategory,
     darkstoreProductId: dp?.id ?? null,
     isActiveInDarkstore: dp?.isActive ?? false,
+    maxPerOrder: dp?.maxPerOrder ?? 10,
   };
 }
 
@@ -301,6 +310,7 @@ export class AdminProductsController {
           oldPrice: dto.oldPrice,
           stock: dto.stock ?? 0,
           cellNumber: dto.cellNumber,
+          maxPerOrder: dto.maxPerOrder ?? 10,
           categoryId: dto.categoryId,
           subcategoryId: dto.subcategoryId,
         },
@@ -355,6 +365,7 @@ export class AdminProductsController {
     if (dto.oldPrice !== undefined) perDarkstoreData.oldPrice = dto.oldPrice;
     if (dto.stock !== undefined) perDarkstoreData.stock = dto.stock;
     if (dto.cellNumber !== undefined) perDarkstoreData.cellNumber = dto.cellNumber;
+    if (dto.maxPerOrder !== undefined) perDarkstoreData.maxPerOrder = dto.maxPerOrder;
     if (dto.categoryId !== undefined) perDarkstoreData.categoryId = dto.categoryId;
     if (dto.subcategoryId !== undefined) perDarkstoreData.subcategoryId = dto.subcategoryId;
 

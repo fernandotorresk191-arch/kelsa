@@ -33,7 +33,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const maxPerOrder = cartItem?.maxPerOrder;
   const atStockLimit =
     (stock !== undefined && quantityInCart >= stock) ||
-    (maxPerOrder !== undefined && quantityInCart >= maxPerOrder);
+    (maxPerOrder !== undefined && maxPerOrder > 0 && quantityInCart >= maxPerOrder);
 
   const prevQtyRef = React.useRef(quantityInCart);
   React.useEffect(() => {

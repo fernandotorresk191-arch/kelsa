@@ -130,6 +130,7 @@ export type Product = {
   categoryId?: string;
   subcategoryId?: string;
   cellNumber?: string;
+  maxPerOrder?: number;
   darkstoreProductId?: string;
   isActiveInDarkstore?: boolean;
   createdAt: string;

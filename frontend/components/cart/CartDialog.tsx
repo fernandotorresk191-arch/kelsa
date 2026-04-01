@@ -250,7 +250,7 @@ export function CartDialog() {
                   const isOutOfStock = stock !== undefined && stock <= 0;
                   const atLimit =
                     (stock !== undefined && item.qty >= stock) ||
-                    (maxPerOrder !== undefined && item.qty >= maxPerOrder);
+                    (maxPerOrder !== undefined && maxPerOrder > 0 && item.qty >= maxPerOrder);
 
                   return (
                     <div

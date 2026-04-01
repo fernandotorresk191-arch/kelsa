@@ -117,7 +117,7 @@ export class CartController {
         const currentQty = existingItem?.qty ?? 0;
         const newTotal = currentQty + qty;
 
-        if (newTotal > dp.maxPerOrder) {
+        if (dp.maxPerOrder > 0 && newTotal > dp.maxPerOrder) {
           throw new BadRequestException(
             `Максимум ${dp.maxPerOrder} шт. на заказ для этого товара`,
           );
@@ -159,7 +159,7 @@ export class CartController {
         where: { productId_darkstoreId: { darkstoreId, productId: cartItem.productId } },
       });
       if (dp) {
-        if (dto.qty > dp.maxPerOrder) {
+        if (dp.maxPerOrder > 0 && dto.qty > dp.maxPerOrder) {
           throw new BadRequestException(
             `Максимум ${dp.maxPerOrder} шт. на заказ для этого товара`,
           );
@@ -244,7 +244,7 @@ export class CartController {
             maxPerOrder: dp.maxPerOrder,
             reason: 'INSUFFICIENT_STOCK',
           });
-        } else if (item.qty > dp.maxPerOrder) {
+        } else if (dp.maxPerOrder > 0 && item.qty > dp.maxPerOrder) {
           issues.push({
             productId: item.productId,
             title: item.product?.title || '',

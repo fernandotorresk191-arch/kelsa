@@ -28,6 +28,7 @@ export default function AdminProductDetailPage() {
     categoryId: '',
     subcategoryId: '',
     cellNumber: '',
+    maxPerOrder: '10',
     weight: '',
     barcode: '',
   });
@@ -72,6 +73,7 @@ export default function AdminProductDetailPage() {
           categoryId: productData.categoryId || '',
           subcategoryId: productData.subcategoryId || '',
           cellNumber: productData.cellNumber || '',
+          maxPerOrder: productData.maxPerOrder !== undefined ? productData.maxPerOrder.toString() : '10',
           weight: productData.weight || '',
           barcode: productData.barcode || '',
         });
@@ -112,6 +114,7 @@ export default function AdminProductDetailPage() {
         categoryId: formData.categoryId || undefined,
         subcategoryId: formData.subcategoryId || undefined,
         cellNumber: formData.cellNumber || undefined,
+        maxPerOrder: parseInt(formData.maxPerOrder) || 10,
         weight: formData.weight || undefined,
         barcode: formData.barcode || undefined,
       });
@@ -270,17 +273,35 @@ export default function AdminProductDetailPage() {
                 </div>
               </div>
 
-              <div>
-                <label htmlFor="edit-stock" className="block text-sm font-medium text-gray-700 mb-1">
-                  Остаток (шт.)
-                </label>
-                <input
-                  id="edit-stock"
-                  type="number"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="edit-stock" className="block text-sm font-medium text-gray-700 mb-1">
+                    Остаток (шт.)
+                  </label>
+                  <input
+                    id="edit-stock"
+                    type="number"
+                    value={formData.stock}
+                    onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="edit-maxPerOrder" className="block text-sm font-medium text-gray-700 mb-1">
+                    Макс. в одном заказе
+                  </label>
+                  <input
+                    id="edit-maxPerOrder"
+                    type="number"
+                    min="0"
+                    placeholder="0 = без лимита"
+                    value={formData.maxPerOrder}
+                    onChange={(e) => setFormData({ ...formData, maxPerOrder: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                  <p className="mt-1 text-xs text-gray-400">0 — без ограничения</p>
+                </div>
               </div>
 
               <div>
