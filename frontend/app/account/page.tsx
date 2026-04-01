@@ -586,7 +586,7 @@ function AccountPageContent() {
       {/* Confirm cancel order modal */}
       {confirmCancelOrder !== null && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 !mt-0"
           style={{ background: 'rgba(0,0,0,0.4)' }}
           onClick={() => setConfirmCancelOrder(null)}
         >
