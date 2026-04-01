@@ -115,6 +115,7 @@ model DarkstoreProduct {
   // Складские данные
   stock         Int      @default(0)  // Остатки на этом складе
   cellNumber    String?  // Номер ячейки хранения
+  maxPerOrder   Int      @default(10) // Максимум штук в одном заказе (0 = без лимита)
   
   // Категория в этом дарксторе (может отличаться)
   categoryId    String?

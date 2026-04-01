@@ -9,6 +9,7 @@ import { resolveMediaUrl } from 'shared/api/media';
 import { ProductDto } from 'features/catalog/types';
 import { useCart } from '../cart/CartProvider';
 import { useFavorites } from '../favorites/FavoritesProvider';
+import { useToast } from '../ui/toast';
 
 interface ProductCardProps {
   product: ProductDto;
@@ -17,6 +18,7 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addItem, updateItemQty, removeItem, cart, isCartLoading } = useCart();
   const { toggleFavorite, isFavorite } = useFavorites();
+  const { addToast } = useToast();
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = React.useState(false);
 
@@ -26,6 +28,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   // Найдем товар в корзине
   const cartItem = cart?.items.find(item => item.productId === product.id);
   const quantityInCart = cartItem?.qty ?? 0;
+  const stock = cartItem?.stock;
+  const maxPerOrder = cartItem?.maxPerOrder;
+  const atStockLimit =
+    (stock !== undefined && quantityInCart >= stock) ||
+    (maxPerOrder !== undefined && quantityInCart >= maxPerOrder);
   
   // Logic: Check if there is a discount (oldPrice exists and is greater than current price)
   const hasDiscount = (product.oldPrice ?? 0) > product.price;
@@ -39,8 +46,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     setIsUpdating(true);
     try {
       await addItem(product.id, 1);
-    } catch {
-      // Ошибку покажет компонент корзины
+    } catch (err) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Не удалось добавить товар';
+      addToast({ type: 'error', title: msg, duration: 3000 });
     } finally {
       setIsUpdating(false);
     }
@@ -51,8 +61,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     setIsUpdating(true);
     try {
       await updateItemQty(cartItem.id, quantityInCart + 1);
-    } catch {
-      // Ошибку покажет компонент корзины
+    } catch (err) {
+      const msg = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: string }).message)
+        : 'Не удалось увеличить количество';
+      addToast({ type: 'error', title: msg, duration: 3000 });
     } finally {
       setIsUpdating(false);
     }
@@ -198,7 +211,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               <button
                 type="button"
                 onClick={handleIncrement}
-                disabled={isDisabled}
+                disabled={isDisabled || atStockLimit}
                 className="flex items-center justify-center w-9 h-9 rounded-full
                           bg-[#6206c7] text-white hover:bg-[#7a1fe0] hover:shadow-lg
                           transition-all duration-200 ease-out

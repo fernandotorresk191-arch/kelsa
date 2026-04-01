@@ -266,15 +266,9 @@ export class CourierOrdersController {
         data: { profit: realProfit },
       });
 
-      // Списываем товар со склада по FIFO-партиям
+      // Списываем товар из партий по FIFO (остатки на складе уже уменьшены при создании заказа)
       const affectedProductIds: string[] = [];
       for (const item of updated.items) {
-        // Уменьшаем остаток товара в DarkstoreProduct
-        await tx.darkstoreProduct.updateMany({
-          where: { productId: item.productId, darkstoreId: order.darkstoreId },
-          data: { stock: { decrement: item.qty } },
-        });
-
         // FIFO-списание из партий: находим активные партии по сроку годности
         let remaining = item.qty;
         const fifoBatches = await tx.batch.findMany({

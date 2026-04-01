@@ -10,6 +10,8 @@ export type CartItemDto = {
   createdAt: string;
   updatedAt: string;
   product: ProductDto;
+  stock?: number;
+  maxPerOrder?: number;
 };
 
 export type CartDto = {
@@ -21,4 +23,18 @@ export type CartDto = {
 
 export type CartTotalsDto = {
   totalAmount: number;
+};
+
+export type CartValidationIssue = {
+  productId: string;
+  title: string;
+  requested: number;
+  available: number;
+  maxPerOrder: number;
+  reason: 'OUT_OF_STOCK' | 'INSUFFICIENT_STOCK' | 'OVER_LIMIT';
+};
+
+export type CartValidationResult = {
+  ok: boolean;
+  issues: CartValidationIssue[];
 };

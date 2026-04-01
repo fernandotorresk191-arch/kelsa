@@ -1,4 +1,6 @@
-# 🎯 Quick Start - Backoffice Kelsa
+# 🎯 Quick Start — Backoffice Kelsa
+
+**Последнее обновление:** Апрель 2026
 
 ## ⚡ Быстрый старт (5 минут)
 
@@ -22,7 +24,7 @@ npx prisma studio
 В интерфейсе создайте запись в таблице `AdminUser`:
 - email: `admin@example.com`
 - passwordHash: Нужен bcrypt хэш (см. ниже)
-- role: `admin`
+- role: `superadmin` (или `admin` / `manager`)
 - isActive: `true`
 
 **Как создать bcrypt хэш:**
@@ -33,7 +35,15 @@ node -e "require('bcrypt').hash('MyPassword123', 10).then(console.log)"
 
 Результат скопировать в `passwordHash`.
 
-### Шаг 3: Запустить бэкэнд
+### Шаг 3: Создать даркстор
+
+В таблице `Darkstore` создайте запись:
+- name: `Основной склад`
+- isActive: `true`
+
+Затем в `AdminUserDarkstore` привяжите админа к даркстору.
+
+### Шаг 4: Запустить бэкэнд
 
 ```bash
 cd backend/api
@@ -41,9 +51,7 @@ npm install
 npm run start:dev
 ```
 
-Должно вывести: `Server running on port 3001`
-
-### Шаг 4: Запустить фронтэнд
+### Шаг 5: Запустить фронтэнд
 
 В новом терминале:
 
@@ -53,92 +61,80 @@ npm install
 npm run dev
 ```
 
-Должно вывести: `http://localhost:3000`
+### Шаг 6: Открыть админ-панель
 
-### Шаг 5: Открыть админ-панель
-
-Откройте в браузере:
 ```
 http://localhost:3000/admin/login
 ```
 
-Введите учетные данные, которые вы создали на Шаге 2.
-
 ---
 
-## 📋 Созданные компоненты и страницы
+## 📋 Компоненты системы
 
-### Бэкэнд (NestJS)
+### Backend (NestJS) — 16 файлов в admin-модуле
 
-- ✅ **admin-auth.controller.ts** — логин, создание админов
-- ✅ **admin-orders.controller.ts** — управление заказами, печать накладных
-- ✅ **admin-products.controller.ts** — CRUD товаров, управление остатками
-- ✅ **admin-analytics.controller.ts** — статистика и отчеты
-- ✅ **admin.module.ts** — модуль админа
+| Файл | Описание |
+|------|----------|
+| `admin.module.ts` | NestJS модуль |
+| `admin.guard.ts` | Guard с проверкой ролей и дарксторов |
+| `roles.decorator.ts` | Декоратор @Roles() |
+| `cron-registry.service.ts` | Cron-задачи |
+| `admin-auth.controller.ts` | Логин, профиль, CRUD пользователей |
+| `admin-orders.controller.ts` | Заказы: список, детали, статусы, назначение курьера, печать |
+| `admin-products.controller.ts` | Товары: CRUD, остатки, DarkstoreProduct |
+| `admin-categories.controller.ts` | Категории: иерархия, CRUD |
+| `admin-promotions.controller.ts` | Баннеры: CRUD |
+| `admin-purchases.controller.ts` | Закупки: создание, партии (Batch) |
+| `admin-expiry.controller.ts` | Просрочка: скидки, списания |
+| `admin-analytics.controller.ts` | Аналитика: дашборд, статистика |
+| `admin-couriers.controller.ts` | Курьеры: CRUD |
+| `admin-delivery-zones.controller.ts` | Зоны доставки: CRUD |
+| `admin-darkstores.controller.ts` | Дарксторы: CRUD (superadmin) |
+| `admin-server.controller.ts` | Статус сервера |
 
-### Фронтэнд (Next.js)
+### Frontend (Next.js) — 20 файлов в /admin
 
-- ✅ **AdminProvider.tsx** — контекст авторизации админа
-- ✅ **/admin/login** — страница входа
-- ✅ **/admin** — панель управления (Dashboard)
-- ✅ **/admin/orders** — список заказов
-- ✅ **/admin/orders/[id]** — детали заказа, смена статуса, печать
-- ✅ **/admin/products** — список товаров, добавление новых
-- ✅ **/admin/products/[id]** — редактирование товара, остатки
-- ✅ **/admin/analytics** — графики продаж и статистика
+| Страница | Путь |
+|----------|------|
+| Вход | `/admin/login` |
+| Дашборд | `/admin` |
+| Заказы | `/admin/orders`, `/admin/orders/[id]` |
+| Каталог | `/admin/catalog` |
+| Товары | `/admin/products`, `/admin/products/[id]` |
+| Баннеры | `/admin/promotions` |
+| Закупки | `/admin/purchases`, `/admin/purchases/[id]` |
+| Просрочка | `/admin/expiry` |
+| Аналитика | `/admin/analytics` |
+| Курьеры | `/admin/couriers`, `/admin/couriers/[id]` |
+| Зоны доставки | `/admin/delivery-zones` |
+| Дарксторы | `/admin/darkstores` |
+| Пользователи | `/admin/users` |
+| Сервер | `/admin/server` |
 
-### Prisma БД
+### Prisma БД — ключевые модели
 
-- ✅ Добавлено поле `stock` в модель `Product`
-- ✅ Создана модель `OrderStatusHistory` для отслеживания истории статусов
-
----
-
-## 🎨 UI/UX особенности
-
-- ✅ Адаптивный дизайн (мобильный + десктоп)
-- ✅ Темные и светлые темы благодаря Tailwind CSS
-- ✅ Таблицы с пагинацией
-- ✅ Фильтрация по статусам
-- ✅ Печать документов (HTML)
-- ✅ Интерактивные графики (базовые)
-- ✅ Уведомления о успехе/ошибках
+| Модель | Описание |
+|--------|----------|
+| `Darkstore` | Даркстор (склад-магазин) |
+| `DarkstoreProduct` | Привязка товара к даркстору: цена, остаток, ячейка |
+| `Product` | Глобальный товар |
+| `Category` | Иерархические категории (с markupPercent) |
+| `Order` / `OrderItem` | Заказы с экономикой |
+| `Purchase` / `Batch` | Закупки и FIFO-партии |
+| `DeliveryZone` | Зоны доставки по населённым пунктам |
+| `Courier` | Курьеры |
+| `AdminUser` | Админы/менеджеры (superadmin, admin, manager) |
+| `AdminUserDarkstore` | Привязка админов к дарксторам |
 
 ---
 
 ## 🔐 Безопасность
 
-- ✅ JWT Token авторизация
-- ✅ Проверка ролей (admin/manager)
-- ✅ Защита эндпоинтов с JwtGuard
-- ✅ Хэширование паролей с bcrypt
-- ✅ CORS настройка (при необходимости)
-
----
-
-## 📝 API документация
-
-Автоматическая документация доступна в Swagger:
-```
-http://localhost:3001/api/docs
-```
-
-(Если включено в NestJS конфигурации)
-
----
-
-## 🚀 Готово к Production?
-
-Перед развертыванием на production:
-
-1. Установите SSL сертификат (Let's Encrypt)
-2. Настройте NGINX (см. DEPLOYMENT.md)
-3. Установите переменные окружения
-4. Создайте супер-администратора
-5. Проверьте все эндпоинты
-6. Включите логирование
-
-Полная документация: см. **DEPLOYMENT.md**
+- JWT Token авторизация (отдельно для клиентов, админов, курьеров)
+- AdminGuard с проверкой ролей через @Roles() декоратор
+- X-Darkstore-Id заголовок для мультитенантности
+- bcrypt хэширование паролей
+- Мягкое удаление — товары отключаются, не удаляются
 
 ---
 
@@ -148,25 +144,18 @@ http://localhost:3001/api/docs
 A: Подключитесь к БД и обновите запись в `AdminUser` с новым bcrypt хэшем.
 
 **Q: Как добавить еще администратора?**
-A: Через админ-панель: Запросите у другого администратора создать новый аккаунт через API (`POST /v1/admin-auth/create`)
+A: Через админ-панель → Пользователи → Добавить. Или через API (`POST /v1/admin-auth/create`).
 
 **Q: Товар не появляется на сайте после добавления**
 A: Убедитесь, что:
-   - `isActive = true`
-   - `price > 0`
-   - `categoryId` заполнен (если требуется)
+   - Product: `isActive = true`
+   - Есть DarkstoreProduct с `price > 0` и `stock > 0`
+   - `categoryId` заполнен
 
-**Q: Как выгрузить отчет по продажам?**
-A: Используйте API `GET /v1/admin/analytics/orders-stats` и обработайте JSON в Excel
-
----
-
-## 📞 Поддержка
-
-По вопросам или проблемам свяжитесь с разработчиком.
+**Q: Не вижу данных в админке**
+A: Проверьте, выбран ли правильный даркстор в переключателе.
 
 ---
 
-**Версия:** 1.0  
-**Дата:** 20 января 2026  
-**Статус:** ✅ Готово к использованию
+**Версия:** 2.0  
+**Дата:** Апрель 2026

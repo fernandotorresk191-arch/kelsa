@@ -8,6 +8,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   Post,
   Req,
   UnauthorizedException,
@@ -109,8 +110,43 @@ export class OrdersController {
       resolvedDarkstoreId = defaultDs?.id || 'default-darkstore';
     }
 
-    // 7. Выполняем транзакцию: создаем заказ и обновляем статус корзины
+    // 7. Выполняем транзакцию: проверяем остатки, резервируем товар, создаем заказ
     const createdOrder = await this.prisma.$transaction(async (tx) => {
+      // Атомарная проверка остатков и резервирование (decrement stock)
+      if (darkstoreId) {
+        const stockIssues: Array<{ productId: string; title: string; requested: number; available: number }> = [];
+
+        for (const item of cart.items) {
+          const dp = await tx.darkstoreProduct.findUnique({
+            where: { productId_darkstoreId: { darkstoreId, productId: item.productId } },
+          });
+          const available = dp?.stock ?? 0;
+          if (item.qty > available) {
+            stockIssues.push({
+              productId: item.productId,
+              title: item.product.title,
+              requested: item.qty,
+              available,
+            });
+          }
+        }
+
+        if (stockIssues.length > 0) {
+          throw new BadRequestException({
+            message: 'Некоторых товаров нет в достаточном количестве',
+            stockIssues,
+          });
+        }
+
+        // Резервируем товар: уменьшаем остатки на складе
+        for (const item of cart.items) {
+          await tx.darkstoreProduct.update({
+            where: { productId_darkstoreId: { darkstoreId, productId: item.productId } },
+            data: { stock: { decrement: item.qty } },
+          });
+        }
+      }
+
       const order = await tx.order.create({
         data: {
           cartId: cart.id,
@@ -176,5 +212,83 @@ export class OrdersController {
       where: { orderNumber: Number(orderNumber) },
       include: { items: true },
     });
+  }
+
+  @UseGuards(JwtGuard)
+  @Patch(':orderNumber/cancel')
+  async cancel(@Req() req: any, @Param('orderNumber') orderNumber: string) {
+    const userId = req.user?.sub as string | undefined;
+    if (!userId) {
+      throw new UnauthorizedException('User not found in token');
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { orderNumber: Number(orderNumber) },
+      include: { items: true },
+    });
+
+    if (!order) {
+      throw new BadRequestException('Заказ не найден');
+    }
+
+    // Только владелец заказа может отменить
+    if (order.userId !== userId) {
+      throw new BadRequestException('Нет доступа к этому заказу');
+    }
+
+    // Клиент может отменить только заказ в статусе NEW
+    if (order.status !== 'NEW') {
+      throw new BadRequestException(
+        'Отменить можно только заказ в статусе «Новый». Свяжитесь с менеджером.',
+      );
+    }
+
+    const updatedOrder = await this.prisma.$transaction(async (tx) => {
+      // Возвращаем товар на склад
+      if (order.darkstoreId) {
+        for (const item of order.items) {
+          await tx.darkstoreProduct.updateMany({
+            where: { productId: item.productId, darkstoreId: order.darkstoreId },
+            data: { stock: { increment: item.qty } },
+          });
+        }
+      }
+
+      // Обновляем статус
+      const updated = await tx.order.update({
+        where: { id: order.id },
+        data: { status: 'CANCELED', profit: 0 },
+        include: { items: true },
+      });
+
+      // Создаём запись в истории
+      await tx.orderStatusHistory.create({
+        data: {
+          orderId: order.id,
+          status: 'CANCELED',
+          comment: 'Отменён клиентом',
+          changedBy: 'client',
+        },
+      });
+
+      return updated;
+    });
+
+    // SSE-уведомление
+    this.eventsService.emitOrderEvent({
+      type: 'ORDER_UPDATED',
+      order: {
+        id: updatedOrder.id,
+        orderNumber: updatedOrder.orderNumber,
+        customerName: updatedOrder.customerName,
+        phone: updatedOrder.phone,
+        totalAmount: updatedOrder.totalAmount,
+        status: updatedOrder.status,
+        createdAt: updatedOrder.createdAt,
+      },
+      userId: updatedOrder.userId,
+    });
+
+    return { success: true };
   }
 }

@@ -18,6 +18,8 @@ export const ordersApi = {
     apiPost<OrderDto, CreateOrderPayload>("/v1/orders", payload),
   get: (orderNumber: number | string) =>
     apiGet<OrderDto>(`/v1/orders/${orderNumber}`),
+  cancel: (orderNumber: number | string) =>
+    apiPatch<{ success: boolean }>(`/v1/orders/${orderNumber}/cancel`),
 };
 
 export const chatApi = {

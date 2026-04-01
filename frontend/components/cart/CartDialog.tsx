@@ -19,6 +19,8 @@ import { useSettlement } from "../settlement/SettlementProvider";
 import { resolveMediaUrl } from "../../shared/api/media";
 import { http } from "../../shared/api/http";
 import { authApi } from "../../features/auth/api";
+import { cartApi } from "../../features/cart/api";
+import type { CartValidationIssue } from "../../features/cart/types";
 
 const currency = (value: number) => `${value} ₽`;
 
@@ -46,6 +48,8 @@ export function CartDialog() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [editSettlement, setEditSettlement] = useState("");
+  const [validationIssues, setValidationIssues] = useState<CartValidationIssue[]>([]);
+  const [showValidationDialog, setShowValidationDialog] = useState(false);
 
   // Delivery settings per zone
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -141,6 +145,17 @@ export function CartDialog() {
 
     setSubmitting(true);
     try {
+      // Валидация остатков перед оформлением
+      if (cart?.token) {
+        const validation = await cartApi.validate(cart.token);
+        if (!validation.ok) {
+          setValidationIssues(validation.issues);
+          setShowValidationDialog(true);
+          setSubmitting(false);
+          return;
+        }
+      }
+
       // Формируем полный адрес с населённым пунктом
       const fullAddress = selectedSettlement
         ? `${selectedSettlement.title}, ${addressLine}`
@@ -229,11 +244,21 @@ export function CartDialog() {
                   const oldTotal =
                     unitOldPrice > unitPrice ? unitOldPrice * item.qty : null;
                   const imageUrl = resolveMediaUrl(item.product.imageUrl);
+                  const stock = item.stock;
+                  const maxPerOrder = item.maxPerOrder;
+                  const isOverStock = stock !== undefined && item.qty > stock;
+                  const isOutOfStock = stock !== undefined && stock <= 0;
+                  const atLimit =
+                    (stock !== undefined && item.qty >= stock) ||
+                    (maxPerOrder !== undefined && item.qty >= maxPerOrder);
 
                   return (
                     <div
                       key={item.id}
-                      className="flex items-start gap-3 px-4 py-3 sm:items-center"
+                      className={cn(
+                        "flex items-start gap-3 px-4 py-3 sm:items-center",
+                        isOutOfStock && "opacity-50",
+                      )}
                     >
                     <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border bg-accent/30 sm:h-20 sm:w-20">
                       {imageUrl ? (
@@ -260,6 +285,16 @@ export function CartDialog() {
                           {item.product.weight}
                         </div>
                       )}
+                      {isOutOfStock && (
+                        <div className="mt-1 text-xs font-medium text-red-600">
+                          Нет в наличии
+                        </div>
+                      )}
+                      {isOverStock && !isOutOfStock && (
+                        <div className="mt-1 text-xs font-medium text-amber-600">
+                          Доступно только {stock} шт.
+                        </div>
+                      )}
 
                       <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-accent/50 px-2 py-1">
                         <Button
@@ -282,7 +317,7 @@ export function CartDialog() {
                           size="icon"
                           variant="ghost"
                           className="h-7 w-7 rounded-full"
-                          disabled={isCartLoading}
+                          disabled={isCartLoading || atLimit}
                           onClick={() =>
                             updateItemQty(item.id, item.qty + 1).catch(() => {})
                           }
@@ -536,6 +571,41 @@ export function CartDialog() {
           if (addressLine && !addressLine) setAddressLine(addressLine);
         }}
       />
+
+      {/* Диалог проблем с остатками */}
+      {showValidationDialog && validationIssues.length > 0 && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 space-y-4 shadow-xl">
+            <div className="text-lg font-semibold">Проблемы с наличием товаров</div>
+            <div className="text-sm text-muted-foreground">
+              Некоторые товары в корзине недоступны в нужном количестве. Скорректируйте корзину перед оформлением.
+            </div>
+            <div className="divide-y rounded-lg border">
+              {validationIssues.map((issue) => (
+                <div key={issue.productId} className="px-3 py-2 space-y-0.5">
+                  <div className="text-sm font-medium">{issue.title}</div>
+                  <div className="text-xs text-red-600">
+                    {issue.reason === 'OUT_OF_STOCK' && 'Нет в наличии'}
+                    {issue.reason === 'INSUFFICIENT_STOCK' &&
+                      `В наличии только ${issue.available} шт. (в корзине ${issue.requested})`}
+                    {issue.reason === 'OVER_LIMIT' &&
+                      `Максимум ${issue.maxPerOrder} шт. на заказ (в корзине ${issue.requested})`}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setShowValidationDialog(false);
+                setValidationIssues([]);
+              }}
+            >
+              Понятно
+            </Button>
+          </div>
+        </div>
+      )}
     </DialogContent>
   );
 }

@@ -1,309 +1,176 @@
-# 📊 Сводка созданного Backoffice
+# 📊 Kelsa — Сводка проекта
 
-## 🎯 Цель проекта
-
-Создать полнофункциональный **backoffice (бэкофис)** для приложения доставки продуктов **Kelsa**, где менеджеры и администраторы смогут управлять заказами, товарами и смотреть аналитику.
+**Последнее обновление:** Апрель 2026
 
 ---
 
-## 📈 Результаты
+## 🎯 О проекте
 
-### ✅ ВСЕ ТРЕБОВАНИЯ ВЫПОЛНЕНЫ
-
-| Требование | Статус | Деталь |
-|-----------|--------|--------|
-| Создать бэкофис в `/admin/*` маршруте | ✅ | Интегрирован в один Next.js |
-| PWA приложение | ✅ | Настроено в next-pwa |
-| Управление заказами | ✅ | Список, детали, смена статуса, печать |
-| Управление товарами | ✅ | CRUD, остатки, цены, фото |
-| Статусы заказов | ✅ | 6 статусов + история |
-| Печать накладных | ✅ | HTML для вывода на печать |
-| Аналитика | ✅ | Дашборд, графики, статистика |
-| Адаптивная вёрстка | ✅ | Работает на всех размерах |
-| Авторизация админа | ✅ | Отдельная от пользователей |
-| Роли пользователей | ✅ | admin и manager |
+**Kelsa** — мультитенантная PWA-платформа доставки продуктов с тремя приложениями: клиентский магазин, бэкофис для менеджеров и курьерское PWA-приложение. Каждый даркстор — изолированная единица со своими товарами, ценами, остатками, курьерами и зонами доставки.
 
 ---
 
-## 📁 Созданные файлы (16 файлов)
+## 📈 Текущее состояние
 
-### Backend (NestJS) - 5 файлов
+### Backend (NestJS + Prisma)
 
-```
-backend/api/src/admin/
-├── admin-auth.controller.ts         (232 строк) - Логин и авторизация админа
-├── admin-orders.controller.ts       (187 строк) - Управление заказами
-├── admin-products.controller.ts     (256 строк) - Управление товарами
-├── admin-analytics.controller.ts    (213 строк) - Аналитика и статистика
-└── admin.module.ts                  (17 строк)  - NestJS модуль
-```
+**11 модулей, 16 файлов в admin-модуле:**
 
-**Всего: ~905 строк кода**
+| Модуль | Файлы | Описание |
+|--------|-------|----------|
+| `admin/` | 16 | Бэкофис: 13 контроллеров + guard + roles + cron |
+| `auth/` | 2 | Авторизация клиентов (JWT) |
+| `catalog/` | 2 | Публичный каталог, категории, товары |
+| `cart/` | 3 | Корзина (контроллер + DTO) |
+| `orders/` | 3 | Создание и получение заказов |
+| `courier/` | 5 | Курьерское API (авторизация, заказы, события, JWT guard) |
+| `chat/` | 3 | Чат между клиентом и менеджером + cleanup |
+| `events/` | 3 | SSE real-time события |
+| `push/` | 3 | Web Push уведомления |
+| `upload/` | 2 | Загрузка файлов (изображений) |
+| `kopilka/` | 2 | Групповые накопления |
 
-### Frontend (Next.js) - 9 файлов
+### Frontend (Next.js 15 + React 19)
 
-```
-frontend/components/admin/
-└── AdminProvider.tsx                (62 строк) - Контекст авторизации
+**13 админ-страниц, 20 файлов в /admin:**
 
-frontend/features/admin/
-├── api.ts                           (103 строк) - API клиент
-└── types.ts                         (101 строк) - TypeScript типы
+| Раздел | Страницы |
+|--------|----------|
+| Дашборд | `/admin` |
+| Заказы | `/admin/orders`, `/admin/orders/[id]` |
+| Каталог | `/admin/catalog` |
+| Товары | `/admin/products`, `/admin/products/[id]` |
+| Баннеры | `/admin/promotions` |
+| Закупки | `/admin/purchases`, `/admin/purchases/[id]` |
+| Просрочка | `/admin/expiry` |
+| Аналитика | `/admin/analytics` |
+| Курьеры | `/admin/couriers`, `/admin/couriers/[id]` |
+| Зоны доставки | `/admin/delivery-zones` |
+| Дарксторы | `/admin/darkstores` |
+| Пользователи | `/admin/users` |
+| Сервер | `/admin/server` |
 
-frontend/app/admin/
-├── layout.tsx                       (85 строк) - Главный layout
-├── login/page.tsx                   (87 строк) - Страница входа
-├── page.tsx                         (131 строк) - Панель управления
-├── orders/page.tsx                  (194 строк) - Список заказов
-├── orders/[id]/page.tsx             (326 строк) - Детали заказа
-├── products/page.tsx                (269 строк) - Список товаров
-├── products/[id]/page.tsx           (241 строк) - Редактирование товара
-└── analytics/page.tsx               (164 строк) - Аналитика
-```
+**Клиентские страницы:**
+- Главная, Каталог, Товар, Поиск, Корзина
+- Личный кабинет (заказы, избранное)
+- О компании, Покрытие, Копилка
 
-**Всего: ~1,563 строк кода**
+**Курьерское приложение** (`/courier`):
+- Авторизация, Список заказов, Детали заказа
+- GPS-трек, Статусы, History
 
-### Документация - 4 файла
+### База данных (Prisma)
 
-```
-├── BACKOFFICE_QUICKSTART.md         (155 строк) - Быстрый старт за 5 минут
-├── BACKOFFICE_GUIDE.md              (398 строк) - Полное руководство пользователя
-├── DEPLOYMENT.md                    (321 строк) - Развертывание и конфигурация
-├── README.md                        (обновлён)  - Главная документация
-└── BACKOFFICE_COMPLETION.md         (этот файл) - Сводка завершения
-```
+**17 моделей, 6 enum-ов:**
 
-**Всего: ~1,000+ строк документации**
-
----
-
-## 🔌 API Эндпоинты (15+)
-
-### Аутентификация (3)
-```
-POST   /v1/admin-auth/login       - Логин админа
-GET    /v1/admin-auth/me          - Профиль админа
-POST   /v1/admin-auth/create      - Создать админа (только для админов)
-```
-
-### Заказы (4)
-```
-GET    /v1/admin/orders           - Список заказов с пагинацией
-GET    /v1/admin/orders/:id       - Детали заказа
-PATCH  /v1/admin/orders/:id/status - Изменить статус
-GET    /v1/admin/orders/:id/print/invoice - Печать накладной
-```
-
-### Товары (6)
-```
-GET    /v1/admin/products         - Список товаров
-GET    /v1/admin/products/:id     - Детали товара
-POST   /v1/admin/products         - Добавить товар
-PUT    /v1/admin/products/:id     - Редактировать товар
-DELETE /v1/admin/products/:id     - Удалить товар
-PATCH  /v1/admin/products/:id/stock - Обновить остатки
-```
-
-### Аналитика (4)
-```
-GET    /v1/admin/analytics/dashboard - Панель управления
-GET    /v1/admin/analytics/orders-stats - Статистика заказов
-GET    /v1/admin/analytics/products-sales - Топ товаров
-GET    /v1/admin/analytics/revenue-analytics - Выручка по периодам
-```
+| Модель | Ключевые поля |
+|--------|---------------|
+| Darkstore | name, shortName, address, isActive |
+| DarkstoreProduct | productId, darkstoreId, price, stock, maxPerOrder, cellNumber |
+| Product | title, slug, barcode, weight, isActive |
+| Category | name, slug, parentId (иерархия), markupPercent, darkstoreId |
+| Cart / CartItem | token, status, qty |
+| Order / OrderItem | orderNumber, status, totalAmount, profit, deliveryFee |
+| OrderStatusHistory | orderId, status, comment, changedBy |
+| Purchase / Batch | purchaseNumber, batchCode, remainingQty, expiryDate, FIFO |
+| WriteOff | batchId, quantity, reason |
+| DeliveryZone | settlement, deliveryFee, freeDeliveryFrom, darkstoreId |
+| Courier | fullName, status, phone, darkstoreId |
+| User | login, email, name, phone, settlement |
+| AdminUser | email, role (superadmin/admin/manager), permissions |
+| ChatMessage | sender, text, imageUrl, latitude, longitude, isRead |
+| Promotion | title, imageUrl, url, sort, darkstoreId |
+| Favorite | userId, productId |
+| Kopilka / KopilkaMember / KopilkaContribution | Групповые накопления |
 
 ---
 
-## 🎨 Страницы админа (7)
+## 🔌 API Эндпоинты (50+)
 
-| Страница | Путь | Функциональность |
-|----------|------|-----------------|
-| Вход | `/admin/login` | Авторизация с email/паролем |
-| Панель управления | `/admin` | KPI, статусы, топ товаров |
-| Список заказов | `/admin/orders` | Таблица, фильтр, пагинация |
-| Деталь заказа | `/admin/orders/[id]` | Смена статуса, печать, история |
-| Список товаров | `/admin/products` | CRUD, таблица, форма добавления |
-| Редактирование товара | `/admin/products/[id]` | Форма редактирования, предпросмотр |
-| Аналитика | `/admin/analytics` | Графики, таблицы продаж |
+### Клиентские
+| Группа | Эндпоинты |
+|--------|-----------|
+| Auth | POST register, POST login, GET /me |
+| Catalog | GET categories, subcategories, products, promotions, delivery-settings |
+| Cart | GET cart, POST/PATCH/DELETE items, GET totals, POST validate |
+| Orders | POST create, GET by orderNumber, PATCH cancel |
+| Chat | GET/POST messages, PATCH read, image upload |
+| Events (SSE) | GET /events/my-orders |
+| Push | GET vapid-key, POST subscribe |
+| Favorites | GET/POST/DELETE |
+| Kopilka | CRUD |
 
----
+### Админские
+| Группа | Эндпоинты |
+|--------|-----------|
+| Auth | POST login, GET /me, CRUD users |
+| Orders | List, detail, status update, courier assignment, print invoice/picking |
+| Products | CRUD + stock update |
+| Categories | CRUD (иерархия) |
+| Promotions | CRUD |
+| Purchases | Create, list, detail |
+| Expiry | List, discount, write-off |
+| Analytics | Dashboard, orders-stats, products-sales, revenue |
+| Couriers | CRUD |
+| Delivery Zones | CRUD |
+| Darkstores | CRUD (superadmin) |
+| Server | Status, ping |
 
-## 🗄️ Изменения в БД
-
-### Миграция Prisma
-```
-backend/api/prisma/migrations/20260120_add_stock_and_order_history/
-└── migration.sql
-```
-
-### Изменения в schema.prisma
-1. **Product модель** — добавлено поле `stock: Int` для управления остатками
-2. **OrderStatusHistory модель** — новая таблица для отслеживания истории статусов
-3. **Order модель** — добавлена связь `statusHistory` с новой таблицей
-
----
-
-## 🔐 Безопасность
-
-✅ **JWT токены** - 30 дней срок действия  
-✅ **bcrypt хэширование** - 10 раундов для паролей  
-✅ **JwtGuard** - защита всех админ эндпоинтов  
-✅ **Проверка ролей** - admin и manager  
-✅ **Мягкое удаление** - товары отключаются, не удаляются  
-✅ **CORS** - настраивается при необходимости  
-
----
-
-## 📱 PWA возможности
-
-✅ Работает без интернета (базовая поддержка)  
-✅ Установимое приложение на любом устройстве  
-✅ Отправляет на фон уведомления  
-✅ Синхронизирует данные в фоне  
-✅ Поддерживает все основные браузеры  
+### Курьерские
+| Группа | Эндпоинты |
+|--------|-----------|
+| Auth | POST login |
+| Orders | List, detail, accept, status update, GPS |
+| Events (SSE) | GET /events/courier |
 
 ---
 
-## 💾 Количество кода
+## 🏗️ Ключевые архитектурные решения
 
-| Раздел | Строк |
-|--------|-------|
-| Backend API | ~905 |
-| Frontend UI | ~1,563 |
-| Документация | ~1,000+ |
-| Обновлённые файлы | ~50 |
-| **ВСЕГО** | **~3,500+** |
+1. **Мультитенантность** — Darkstore-модель, `X-Darkstore-Id` заголовок, AdminGuard с проверкой доступа
+2. **FIFO-учёт** — Партии (Batch) с expiryDate, автоматическое списание при доставке
+3. **DarkstoreProduct** — Цены и остатки per-darkstore (один глобальный Product, разные цены в дарксторах)
+4. **SSE Real-time** — Обновления заказов, чат, события для курьеров
+5. **Ценообразование** — Закупочная цена × наценка (категория/подкатегория), скидки за просрочку
+6. **Экономика** — Прибыль = subtotal − purchaseCost − courierCost (считается только при DELIVERED)
 
 ---
 
-## 🚀 Как использовать
+## ✅ Система резервирования остатков
 
-### 1️⃣ Установка (5 минут)
+Реализована полная система контроля остатков на всех уровнях:
 
-```bash
-# Миграция БД
-cd backend/api && npx prisma migrate deploy
+### Проверка при работе с корзиной
+- **Добавление в корзину** (`POST /v1/cart/items`) — проверяет `stock` и `maxPerOrder` на DarkstoreProduct. Если товара недостаточно, клиент получает ошибку с текстом «Недостаточно товара на складе. Доступно: N шт.» или «Максимум N шт. на заказ».
+- **Изменение количества** (`PATCH /v1/cart/items/:id`) — аналогичная проверка.
+- **Обогащение корзины** — каждый item корзины содержит `stock` и `maxPerOrder`, фронтенд блокирует кнопку «+» при достижении лимита.
 
-# Создать администратора в БД
-npx prisma studio
+### Валидация перед оформлением
+- **Эндпоинт валидации** (`POST /v1/cart/:token/validate`) — проверяет ВСЕ товары корзины разом. Возвращает список проблем: `OUT_OF_STOCK`, `INSUFFICIENT_STOCK`, `OVER_LIMIT`. Фронтенд показывает диалог.
 
-# Запустить бэкэнд
-npm run start:dev
+### Атомарное резервирование при создании заказа
+- **Внутри транзакции** (`POST /v1/orders`) — повторная проверка остатков + `stock: { decrement }` выполняются атомарно в `$transaction`. Два пользователя не могут зарезервировать один и тот же товар.
 
-# Запустить фронтэнд (новый терминал)
-cd frontend && npm run dev
-```
+### Возврат при отмене
+- **Отмена клиентом** (`PATCH /v1/orders/:orderNumber/cancel`) — доступна только для заказов в статусе `NEW`. Возвращает `stock: { increment }` обратно.
+- **Отмена менеджером** — при смене статуса на `CANCELED` возвращает товар, если заказ ещё не был доставлен.
 
-### 2️⃣ Открыть админ-панель
-
-```
-http://localhost:3000/admin/login
-```
-
-### 3️⃣ Войти с учетными данными администратора
-
-Email: `admin@example.com`  
-Пароль: `YourSecurePassword`
-
-### 4️⃣ Управлять заказами и товарами
-
-- Просматривать заказы
-- Менять статусы
-- Печатать накладные
-- Добавлять товары
-- Редактировать цены и остатки
-- Смотреть аналитику
+### FIFO-списание
+- Партии (Batch) списываются только при статусе `DELIVERED`. Остатки `DarkstoreProduct.stock` уменьшаются при создании заказа, FIFO — при доставке.
 
 ---
 
 ## 📖 Документация
 
-Есть **4 документа** для разных целей:
-
-1. **BACKOFFICE_QUICKSTART.md** ⚡
-   - Быстрый старт в 5 минут
-   - Для нетерпеливых разработчиков
-
-2. **BACKOFFICE_GUIDE.md** 📚
-   - Полное руководство администратора
-   - Для конечных пользователей
-
-3. **DEPLOYMENT.md** 🚀
-   - Развертывание на production
-   - Конфигурация NGINX
-   - Docker Compose пример
-
-4. **README.md** 📋
-   - Общая информация о проекте
-   - Структура проекта
-   - Стек технологий
-
----
-
-## ✨ Ключевые особенности
-
-### 🎯 Архитектура
-- **Один Next.js** для сайта и админа (не отдельный подпроект)
-- **Один дизайн** — единобразные стили для всего
-- **Одна БД** с разделением ролей
-
-### 🎨 Интерфейс
-- **Адаптивный** — работает на мобильных и десктопе
-- **Интуитивный** — простая навигация
-- **Быстрый** — пагинация, фильтры, оптимизация
-
-### 🔒 Безопасность
-- **JWT авторизация** — безопасный обмен
-- **Проверка ролей** — администраторы и менеджеры
-- **Валидация данных** — class-validator в NestJS
-
-### 📊 Аналитика
-- **Панель управления** — KPI и статистика
-- **Графики** — выручка по периодам
-- **Топ товаров** — самые продаваемые товары
-
----
-
-## 🎁 Бонусные возможности
-
-✅ **Печать накладных** — HTML для вывода на печать  
-✅ **История статусов** — отслеживание всех изменений  
-✅ **Пагинация** — удобный просмотр больших списков  
-✅ **Фильтрация** — по статусам заказов  
-✅ **Управление остатками** — прямое редактирование  
-✅ **Активация/отключение** — мягкое удаление товаров  
-
----
-
-## ✅ Финальный чек-лист
-
-- [x] Все требования выполнены
-- [x] Код протестирован локально
-- [x] Все эндпоинты работают
-- [x] UI выглядит хорошо
-- [x] Документация полная
-- [x] Безопасность обеспечена
-- [x] PWA настроено
-- [x] Адаптивный дизайн работает
-- [x] БД миграции готовы
-- [x] Готово к production развертыванию
-
----
-
-## 🎉 Результат
-
-✅ **PRODUCTION READY**
-
-Полностью готовый к использованию backoffice для управления приложением доставки продуктов. Можно запустить прямо сейчас!
-
----
-
-## 📞 Поддержка
-
-По вопросам смотрите документацию или контактируйте разработчика.
-
----
+| Файл | Описание |
+|------|----------|
+| **README.md** | Общая информация, структура, быстрый старт |
+| **BACKOFFICE_GUIDE.md** | Руководство администратора бэкофиса |
+| **BACKOFFICE_QUICKSTART.md** | Быстрый старт за 5 минут |
+| **DARKSTORE_ARCHITECTURE.md** | Архитектура мультитенантности |
+| **ECONOMICS.md** | Экономика: FIFO, ценообразование, прибыль |
+| **DEPLOYMENT.md** | Развертывание на production (NGINX, Docker, SSL) |
 
 **Проект завершён: 20 января 2026**  
-**Версия: 1.0**  
+**Версия: 1.1** — добавлена система резервирования остатков  
 **Статус: ✅ ГОТОВО К ИСПОЛЬЗОВАНИЮ**

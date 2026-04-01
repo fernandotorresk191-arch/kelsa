@@ -9,7 +9,7 @@ import { Input } from "../../components/ui/input";
 import { AuthDialog } from "../../components/auth/AuthDialog";
 import { useAuth } from "../../components/auth/AuthProvider";
 import { authApi } from "features/auth/api";
-import { chatApi } from "features/orders/api";
+import { ordersApi, chatApi } from "features/orders/api";
 import OrderChatModal from "@/components/orders/OrderChatModal";
 import type { UserOrder } from "features/auth/types";
 import type { OrderStatus } from "features/orders/types";
@@ -67,6 +67,7 @@ function AccountPageContent() {
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
   const unreadCountsRef = useRef(unreadCounts);
   unreadCountsRef.current = unreadCounts;
+  const [cancelingOrderNumber, setCancelingOrderNumber] = useState<number | null>(null);
 
   // Profile editing state
   const [profileName, setProfileName] = useState("");
@@ -271,7 +272,7 @@ function AccountPageContent() {
               </div>
 
               {/* Chat button */}
-              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+              <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t flex items-center gap-4 flex-wrap">
                 <button
                   onClick={() => handleOpenChat(order.orderNumber)}
                   className="inline-flex items-center gap-2.5 sm:gap-3 text-base sm:text-lg font-semibold text-emerald-600 hover:text-emerald-700 active:text-emerald-800 transition-colors py-1"
@@ -293,13 +294,40 @@ function AccountPageContent() {
                     </span>
                   )}
                 </button>
+
+                {order.status === 'NEW' && (
+                  <button
+                    disabled={cancelingOrderNumber === order.orderNumber}
+                    onClick={async () => {
+                      if (!confirm('Вы уверены, что хотите отменить заказ?')) return;
+                      setCancelingOrderNumber(order.orderNumber);
+                      try {
+                        await ordersApi.cancel(order.orderNumber);
+                        setOrders((prev) =>
+                          prev.map((o) =>
+                            o.orderNumber === order.orderNumber
+                              ? { ...o, status: 'CANCELED' as OrderStatus }
+                              : o
+                          )
+                        );
+                      } catch {
+                        // error
+                      } finally {
+                        setCancelingOrderNumber(null);
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-red-500 hover:text-red-600 active:text-red-700 transition-colors py-1 disabled:opacity-50"
+                  >
+                    {cancelingOrderNumber === order.orderNumber ? 'Отмена...' : 'Отменить заказ'}
+                  </button>
+                )}
               </div>
             </div>
           );
         })}
       </div>
     );
-  }, [error, loading, orders, updatedOrderIds, unreadCounts, handleOpenChat]);
+  }, [error, loading, orders, updatedOrderIds, unreadCounts, handleOpenChat, cancelingOrderNumber]);
 
   const favoritesContent = useMemo(() => {
     if (favoritesLoading) {

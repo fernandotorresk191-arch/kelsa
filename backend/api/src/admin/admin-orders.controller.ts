@@ -235,7 +235,8 @@ export class AdminOrdersController {
         include: { items: true },
       });
 
-      // При доставке: рассчитываем прибыль и списываем товар со склада
+      // При доставке: рассчитываем прибыль и списываем товар из партий (FIFO)
+      // Остатки на складе (DarkstoreProduct.stock) уже уменьшены при создании заказа
       if (dto.status === OrderStatus.DELIVERED && order.status !== 'DELIVERED') {
         // Рассчитываем прибыль: totalAmount (включая deliveryFee) - себестоимость - расходы на курьера
         const realProfit = updated.totalAmount - (order.purchaseCost || 0) - (order.courierCost || 0);
@@ -246,12 +247,6 @@ export class AdminOrdersController {
 
         const affectedProductIds: string[] = [];
         for (const item of updated.items) {
-          // Уменьшаем остаток товара в DarkstoreProduct
-          await tx.darkstoreProduct.updateMany({
-            where: { productId: item.productId, darkstoreId: order.darkstoreId },
-            data: { stock: { decrement: item.qty } },
-          });
-
           // FIFO-списание из партий: находим активные партии по сроку годности
           let remaining = item.qty;
           const fifoBatches = await tx.batch.findMany({
@@ -308,8 +303,18 @@ export class AdminOrdersController {
         }
       }
 
-      // При отмене доставленного заказа — обнуляем прибыль
-      if (dto.status === OrderStatus.CANCELED && order.status === 'DELIVERED') {
+      // При отмене заказа — возвращаем товар на склад и обнуляем прибыль
+      if (dto.status === OrderStatus.CANCELED && order.status !== 'CANCELED') {
+        // Если заказ ещё не был доставлен, возвращаем зарезервированный товар на склад
+        if (order.status !== 'DELIVERED') {
+          for (const item of updated.items) {
+            await tx.darkstoreProduct.updateMany({
+              where: { productId: item.productId, darkstoreId: order.darkstoreId },
+              data: { stock: { increment: item.qty } },
+            });
+          }
+        }
+        // Обнуляем прибыль
         await tx.order.update({
           where: { id },
           data: { profit: 0 },
