@@ -21,6 +21,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const { addToast } = useToast();
   const [isUpdating, setIsUpdating] = React.useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = React.useState(false);
+  const [qtyBounce, setQtyBounce] = React.useState(false);
 
   const imageUrl = resolveMediaUrl(product.imageUrl);
   const isInFavorites = isFavorite(product.id);
@@ -33,6 +34,16 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const atStockLimit =
     (stock !== undefined && quantityInCart >= stock) ||
     (maxPerOrder !== undefined && quantityInCart >= maxPerOrder);
+
+  const prevQtyRef = React.useRef(quantityInCart);
+  React.useEffect(() => {
+    if (quantityInCart !== prevQtyRef.current && quantityInCart > 0) {
+      setQtyBounce(true);
+      const t = setTimeout(() => setQtyBounce(false), 300);
+      return () => clearTimeout(t);
+    }
+    prevQtyRef.current = quantityInCart;
+  }, [quantityInCart]);
   
   // Logic: Check if there is a discount (oldPrice exists and is greater than current price)
   const hasDiscount = (product.oldPrice ?? 0) > product.price;
@@ -94,15 +105,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                     shadow-[0_2px_8px_rgba(0,0,0,0.06)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.12)]
                     transition-all duration-300 ease-out">
       
-      {/* Quantity badge - показываем только если товар в корзине и лимит НЕ достигнут */}
-      {quantityInCart > 0 && !atStockLimit && (
-        <div className="absolute top-3 left-3 z-20 flex items-center justify-center 
-                        min-w-[28px] h-7 px-2 rounded-full bg-[#6206c7] text-white 
-                        text-sm font-semibold shadow-lg
-                        animate-in zoom-in-75 duration-200">
-          {quantityInCart}
-        </div>
-      )}
+
 
       {/* Favorite button */}
       <button
@@ -150,17 +153,23 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             </div>
           )}
 
-          {/* «Больше нет» overlay — когда достигнут лимит остатка */}
-          {atStockLimit && quantityInCart > 0 && (
+          {/* Overlay с количеством — появляется при добавлении товара */}
+          {quantityInCart > 0 && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center
                             bg-black/50 rounded-2xl select-none
                             animate-in fade-in duration-200">
-              <span className="text-[40px] font-bold leading-none text-white drop-shadow-lg">
+              <span
+                className={`text-[40px] font-bold leading-none text-white drop-shadow-lg
+                            transition-transform duration-300 ease-out
+                            ${qtyBounce ? 'scale-125' : 'scale-100'}`}
+              >
                 {quantityInCart}
               </span>
-              <span className="mt-1 text-sm font-bold text-white drop-shadow-lg">
-                Больше нет
-              </span>
+              {atStockLimit && (
+                <span className="mt-1 text-sm font-bold text-white drop-shadow-lg">
+                  Больше нет
+                </span>
+              )}
             </div>
           )}
         </div>
