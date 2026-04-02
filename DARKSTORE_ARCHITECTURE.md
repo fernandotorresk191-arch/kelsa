@@ -137,6 +137,7 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 | `admin-purchases` | AdminGuard | ✅ List | ✅ darkstoreId | — | ✅ OK |
 | `admin-expiry` | AdminGuard | ✅ Через purchase.darkstoreId | — | ✅ WriteOff + discountPercent | ✅ OK |
 | `admin-analytics` | AdminGuard | ✅ darkstoreFilter | — | — | ✅ OK |
+| `admin-clients` | AdminGuard | ✅ По заказам в дарксторе | — | — (read-only) | ✅ OK |
 | `admin-couriers` | AdminGuard | ✅ List | ✅ darkstoreId | ✅ Проверка владельца | ✅ OK |
 | `admin-delivery-zones` | AdminGuard | ✅ List | ✅ darkstoreId | ✅ Проверка владельца | ✅ OK |
 | `admin-server` | AdminGuard + @Roles | N/A | — | — | ✅ OK |
@@ -174,6 +175,7 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 - `createUser` / `updateUser` — роль `'superadmin'`, поле `darkstoreIds`
 - `adminDarkstoresApi` — CRUD для дарксторов (create/update с `shortName`, `address`)
 - `adminProductsApi` — работает с глобальными Product + DarkstoreProduct (flattenProduct на бэкенде)
+- `adminClientsApi` — `getClients(page, limit, search, sortBy)`, `getClient(id)` — read-only
 
 ### Провайдер (`components/admin/AdminProvider.tsx`)
 - Контекст расширен: `darkstores`, `currentDarkstore`, `switchDarkstore`, `refreshDarkstores`
@@ -198,6 +200,8 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 | `admin/catalog/page.tsx` | ✅ | Категории с поддержкой подкатегорий и markupPercent |
 | `admin/orders/page.tsx` | ✅ | Показывает экономику заказа, историю статусов, геопозицию клиента |
 | `admin/expiry/page.tsx` | ✅ | Списания (WriteOff) и скидки на партии (discountPercent) |
+| `admin/clients/page.tsx` | ✅ | Список клиентов с поиском, сортировкой, метриками и бейджами активности |
+| `admin/clients/[id]/page.tsx` | ✅ | Профиль клиента: сегмент, LTV, топ товаров, история заказов |
 | `admin/login/page.tsx` | ✅ | Через AdminProvider.login() |
 | Остальные admin страницы | ✅ | Данные автоматически фильтруются через X-Darkstore-Id |
 
@@ -221,6 +225,8 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 - `add_batch_discount` — добавляет `discountPercent` в Batch
 - `add_writeoff` — создаёт модель `WriteOff`
 - `add_max_per_order` — добавляет `maxPerOrder` в `DarkstoreProduct`
+
+> Раздел «Клиенты» не требует миграций — он агрегирует данные из существующих таблиц `User` и `Order`.
 
 ---
 
@@ -277,3 +283,75 @@ Order.profit = Order.totalAmount − Order.purchaseCost − Order.courierCost
 - `purchaseCost` — сумма `(purchasePrice × qty)` по позициям заказа
 - `courierCost` — `DeliveryZone.deliveryFee` населённого пункта заказа
 - Аналитика (`admin-analytics`) агрегирует по этим полям только для `DELIVERED` заказов
+
+---
+
+## Раздел «Клиенты» (`admin-clients`)
+
+### Концепция
+
+`User` — глобальная сущность (не привязана к даркстору). Клиентская аналитика вычисляется на основе заказов.
+
+Если выбран даркстор (`X-Darkstore-Id`), отображаются только клиенты, имеющие хотя бы один заказ в этом дарксторе, а все метрики считаются по заказам только этого даркстора.
+
+### Эндпоинты
+
+| Метод | URL | Описание |
+|-------|-----|----------|
+| `GET` | `/v1/admin/clients` | Список клиентов с агрегатами |
+| `GET` | `/v1/admin/clients/:id` | Профиль клиента |
+
+**Query-параметры списка:**
+| Параметр | Тип | Описание |
+|----------|-----|----------|
+| `page` | number | Страница (default 1) |
+| `limit` | number | Размер страницы (default 20) |
+| `search` | string | Поиск по имени, телефону, email, логину |
+| `sortBy` | string | `lastOrder` \| `totalSpent` \| `totalOrders` \| `createdAt` |
+
+### Данные в профиле клиента
+
+```
+user           — базовые данные (login, name, phone, email, settlement, addressLine, createdAt)
+stats          — агрегированная статистика
+  totalOrders          — все заказы (любой статус)
+  deliveredOrders      — доставленные
+  canceledOrders       — отменённые
+  totalSpent           — сумма по доставленным заказам
+  totalDeliveryFee     — сумма стоимости доставки
+  avgOrderValue        — средний чек
+  firstOrderAt         — дата первого заказа
+  lastOrderAt          — дата последнего заказа
+  daysSinceLastOrder   — дней с последнего заказа (recency)
+  daysSinceRegistration— дней с первого заказа
+  statusBreakdown[]    — разбивка по статусам
+topProducts[]  — топ-5 товаров по qty из доставленных заказов
+recentOrders[] — последние 30 заказов
+```
+
+### Сегментация клиентов
+
+| Сегмент | Условие |
+|---------|----------|
+| VIP | ≥ 10 доставленных заказов И суммарные траты ≥ 10 000 ₽ |
+| Постоянный | ≥ 5 доставленных заказов |
+| Returning | ≥ 2 доставленных заказа |
+| Новичок | < 2 доставленных заказа |
+
+### Статус активности (Recency)
+
+| Бейдж | Условие |
+|-------|---------|
+| Активен | ≤ 7 дней с последнего заказа |
+| Недавно | ≤ 30 дней |
+| Засыпает | ≤ 90 дней |
+| Неактивен | > 90 дней |
+
+### Типы Frontend
+
+```typescript
+ClientListItem  — данные строки таблицы
+ClientDetail    — полный профиль (user + stats + topProducts[] + recentOrders[])
+```
+
+Оба типа экспортируются из `features/admin/types.ts`.
