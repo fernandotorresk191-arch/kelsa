@@ -71,7 +71,7 @@ http://localhost:3000/admin/login
 
 ## 📋 Компоненты системы
 
-### Backend (NestJS) — 16 файлов в admin-модуле
+### Backend (NestJS) — 17 файлов в admin-модуле
 
 | Файл | Описание |
 |------|----------|
@@ -82,11 +82,12 @@ http://localhost:3000/admin/login
 | `admin-auth.controller.ts` | Логин, профиль, CRUD пользователей |
 | `admin-orders.controller.ts` | Заказы: список, детали, статусы, назначение курьера, печать |
 | `admin-products.controller.ts` | Товары: CRUD, остатки, DarkstoreProduct |
-| `admin-categories.controller.ts` | Категории: иерархия, CRUD |
+| `admin-categories.controller.ts` | Категории: глобальный CRUD, Toggle через DarkstoreCategory |
 | `admin-promotions.controller.ts` | Баннеры: CRUD |
 | `admin-purchases.controller.ts` | Закупки: создание, партии (Batch) |
 | `admin-expiry.controller.ts` | Просрочка: скидки, списания |
 | `admin-analytics.controller.ts` | Аналитика: дашборд, статистика |
+| `admin-clients.controller.ts` | Клиенты: список, профиль, LTV, сегментация |
 | `admin-couriers.controller.ts` | Курьеры: CRUD |
 | `admin-delivery-zones.controller.ts` | Зоны доставки: CRUD |
 | `admin-darkstores.controller.ts` | Дарксторы: CRUD (superadmin) |
@@ -105,6 +106,7 @@ http://localhost:3000/admin/login
 | Закупки | `/admin/purchases`, `/admin/purchases/[id]` |
 | Просрочка | `/admin/expiry` |
 | Аналитика | `/admin/analytics` |
+| Клиенты | `/admin/clients`, `/admin/clients/[id]` |
 | Курьеры | `/admin/couriers`, `/admin/couriers/[id]` |
 | Зоны доставки | `/admin/delivery-zones` |
 | Дарксторы | `/admin/darkstores` |

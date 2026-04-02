@@ -226,6 +226,7 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 - `add_batch_discount` — добавляет `discountPercent` в Batch
 - `add_writeoff` — создаёт модель `WriteOff`
 - `add_max_per_order` — добавляет `maxPerOrder` в `DarkstoreProduct`
+- `add_global_categories` — категории глобальные (`slug @unique`), создана `DarkstoreCategory` (привязка Category ↔ Darkstore, `isActive` per darkstore)
 
 > Раздел «Клиенты» не требует миграций — он агрегирует данные из существующих таблиц `User` и `Order`.
 

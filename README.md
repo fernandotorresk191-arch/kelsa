@@ -79,7 +79,7 @@ kelsa/
 ├── backend/
 │   └── api/
 │       ├── src/
-│       │   ├── admin/              # Бэкофис (16 файлов)
+│       │   ├── admin/              # Бэкофис (17 файлов)
 │       │   │   ├── admin.module.ts
 │       │   │   ├── admin.guard.ts
 │       │   │   ├── roles.decorator.ts
@@ -92,6 +92,7 @@ kelsa/
 │       │   │   ├── admin-purchases.controller.ts
 │       │   │   ├── admin-expiry.controller.ts
 │       │   │   ├── admin-analytics.controller.ts
+│       │   │   ├── admin-clients.controller.ts
 │       │   │   ├── admin-couriers.controller.ts
 │       │   │   ├── admin-delivery-zones.controller.ts
 │       │   │   ├── admin-darkstores.controller.ts
@@ -108,7 +109,7 @@ kelsa/
 │       │   ├── kopilka/            # Копилка (групповые накопления)
 │       │   └── app.module.ts
 │       └── prisma/
-│           ├── schema.prisma       # 17 моделей, 6 enum-ов
+│           ├── schema.prisma       # 24 модели, 6 enum-ов
 │           └── migrations/
 │
 ├── frontend/
@@ -168,7 +169,8 @@ kelsa/
 | **Darkstore** | Даркстор (склад-магазин). Все данные привязаны к нему |
 | **DarkstoreProduct** | Связь товара с дарксторм: цена, остаток, ячейка |
 | **Product** | Глобальный товар (title, slug, barcode, вес) |
-| **Category** | Иерархические категории (с наценкой markupPercent) |
+| **Category** | Глобальные иерархические категории (с наценкой markupPercent) |
+| **DarkstoreCategory** | Привязка категории к даркстору (isActive per darkstore) |
 | **Cart / CartItem** | Корзина покупателя (по token) |
 | **Order / OrderItem** | Заказы с экономикой (прибыль, себестоимость) |
 | **OrderStatusHistory** | История статусов заказа |

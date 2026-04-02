@@ -41,15 +41,15 @@ kelsa/
 │       │   │   ├── admin-auth.controller.ts      # Логин для админов
 │       │   │   ├── admin-orders.controller.ts    # Управление заказами
 │       │   │   ├── admin-products.controller.ts  # Управление товарами
+│       │   │   ├── admin-categories.controller.ts # Каталог (глобальные + DarkstoreCategory)
+│       │   │   ├── admin-clients.controller.ts   # Клиенты: LTV, сегментация
 │       │   │   ├── admin-analytics.controller.ts # Аналитика
-│       │   │   └── admin.module.ts               # Модуль админа
+│       │   │   └── admin.module.ts               # Модуль админа (17 файлов)
 │       │   ├── app.module.ts                     # Главный модуль с AdminModule
 │       │   └── (другие модули)
 │       ├── prisma/
-│       │   ├── schema.prisma       # Обновлена: +stock в Product, +OrderStatusHistory
-│       │   └── migrations/         # Миграции БД
-│       │       └── 20260120_add_stock_and_order_history/
-│       │           └── migration.sql
+│       │   ├── schema.prisma       # 24 модели, 6 enum-ов (Prisma 7.2)
+│       │   └── migrations/         # 26 миграций БД
 │       └── package.json
 │
 └── BACKOFFICE_GUIDE.md     # Руководство пользователя для админа

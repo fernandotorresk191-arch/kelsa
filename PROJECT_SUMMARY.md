@@ -14,11 +14,11 @@
 
 ### Backend (NestJS + Prisma)
 
-**11 модулей, 16 файлов в admin-модуле:**
+**11 модулей, 17 файлов в admin-модуле:**
 
 | Модуль | Файлы | Описание |
 |--------|-------|----------|
-| `admin/` | 16 | Бэкофис: 13 контроллеров + guard + roles + cron |
+| `admin/` | 17 | Бэкофис: 14 контроллеров + guard + roles + cron |
 | `auth/` | 2 | Авторизация клиентов (JWT) |
 | `catalog/` | 2 | Публичный каталог, категории, товары |
 | `cart/` | 3 | Корзина (контроллер + DTO) |
@@ -61,11 +61,12 @@
 
 ### База данных (Prisma)
 
-**17 моделей, 6 enum-ов:**
+**24 модели, 6 enum-ов:**
 
 | Модель | Ключевые поля |
 |--------|---------------|
 | Darkstore | name, shortName, address, isActive |
+| AdminUserDarkstore | adminUserId, darkstoreId (связь M:N) |
 | DarkstoreProduct | productId, darkstoreId, price, stock, maxPerOrder, cellNumber |
 | Product | title, slug, barcode, weight, isActive |
 | Category | name, slug, parentId (иерархия), markupPercent (глобальная) |
@@ -107,7 +108,7 @@
 | Auth | POST login, GET /me, CRUD users |
 | Orders | List, detail, status update, courier assignment, print invoice/picking |
 | Products | CRUD + stock update |
-| Categories | CRUD (иерархия) |
+| Categories | CRUD (глобальные категории), Toggle через DarkstoreCategory |
 | Promotions | CRUD |
 | Purchases | Create, list, detail |
 | Expiry | List, discount, write-off |
@@ -173,5 +174,5 @@
 | **DEPLOYMENT.md** | Развертывание на production (NGINX, Docker, SSL) |
 
 **Проект завершён: 20 января 2026**  
-**Версия: 1.1** — добавлена система резервирования остатков  
+**Версия: 1.2** — глобальные категории с DarkstoreCategory, раздел «Клиенты»  
 **Статус: ✅ ГОТОВО К ИСПОЛЬЗОВАНИЮ**
