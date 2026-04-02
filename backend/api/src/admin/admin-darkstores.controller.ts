@@ -127,7 +127,7 @@ export class AdminDarkstoresController {
   @Post()
   @Roles('superadmin')
   async createDarkstore(@Body() dto: CreateDarkstoreDto) {
-    return this.prisma.darkstore.create({
+    const darkstore = await this.prisma.darkstore.create({
       data: {
         name: dto.name,
         shortName: dto.shortName || null,
@@ -135,6 +135,21 @@ export class AdminDarkstoresController {
         isActive: dto.isActive ?? true,
       },
     });
+
+    // Автоматически привязываем все глобальные категории к новому даркстору
+    const categories = await this.prisma.category.findMany({ select: { id: true } });
+    if (categories.length > 0) {
+      await this.prisma.darkstoreCategory.createMany({
+        data: categories.map((cat) => ({
+          categoryId: cat.id,
+          darkstoreId: darkstore.id,
+          isActive: true,
+        })),
+        skipDuplicates: true,
+      });
+    }
+
+    return darkstore;
   }
 
   @Put(':id')

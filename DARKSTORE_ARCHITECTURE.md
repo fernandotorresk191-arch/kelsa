@@ -39,7 +39,8 @@
 ### Поле `darkstoreId` в моделях:
 | Модель | Обязательность | Примечание |
 |--------|---------------|------------|
-| Category | required | @@unique([slug, darkstoreId]) |
+| Category | **нет** | Глобальная модель, привязка через DarkstoreCategory |
+| DarkstoreCategory | required | Связывает Category ↔ Darkstore (isActive per darkstore) |
 | Product | **нет** | Product — глобальный, привязка через DarkstoreProduct |
 | DarkstoreProduct | required | Связывает Product ↔ Darkstore |
 | Promotion | required | |
@@ -132,7 +133,7 @@ if (req?.darkstoreId) where.darkstoreId = req.darkstoreId;
 | `admin-auth` (users CRUD) | AdminGuard + @Roles | darkstores в ответе | darkstoreIds | darkstoreIds | ✅ OK |
 | `admin-orders` | AdminGuard | ✅ List + getById | — | ✅ Проверка владельца | ✅ OK |
 | `admin-products` | AdminGuard | ✅ через DarkstoreProduct | ✅ глобально + DarkstoreProduct | ✅ Обновление DarkstoreProduct | ✅ OK |
-| `admin-categories` | AdminGuard | ✅ List + checkSlug | ✅ darkstoreId + parentId | ✅ Проверка владельца | ✅ OK |
+| `admin-categories` | AdminGuard | ✅ List + checkSlug | ✅ parentId (глобальные) | ✅ Toggle через DarkstoreCategory | ✅ OK |
 | `admin-promotions` | AdminGuard | ✅ List + getById | ✅ darkstoreId | ✅ Проверка владельца | ✅ OK |
 | `admin-purchases` | AdminGuard | ✅ List | ✅ darkstoreId | — | ✅ OK |
 | `admin-expiry` | AdminGuard | ✅ Через purchase.darkstoreId | — | ✅ WriteOff + discountPercent | ✅ OK |

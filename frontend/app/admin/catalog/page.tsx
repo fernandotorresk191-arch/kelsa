@@ -280,15 +280,15 @@ export default function AdminCatalogPage() {
                               onClick={() => handleToggleDarkstore(category)}
                               disabled={togglingId === category.id}
                               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                                category.darkstoreActive === false
-                                  ? 'bg-gray-200'
-                                  : 'bg-green-500'
+                                category.darkstoreActive === true
+                                  ? 'bg-green-500'
+                                  : 'bg-gray-200'
                               } ${togglingId === category.id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-                              title={category.darkstoreActive === false ? 'Включить в дарксторе' : 'Выключить в дарксторе'}
+                              title={category.darkstoreActive === true ? 'Выключить в дарксторе' : 'Включить в дарксторе'}
                             >
                               <span
                                 className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                                  category.darkstoreActive === false ? 'translate-x-1' : 'translate-x-6'
+                                  category.darkstoreActive === true ? 'translate-x-6' : 'translate-x-1'
                                 }`}
                               />
                             </button>
@@ -376,15 +376,15 @@ export default function AdminCatalogPage() {
                                 onClick={() => handleToggleDarkstore(subcategory)}
                                 disabled={togglingId === subcategory.id}
                                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                                  subcategory.darkstoreActive === false
-                                    ? 'bg-gray-200'
-                                    : 'bg-green-500'
+                                  subcategory.darkstoreActive === true
+                                    ? 'bg-green-500'
+                                    : 'bg-gray-200'
                                 } ${togglingId === subcategory.id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
-                                title={subcategory.darkstoreActive === false ? 'Включить в дарксторе' : 'Выключить в дарксторе'}
+                                title={subcategory.darkstoreActive === true ? 'Выключить в дарксторе' : 'Включить в дарксторе'}
                               >
                                 <span
                                   className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                                    subcategory.darkstoreActive === false ? 'translate-x-1' : 'translate-x-6'
+                                    subcategory.darkstoreActive === true ? 'translate-x-6' : 'translate-x-1'
                                   }`}
                                 />
                               </button>

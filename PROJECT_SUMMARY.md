@@ -68,7 +68,8 @@
 | Darkstore | name, shortName, address, isActive |
 | DarkstoreProduct | productId, darkstoreId, price, stock, maxPerOrder, cellNumber |
 | Product | title, slug, barcode, weight, isActive |
-| Category | name, slug, parentId (иерархия), markupPercent, darkstoreId |
+| Category | name, slug, parentId (иерархия), markupPercent (глобальная) |
+| DarkstoreCategory | categoryId, darkstoreId, isActive (привязка к даркстору) |
 | Cart / CartItem | token, status, qty |
 | Order / OrderItem | orderNumber, status, totalAmount, profit, deliveryFee |
 | OrderStatusHistory | orderId, status, comment, changedBy |
