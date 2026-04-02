@@ -18,7 +18,9 @@ export class CatalogController {
   async categories(@Query('settlement') settlement?: string) {
     const darkstoreId = await this.resolveDarkstoreId(settlement);
     const where: any = { isActive: true, parentId: null };
-    if (darkstoreId) where.darkstoreId = darkstoreId;
+    if (darkstoreId) {
+      where.darkstoreCategories = { some: { darkstoreId, isActive: true } };
+    }
 
     return this.prisma.category.findMany({
       where,
@@ -33,20 +35,24 @@ export class CatalogController {
     @Query('settlement') settlement?: string,
   ) {
     const darkstoreId = await this.resolveDarkstoreId(settlement);
-    const catWhere: any = { slug };
-    if (darkstoreId) catWhere.darkstoreId = darkstoreId;
 
-    const category = await this.prisma.category.findFirst({
-      where: catWhere,
+    // Global slug lookup — slug is now globally unique
+    const category = await this.prisma.category.findUnique({
+      where: { slug },
       select: { id: true },
     });
-    
+
     if (!category) {
       return [];
     }
-    
+
+    const where: any = { isActive: true, parentId: category.id };
+    if (darkstoreId) {
+      where.darkstoreCategories = { some: { darkstoreId, isActive: true } };
+    }
+
     return this.prisma.category.findMany({
-      where: { isActive: true, parentId: category.id },
+      where,
       orderBy: [{ sort: 'asc' }, { name: 'asc' }],
       select: { id: true, name: true, slug: true, description: true, sort: true, imageUrl: true },
     });

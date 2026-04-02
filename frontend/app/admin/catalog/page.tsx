@@ -18,7 +18,8 @@ export default function AdminCatalogPage() {
   const [editingCategory, setEditingCategory] = useState<CategoryWithCount | null>(null);
   const [parentCategory, setParentCategory] = useState<CategoryWithCount | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
-  
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
   // Состояние удаления
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -67,6 +68,23 @@ export default function AdminCatalogPage() {
   const handleCancelDelete = () => {
     setShowDeleteConfirm(false);
     setCategoryToDelete(null);
+  };
+
+  const handleToggleDarkstore = async (category: CategoryWithCount) => {
+    setTogglingId(category.id);
+    try {
+      const result = await adminCategoriesApi.toggleDarkstoreCategory(category.id);
+      setCategories(prev =>
+        prev.map(c => c.id === category.id ? { ...c, darkstoreActive: result.darkstoreActive } : c)
+      );
+      setAllCategories(prev =>
+        prev.map(c => c.id === category.id ? { ...c, darkstoreActive: result.darkstoreActive } : c)
+      );
+    } catch (error) {
+      console.error('Failed to toggle category:', error);
+    } finally {
+      setTogglingId(null);
+    }
   };
 
   const handleEdit = (category: CategoryWithCount) => {
@@ -165,8 +183,13 @@ export default function AdminCatalogPage() {
                     Подкатегорий
                   </th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">
-                    Статус
+                    Глобально
                   </th>
+                  {currentDarkstore && (
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase">
+                      В дарксторе
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                     Действия
                   </th>
@@ -251,6 +274,26 @@ export default function AdminCatalogPage() {
                             <span className="text-xs font-medium text-gray-400">○ Отключена</span>
                           )}
                         </td>
+                        {currentDarkstore && (
+                          <td className="px-6 py-4 text-center">
+                            <button
+                              onClick={() => handleToggleDarkstore(category)}
+                              disabled={togglingId === category.id}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                category.darkstoreActive === false
+                                  ? 'bg-gray-200'
+                                  : 'bg-green-500'
+                              } ${togglingId === category.id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                              title={category.darkstoreActive === false ? 'Включить в дарксторе' : 'Выключить в дарксторе'}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                  category.darkstoreActive === false ? 'translate-x-1' : 'translate-x-6'
+                                }`}
+                              />
+                            </button>
+                          </td>
+                        )}
                         <td className="px-6 py-4 text-sm">
                           <div className="flex items-center justify-end gap-2">
                             <button
@@ -327,6 +370,26 @@ export default function AdminCatalogPage() {
                               <span className="text-xs font-medium text-gray-400">○ Отключена</span>
                             )}
                           </td>
+                          {currentDarkstore && (
+                            <td className="px-6 py-4 text-center">
+                              <button
+                                onClick={() => handleToggleDarkstore(subcategory)}
+                                disabled={togglingId === subcategory.id}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                                  subcategory.darkstoreActive === false
+                                    ? 'bg-gray-200'
+                                    : 'bg-green-500'
+                                } ${togglingId === subcategory.id ? 'opacity-50 cursor-wait' : 'cursor-pointer'}`}
+                                title={subcategory.darkstoreActive === false ? 'Включить в дарксторе' : 'Выключить в дарксторе'}
+                              >
+                                <span
+                                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                                    subcategory.darkstoreActive === false ? 'translate-x-1' : 'translate-x-6'
+                                  }`}
+                                />
+                              </button>
+                            </td>
+                          )}
                           <td className="px-6 py-4 text-sm">
                             <div className="flex items-center justify-end gap-2">
                               <button
@@ -411,7 +474,6 @@ function CategoryForm({
   onSuccess: () => void;
   onCancel: () => void;
 }) {
-  const { currentDarkstore } = useAdmin();
   // Для подкатегорий извлекаем базовый slug без префикса родителя
   const getBaseSlug = (fullSlug: string, parentSlug?: string) => {
     if (parentSlug && fullSlug.startsWith(parentSlug + '/')) {
@@ -522,7 +584,7 @@ function CategoryForm({
 
   // Автогенерация slug из названия
   const generateSlug = (name: string) => {
-    const base = name
+    return name
       .toLowerCase()
       .replace(/[а-яё]/g, (char) => {
         const map: Record<string, string> = {
@@ -536,8 +598,6 @@ function CategoryForm({
       })
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
-    const shortName = currentDarkstore?.shortName;
-    return shortName && !formData.parentId ? `${shortName}-${base}` : base;
   };
 
   // Фильтруем список категорий для выбора родителя (только корневые категории)

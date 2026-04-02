@@ -157,6 +157,7 @@ export type Category = {
   imageUrl?: string;
   parentId?: string;
   markupPercent: number;
+  darkstoreActive?: boolean | null;
   parent?: {
     id: string;
     name: string;

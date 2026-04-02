@@ -17,7 +17,7 @@ model Darkstore {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  categories         Category[]
+  darkstoreCategories DarkstoreCategory[]
   promotions         Promotion[]
   orders             Order[]
   purchases          Purchase[]
@@ -39,35 +39,46 @@ model AdminUserDarkstore {
   @@unique([adminUserId, darkstoreId])
 }
 
+// Глобальный каталог категорий (общий для всех дарксторов)
 model Category {
   id          String   @id @default(cuid())
   name        String
-  slug        String
+  slug        String   @unique
   description String?
   sort        Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   imageUrl    String?
-  
+
   // Торговая наценка по умолчанию для товаров этой категории (%)
   markupPercent Float  @default(0)
-  
+
   // Поддержка подкатегорий (иерархическая структура)
   parentId    String?
   parent      Category?  @relation("CategoryToSubcategory", fields: [parentId], references: [id], onDelete: Cascade)
   subcategories Category[] @relation("CategoryToSubcategory")
-  
-  // Даркстор
-  darkstoreId String
-  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
-  
+
   products  Product[]
   productsAsSubcategory Product[] @relation("ProductSubcategory")
   darkstoreProducts DarkstoreProduct[]
   darkstoreProductsAsSubcategory DarkstoreProduct[] @relation("DarkstoreProductSubcategory")
+  darkstoreCategories DarkstoreCategory[]
+}
 
-  @@unique([slug, darkstoreId])
+// Привязка глобальной категории к даркстору (on/off per darkstore)
+model DarkstoreCategory {
+  id          String   @id @default(cuid())
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  darkstoreId String
+  darkstore   Darkstore @relation(fields: [darkstoreId], references: [id], onDelete: Cascade)
+  isActive    Boolean  @default(true)
+  sort        Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([categoryId, darkstoreId])
 }
 
 model Product {

@@ -340,6 +340,10 @@ export const adminCategoriesApi = {
   deleteCategory: async (id: string): Promise<{ success: boolean }> => {
     return http.delete<{ success: boolean }>(`/v1/admin/categories/${id}`);
   },
+
+  toggleDarkstoreCategory: async (id: string): Promise<{ darkstoreActive: boolean }> => {
+    return http.patch<{ darkstoreActive: boolean }>(`/v1/admin/categories/${id}/toggle`, {});
+  },
 };
 
 // API для загрузки изображений

@@ -106,7 +106,7 @@ export class AdminDarkstoresController {
           select: {
             darkstoreProducts: true,
             orders: true,
-            categories: true,
+            darkstoreCategories: true,
             couriers: true,
             deliveryZones: true,
             staff: true,
