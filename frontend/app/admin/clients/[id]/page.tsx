@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminClientsApi } from '@/features/admin/api';
-import { ClientDetail, OrderStatus, OrderStatusLabels } from '@/features/admin/types';
+import { ClientDetail } from '@/features/admin/types';
 
 function formatMoney(v: number) {
   return v.toLocaleString('ru-RU') + ' ₽';
