@@ -1,5 +1,5 @@
 import { http } from '@/shared/api/http';
-import { AdminUser, Darkstore, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile, DeliveryZone } from './types';
+import { AdminUser, Darkstore, DashboardStats, Order, Product, Category, Promotion, Purchase, Batch, WriteOff, ExpiryStats, Courier, CourierProfile, DeliveryZone, ClientListItem, ClientDetail } from './types';
 
 interface LoginResponse {
   accessToken: string;
@@ -737,3 +737,34 @@ export const adminDarkstoresApi = {
     return http.delete<{ success: boolean }>(`/v1/admin/darkstores/${id}`);
   },
 };
+
+// ==================== КЛИЕНТЫ ====================
+
+interface ClientsResponse {
+  data: ClientListItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export const adminClientsApi = {
+  getClients: async (
+    page = 1,
+    limit = 20,
+    search?: string,
+    sortBy?: 'lastOrder' | 'totalSpent' | 'totalOrders' | 'createdAt',
+  ): Promise<ClientsResponse> => {
+    const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+    if (search) params.append('search', search);
+    if (sortBy) params.append('sortBy', sortBy);
+    return http.get<ClientsResponse>(`/v1/admin/clients?${params.toString()}`);
+  },
+
+  getClient: async (id: string): Promise<ClientDetail> => {
+    return http.get<ClientDetail>(`/v1/admin/clients/${id}`);
+  },
+};
+

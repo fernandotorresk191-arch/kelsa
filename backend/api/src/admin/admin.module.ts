@@ -12,6 +12,7 @@ import { AdminCouriersController } from './admin-couriers.controller';
 import { AdminDeliveryZonesController } from './admin-delivery-zones.controller';
 import { AdminServerController } from './admin-server.controller';
 import { AdminDarkstoresController } from './admin-darkstores.controller';
+import { AdminClientsController } from './admin-clients.controller';
 import { CronRegistryService } from './cron-registry.service';
 import { AdminGuard } from './admin.guard';
 import { PushModule } from '../push/push.module';
@@ -32,6 +33,7 @@ import { EventsModule } from '../events/events.module';
     AdminDeliveryZonesController,
     AdminServerController,
     AdminDarkstoresController,
+    AdminClientsController,
   ],
   providers: [AdminPurchasesController, CronRegistryService, AdminGuard],
   exports: [CronRegistryService],

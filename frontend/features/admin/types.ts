@@ -323,3 +323,66 @@ export type CourierProfile = {
   activeOrders: CourierDelivery[];
   recentDeliveries: CourierDelivery[];
 };
+
+// ==================== КЛИЕНТЫ ====================
+
+export type ClientListItem = {
+  id: string;
+  login: string;
+  name: string;
+  phone: string;
+  email: string;
+  settlement: string;
+  createdAt: string;
+  totalOrders: number;
+  deliveredOrders: number;
+  totalSpent: number;
+  lastOrderAt: string | null;
+};
+
+export type ClientDetail = {
+  user: {
+    id: string;
+    login: string;
+    name: string;
+    phone: string;
+    email: string;
+    settlement: string;
+    addressLine: string;
+    createdAt: string;
+    updatedAt: string;
+  };
+  stats: {
+    totalOrders: number;
+    deliveredOrders: number;
+    canceledOrders: number;
+    totalSpent: number;
+    totalDeliveryFee: number;
+    avgOrderValue: number;
+    firstOrderAt: string | null;
+    lastOrderAt: string | null;
+    daysSinceLastOrder: number | null;
+    daysSinceRegistration: number | null;
+    statusBreakdown: Array<{ status: string; count: number }>;
+  };
+  topProducts: Array<{
+    productId: string;
+    title: string;
+    totalQty: number;
+    totalAmount: number;
+    ordersCount: number;
+  }>;
+  recentOrders: Array<{
+    id: string;
+    orderNumber: number;
+    status: string;
+    totalAmount: number;
+    deliveryFee: number;
+    settlement: string;
+    createdAt: string;
+    canceledBy: string | null;
+    darkstore: { name: string; shortName?: string | null } | null;
+    items: Array<{ title: string; qty: number; price: number }>;
+  }>;
+};
+
