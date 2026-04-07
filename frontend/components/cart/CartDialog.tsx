@@ -42,6 +42,7 @@ export function CartDialog() {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressLine, setAddressLine] = useState("");
+  const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const lastUserIdRef = useRef<string | null>(null);
@@ -50,11 +51,12 @@ export function CartDialog() {
   const [showValidationDialog, setShowValidationDialog] = useState(false);
 
   // Phone auth flow state
-  const [authStep, setAuthStep] = useState<"none" | "password-new" | "password-existing">("none");
+  const [authStep, setAuthStep] = useState<"none" | "password-new" | "password-existing" | "forgot-sent">("none");
   const [authPassword, setAuthPassword] = useState("");
   const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+  const [resetEmailMasked, setResetEmailMasked] = useState("");
 
   // Settlement dropdown state
   const [settlementDropdownOpen, setSettlementDropdownOpen] = useState(false);
@@ -264,6 +266,7 @@ export function CartDialog() {
           name: customerName,
           addressLine,
           settlement: selectedSettlement?.code || "",
+          email: email || undefined,
         });
         loginWithToken(res.accessToken, res.user);
         setAuthStep("none");
@@ -286,6 +289,7 @@ export function CartDialog() {
         const res = await authApi.loginByPhone({
           phone,
           password: authPassword,
+          email: email || undefined,
         });
         loginWithToken(res.accessToken, res.user);
         setAuthStep("none");
@@ -559,6 +563,21 @@ export function CartDialog() {
                   required
                 />
               </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="cart-email">
+                  Электронный адрес
+                </label>
+                <Input
+                  id="cart-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="example@mail.ru"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
               <div className="space-y-1" ref={settlementDropdownRef}>
                 <label className="text-sm font-medium">Населённый пункт</label>
                 <div className="relative">
@@ -787,6 +806,27 @@ export function CartDialog() {
                 {authError}
               </div>
             )}
+            <button
+              type="button"
+              onClick={async () => {
+                setAuthError("");
+                setAuthLoading(true);
+                try {
+                  const res = await authApi.requestPasswordReset(phone);
+                  setResetEmailMasked(res.email);
+                  setAuthStep("forgot-sent");
+                } catch (err: unknown) {
+                  const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки письма";
+                  setAuthError(msg);
+                } finally {
+                  setAuthLoading(false);
+                }
+              }}
+              disabled={authLoading}
+              className="text-sm text-[#6206c7] hover:underline self-start disabled:opacity-50"
+            >
+              Не помню пароль
+            </button>
             <div className="flex gap-2 pt-1">
               <button
                 type="button"
@@ -804,6 +844,39 @@ export function CartDialog() {
                 {authLoading ? "Входим..." : "Войти и оформить"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно: сброс отправлен */}
+      {authStep === "forgot-sent" && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => { setAuthStep("password-existing"); setAuthError(""); }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+                <span className="text-2xl">📧</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Письмо отправлено</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Мы отправили ссылку для сброса пароля на <span className="font-medium text-gray-700">{resetEmailMasked}</span>.
+              </p>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Перейдите по ссылке из письма, чтобы установить новый пароль. Ссылка действительна 1 час.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setAuthStep("password-existing"); setAuthError(""); }}
+              className="w-full h-11 rounded-xl bg-[#6206c7] hover:bg-[#5205A8] text-white text-sm font-semibold transition-colors"
+            >
+              Понятно
+            </button>
           </div>
         </div>
       )}

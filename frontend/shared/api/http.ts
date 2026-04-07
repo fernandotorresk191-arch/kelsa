@@ -53,9 +53,14 @@ export type ApiError = {
 
 async function parseError(res: Response) {
   const text = await res.text().catch(() => "");
+  let serverMessage: string | undefined;
+  try {
+    const json = JSON.parse(text);
+    if (typeof json.message === "string") serverMessage = json.message;
+  } catch { /* not JSON */ }
   return {
     status: res.status,
-    message: `${res.status} ${res.statusText}`,
+    message: serverMessage || `${res.status} ${res.statusText}`,
     details: text || undefined,
   } satisfies ApiError;
 }

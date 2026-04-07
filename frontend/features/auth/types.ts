@@ -53,6 +53,7 @@ export type CheckPhoneResponse = {
 export type LoginByPhonePayload = {
   phone: string;
   password: string;
+  email?: string;
 };
 
 export type RegisterByPhonePayload = {
@@ -61,6 +62,17 @@ export type RegisterByPhonePayload = {
   name: string;
   addressLine: string;
   settlement: string;
+  email?: string;
+};
+
+export type RequestPasswordResetResponse = {
+  message: string;
+  email: string;
+};
+
+export type ConfirmPasswordResetPayload = {
+  token: string;
+  password: string;
 };
 
 export type UserOrderItem = {

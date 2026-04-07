@@ -3,10 +3,12 @@ import type {
   AuthResponse,
   AuthUser,
   CheckPhoneResponse,
+  ConfirmPasswordResetPayload,
   LoginByPhonePayload,
   LoginPayload,
   RegisterByPhonePayload,
   RegisterPayload,
+  RequestPasswordResetResponse,
   SettlementDto,
   UpdateProfilePayload,
   UserOrder,
@@ -24,6 +26,10 @@ export const authApi = {
     apiPost<AuthResponse, LoginByPhonePayload>("/v1/auth/login-by-phone", payload),
   registerByPhone: (payload: RegisterByPhonePayload) =>
     apiPost<AuthResponse, RegisterByPhonePayload>("/v1/auth/register-by-phone", payload),
+  requestPasswordReset: (phone: string) =>
+    apiPost<RequestPasswordResetResponse, { phone: string }>("/v1/auth/request-password-reset", { phone }),
+  confirmPasswordReset: (payload: ConfirmPasswordResetPayload) =>
+    apiPost<AuthResponse, ConfirmPasswordResetPayload>("/v1/auth/confirm-password-reset", payload),
   me: () => apiGet<AuthUser>("/v1/me"),
   myOrders: () => apiGet<UserOrder[]>("/v1/me/orders"),
   updateProfile: (payload: UpdateProfilePayload) =>
