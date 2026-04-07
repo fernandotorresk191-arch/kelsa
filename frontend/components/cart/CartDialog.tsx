@@ -283,8 +283,9 @@ export function CartDialog() {
         setAuthPassword("");
         setAuthPasswordConfirm("");
         await submitOrder();
-      } catch (err: any) {
-        setAuthError(err?.message || "Ошибка регистрации");
+      } catch (err: unknown) {
+        const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка регистрации";
+        setAuthError(msg);
       } finally {
         setAuthLoading(false);
       }
@@ -303,8 +304,9 @@ export function CartDialog() {
         setAuthStep("none");
         setAuthPassword("");
         await submitOrder();
-      } catch (err: any) {
-        setAuthError(err?.message || "Неверный пароль");
+      } catch (err: unknown) {
+        const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Неверный пароль";
+        setAuthError(msg);
       } finally {
         setAuthLoading(false);
       }
