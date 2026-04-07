@@ -75,6 +75,7 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
 
     if (darkstoreChanged) {
       setPendingSettlementCode(code);
+      setIsDialogOpen(false);
       return;
     }
 
@@ -168,9 +169,12 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
 
       {pendingSettlementCode && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
           style={{ background: "rgba(0,0,0,0.4)" }}
-          onClick={() => setPendingSettlementCode(null)}
+          onClick={() => {
+            setPendingSettlementCode(null);
+            setIsDialogOpen(true);
+          }}
         >
           <div
             className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
@@ -189,7 +193,10 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
             </div>
             <div className="flex gap-2 pt-1">
               <button
-                onClick={() => setPendingSettlementCode(null)}
+                onClick={() => {
+                  setPendingSettlementCode(null);
+                  setIsDialogOpen(true);
+                }}
                 className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Отмена
