@@ -25,7 +25,7 @@ type SettlementContextValue = {
   isReady: boolean;
   isDialogOpen: boolean;
   setDialogOpen: (open: boolean) => void;
-  selectSettlement: (code: string) => void;
+  selectSettlement: (code: string, options?: { reload?: boolean }) => void;
   refreshSettlements: () => Promise<void>;
 };
 
@@ -60,8 +60,9 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
     }
   }, []);
 
-  const selectSettlement = useCallback((code: string) => {
+  const selectSettlement = useCallback((code: string, options?: { reload?: boolean }) => {
     const previousCode = selectedCode;
+    const shouldReload = options?.reload !== false;
 
     // Check if the darkstore changes
     const oldSettlement = previousCode
@@ -80,14 +81,14 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
     }
 
     storeSettlement(code);
+    setSelectedCode(code);
     setIsDialogOpen(false);
     // If the user switched to a different settlement, reload so server-rendered
     // pages (home, category, search) re-fetch with the new settlement cookie.
-    if (!previousCode || previousCode !== code) {
+    if (shouldReload && previousCode && previousCode !== code) {
       window.location.reload();
       return;
     }
-    setSelectedCode(code);
   }, [selectedCode, settlements]);
 
   const confirmSettlementSwitch = useCallback(() => {

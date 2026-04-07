@@ -92,7 +92,7 @@ export function CartDialog() {
       return;
     }
 
-    selectSettlement(s.code);
+    selectSettlement(s.code, { reload: false });
   };
 
   const confirmSettlementChange = () => {
