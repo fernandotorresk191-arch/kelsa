@@ -6,8 +6,10 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { FiAlertTriangle } from "react-icons/fi";
 import { usePathname } from "next/navigation";
 import { authApi } from "features/auth/api";
 import type { SettlementDto } from "features/auth/types";
@@ -38,6 +40,7 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [pendingSettlementCode, setPendingSettlementCode] = useState<string | null>(null);
 
   const selectedSettlement = useMemo(
     () =>
@@ -72,11 +75,8 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
       oldSettlement.darkstoreId !== newSettlement.darkstoreId;
 
     if (darkstoreChanged) {
-      const confirmed = window.confirm(
-        "При переключении на другой район доставки корзина будет очищена. Продолжить?",
-      );
-      if (!confirmed) return;
-      replaceCartToken();
+      setPendingSettlementCode(code);
+      return;
     }
 
     storeSettlement(code);
@@ -89,6 +89,15 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
     }
     setSelectedCode(code);
   }, [selectedCode, settlements]);
+
+  const confirmSettlementSwitch = useCallback(() => {
+    if (!pendingSettlementCode) return;
+    replaceCartToken();
+    storeSettlement(pendingSettlementCode);
+    setPendingSettlementCode(null);
+    setIsDialogOpen(false);
+    window.location.reload();
+  }, [pendingSettlementCode]);
 
   useEffect(() => {
     void refreshSettlements();
@@ -157,6 +166,45 @@ export function SettlementProvider({ children }: { children: React.ReactNode }) 
   return (
     <SettlementContext.Provider value={value}>
       {children}
+
+      {pendingSettlementCode && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.4)" }}
+          onClick={() => setPendingSettlementCode(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <FiAlertTriangle size={18} className="text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Сменить район доставки?</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  При переключении на другой район доставки корзина будет очищена.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={() => setPendingSettlementCode(null)}
+                className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={confirmSettlementSwitch}
+                className="flex-1 h-10 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-medium transition-colors"
+              >
+                Продолжить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SettlementContext.Provider>
   );
 }
