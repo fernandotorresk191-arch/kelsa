@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FiMinus, FiPlus, FiShoppingBag, FiX, FiEdit2 } from "react-icons/fi";
+import { FiMinus, FiPlus, FiShoppingBag, FiX, FiEdit2, FiSearch, FiMapPin, FiAlertTriangle } from "react-icons/fi";
 import { useCart } from "./CartProvider";
 import {
   DialogContent,
@@ -20,7 +20,7 @@ import { resolveMediaUrl } from "../../shared/api/media";
 import { http } from "../../shared/api/http";
 import { authApi } from "../../features/auth/api";
 import { cartApi } from "../../features/cart/api";
-import type { CartValidationIssue } from "../../features/cart/types";
+import type { CartValidationIssue } from "../../features/cart/types";\nimport type { SettlementDto } from "../../features/auth/types";
 
 const currency = (value: number) => `${value} ₽`;
 
@@ -50,6 +50,51 @@ export function CartDialog() {
   const [editSettlement, setEditSettlement] = useState("");
   const [validationIssues, setValidationIssues] = useState<CartValidationIssue[]>([]);
   const [showValidationDialog, setShowValidationDialog] = useState(false);
+
+  // Settlement dropdown state
+  const [settlementDropdownOpen, setSettlementDropdownOpen] = useState(false);
+  const [settlementSearch, setSettlementSearch] = useState("");
+  const [pendingSettlement, setPendingSettlement] = useState<SettlementDto | null>(null);
+  const settlementDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close settlement dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (settlementDropdownRef.current && !settlementDropdownRef.current.contains(e.target as Node)) {
+        setSettlementDropdownOpen(false);
+        setSettlementSearch("");
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const filteredSettlements = useMemo(() => {
+    if (!settlementSearch.trim()) return settlements;
+    const q = settlementSearch.toLowerCase();
+    return settlements.filter((s) => s.title.toLowerCase().includes(q));
+  }, [settlements, settlementSearch]);
+
+  const handleSettlementSelect = (s: SettlementDto) => {
+    setSettlementDropdownOpen(false);
+    setSettlementSearch("");
+
+    if (s.code === selectedSettlement?.code) return;
+
+    // Check if darkstore changes
+    if (selectedSettlement && s.darkstoreId !== selectedSettlement.darkstoreId) {
+      setPendingSettlement(s);
+      return;
+    }
+
+    selectSettlement(s.code);
+  };
+
+  const confirmSettlementChange = () => {
+    if (!pendingSettlement) return;
+    selectSettlement(pendingSettlement.code);
+    setPendingSettlement(null);
+  };
 
   // Delivery settings per zone
   const [deliveryFee, setDeliveryFee] = useState(0);
@@ -461,6 +506,58 @@ export function CartDialog() {
                   required
                 />
               </div>
+              <div className="space-y-1" ref={settlementDropdownRef}>
+                <label className="text-sm font-medium">Населённый пункт</label>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setSettlementDropdownOpen(!settlementDropdownOpen)}
+                    className="flex items-center gap-2 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring text-left"
+                  >
+                    <FiMapPin className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                    <span className={selectedSettlement ? "text-foreground" : "text-muted-foreground"}>
+                      {selectedSettlement?.title || "Выберите населённый пункт"}
+                    </span>
+                  </button>
+                  {settlementDropdownOpen && (
+                    <div className="absolute z-50 mt-1 w-full rounded-md border bg-white shadow-lg">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <FiSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                          <input
+                            type="text"
+                            placeholder="Поиск..."
+                            value={settlementSearch}
+                            onChange={(e) => setSettlementSearch(e.target.value)}
+                            className="w-full rounded-md border border-input bg-transparent pl-8 pr-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-48 overflow-y-auto py-1">
+                        {filteredSettlements.length === 0 ? (
+                          <div className="px-3 py-2 text-sm text-muted-foreground">Не найдено</div>
+                        ) : (
+                          filteredSettlements.map((s) => (
+                            <button
+                              key={s.code}
+                              type="button"
+                              onClick={() => handleSettlementSelect(s)}
+                              className={cn(
+                                "flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-accent transition-colors",
+                                s.code === selectedSettlement?.code && "bg-accent font-medium"
+                              )}
+                            >
+                              <FiMapPin className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                              {s.title}
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="space-y-1">
                 <label className="text-sm font-medium" htmlFor="cart-address">
                   Адрес доставки
@@ -474,24 +571,6 @@ export function CartDialog() {
                   required
                 />
               </div>
-              {user && (
-                <div className="space-y-1">
-                  <label className="text-sm font-medium" htmlFor="cart-settlement">
-                    Населённый пункт
-                  </label>
-                  <select
-                    id="cart-settlement"
-                    value={editSettlement}
-                    onChange={(e) => setEditSettlement(e.target.value)}
-                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  >
-                    <option value="">Выберите</option>
-                    {settlements.map((s) => (
-                      <option key={s.code} value={s.code}>{s.title}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
               {user && (
                 <div className="flex gap-2">
                   <Button
@@ -603,6 +682,47 @@ export function CartDialog() {
             >
               Понятно
             </Button>
+          </div>
+        </div>
+      )}
+      {/* Подтверждение смены района доставки */}
+      {pendingSettlement && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.4)" }}
+          onClick={() => setPendingSettlement(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
+                <FiAlertTriangle size={18} className="text-amber-500" />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900">Сменить район доставки?</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  При переключении на другой район доставки корзина будет очищена.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => setPendingSettlement(null)}
+                className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={confirmSettlementChange}
+                className="flex-1 h-10 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-medium transition-colors"
+              >
+                Продолжить
+              </button>
+            </div>
           </div>
         </div>
       )}
