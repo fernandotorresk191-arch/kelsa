@@ -36,7 +36,7 @@ export function CartDialog() {
     removeItem,
     createOrder,
   } = useCart();
-  const { user, refreshProfile, loginWithToken } = useAuth();
+  const { user, loginWithToken } = useAuth();
   const { selectedSettlement, settlements, selectSettlement } = useSettlement();
 
   const [customerName, setCustomerName] = useState("");
@@ -46,8 +46,6 @@ export function CartDialog() {
   const [submitting, setSubmitting] = useState(false);
   const lastUserIdRef = useRef<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [savingProfile, setSavingProfile] = useState(false);
-  const [editSettlement, setEditSettlement] = useState("");
   const [validationIssues, setValidationIssues] = useState<CartValidationIssue[]>([]);
   const [showValidationDialog, setShowValidationDialog] = useState(false);
 
@@ -163,29 +161,18 @@ export function CartDialog() {
 
   const handleStartEdit = () => {
     setIsEditingProfile(true);
-    setEditSettlement(selectedSettlement?.code || "");
   };
 
-  const handleSaveProfile = async () => {
+  const handleCancelEdit = () => {
     if (!user) return;
-    setSavingProfile(true);
-    try {
-      await authApi.updateProfile({
-        name: customerName,
-        phone,
-        addressLine,
-        settlement: editSettlement || undefined,
-      });
-      if (editSettlement && editSettlement !== selectedSettlement?.code) {
-        selectSettlement(editSettlement);
-      }
-      await refreshProfile();
-      setIsEditingProfile(false);
-    } catch {
-      // error
-    } finally {
-      setSavingProfile(false);
-    }
+    setIsEditingProfile(false);
+    setCustomerName(user.name);
+    setPhone(formatRuPhone(user.phone));
+    setAddressLine(user.addressLine);
+  };
+
+  const handleConfirmEdit = () => {
+    setIsEditingProfile(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -644,12 +631,7 @@ export function CartDialog() {
                     variant="outline"
                     size="sm"
                     className="flex-1"
-                    onClick={() => {
-                      setIsEditingProfile(false);
-                      setCustomerName(user.name);
-                      setPhone(formatRuPhone(user.phone));
-                      setAddressLine(user.addressLine);
-                    }}
+                    onClick={handleCancelEdit}
                   >
                     Отмена
                   </Button>
@@ -657,10 +639,9 @@ export function CartDialog() {
                     type="button"
                     size="sm"
                     className="flex-1"
-                    disabled={savingProfile}
-                    onClick={handleSaveProfile}
+                    onClick={handleConfirmEdit}
                   >
-                    {savingProfile ? "Сохранение..." : "Сохранить"}
+                    Применить
                   </Button>
                 </div>
               )}
