@@ -19,6 +19,8 @@ import { useSettlement } from "../settlement/SettlementProvider";
 import { resolveMediaUrl } from "../../shared/api/media";
 import { http } from "../../shared/api/http";
 import { authApi } from "../../features/auth/api";
+import { replaceCartToken } from "../../shared/cart/token";
+import { storeSettlement } from "../../shared/settlement/storage";
 import { cartApi } from "../../features/cart/api";
 import type { CartValidationIssue } from "../../features/cart/types";
 import type { SettlementDto } from "../../features/auth/types";
@@ -93,8 +95,10 @@ export function CartDialog() {
 
   const confirmSettlementChange = () => {
     if (!pendingSettlement) return;
-    selectSettlement(pendingSettlement.code);
+    replaceCartToken();
+    storeSettlement(pendingSettlement.code);
     setPendingSettlement(null);
+    window.location.reload();
   };
 
   // Delivery settings per zone
