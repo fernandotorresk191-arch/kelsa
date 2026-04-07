@@ -20,7 +20,8 @@ import { resolveMediaUrl } from "../../shared/api/media";
 import { http } from "../../shared/api/http";
 import { authApi } from "../../features/auth/api";
 import { cartApi } from "../../features/cart/api";
-import type { CartValidationIssue } from "../../features/cart/types";\nimport type { SettlementDto } from "../../features/auth/types";
+import type { CartValidationIssue } from "../../features/cart/types";
+import type { SettlementDto } from "../../features/auth/types";
 
 const currency = (value: number) => `${value} ₽`;
 
