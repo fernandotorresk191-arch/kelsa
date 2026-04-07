@@ -29,6 +29,7 @@ type AuthContextValue = {
   error: string | null;
   register: (payload: RegisterPayload) => Promise<AuthUser>;
   login: (payload: LoginPayload) => Promise<AuthUser>;
+  loginWithToken: (token: string, user: AuthUser) => void;
   logout: () => void;
   refreshProfile: () => Promise<void>;
   clearError: () => void;
@@ -155,6 +156,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
   }, [applyToken]);
 
+  const loginWithToken = useCallback(
+    (token: string, userData: AuthUser) => {
+      applyToken(token);
+      setUser(userData);
+      setError(null);
+      setIsReady(true);
+    },
+    [applyToken],
+  );
+
   const refreshProfile = useCallback(async () => {
     await loadProfile();
   }, [loadProfile]);
@@ -170,6 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       register,
       login,
+      loginWithToken,
       logout,
       refreshProfile,
       clearError,
@@ -181,6 +193,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isReady,
       login,
+      loginWithToken,
       logout,
       refreshProfile,
       register,

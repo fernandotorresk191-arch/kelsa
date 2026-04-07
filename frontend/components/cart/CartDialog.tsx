@@ -13,7 +13,6 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { cn } from "../../lib/utils";
 import { useAuth } from "../auth/AuthProvider";
-import { AuthDialog } from "../auth/AuthDialog";
 import { formatRuPhone } from "../../shared/phone/format";
 import { useSettlement } from "../settlement/SettlementProvider";
 import { resolveMediaUrl } from "../../shared/api/media";
@@ -37,7 +36,7 @@ export function CartDialog() {
     removeItem,
     createOrder,
   } = useCart();
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, loginWithToken } = useAuth();
   const { selectedSettlement, settlements, selectSettlement } = useSettlement();
 
   const [customerName, setCustomerName] = useState("");
@@ -45,14 +44,19 @@ export function CartDialog() {
   const [addressLine, setAddressLine] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "register">("register");
   const lastUserIdRef = useRef<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [editSettlement, setEditSettlement] = useState("");
   const [validationIssues, setValidationIssues] = useState<CartValidationIssue[]>([]);
   const [showValidationDialog, setShowValidationDialog] = useState(false);
+
+  // Phone auth flow state
+  const [authStep, setAuthStep] = useState<"none" | "password-new" | "password-existing">("none");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
 
   // Settlement dropdown state
   const [settlementDropdownOpen, setSettlementDropdownOpen] = useState(false);
@@ -187,15 +191,33 @@ export function CartDialog() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isEmpty || submitting) return;
-    if (!user) {
-      setAuthMode("register");
-      setAuthDialogOpen(true);
+
+    // If user is already logged in — create order directly
+    if (user) {
+      await submitOrder();
       return;
     }
 
+    // Not logged in — check phone
+    if (!phone || phone.length < 12) return;
     setSubmitting(true);
     try {
-      // Валидация остатков перед оформлением
+      const { exists } = await authApi.checkPhone(phone);
+      if (exists) {
+        setAuthStep("password-existing");
+      } else {
+        setAuthStep("password-new");
+      }
+    } catch {
+      setAuthError("Ошибка проверки телефона");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitOrder = async () => {
+    setSubmitting(true);
+    try {
       if (cart?.token) {
         const validation = await cartApi.validate(cart.token);
         if (!validation.ok) {
@@ -206,7 +228,6 @@ export function CartDialog() {
         }
       }
 
-      // Формируем полный адрес с населённым пунктом
       const fullAddress = selectedSettlement
         ? `${selectedSettlement.title}, ${addressLine}`
         : addressLine;
@@ -230,9 +251,63 @@ export function CartDialog() {
       }
       setComment("");
     } catch {
-      // Сообщение об ошибке уже приходит из контекста
+      // error from context
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleAuthSubmit = async () => {
+    setAuthError("");
+
+    if (authStep === "password-new") {
+      if (authPassword.length < 6) {
+        setAuthError("Пароль должен содержать минимум 6 символов");
+        return;
+      }
+      if (authPassword !== authPasswordConfirm) {
+        setAuthError("Пароли не совпадают");
+        return;
+      }
+      setAuthLoading(true);
+      try {
+        const res = await authApi.registerByPhone({
+          phone,
+          password: authPassword,
+          name: customerName,
+          addressLine,
+          settlement: selectedSettlement?.code || "",
+        });
+        loginWithToken(res.accessToken, res.user);
+        setAuthStep("none");
+        setAuthPassword("");
+        setAuthPasswordConfirm("");
+        await submitOrder();
+      } catch (err: any) {
+        setAuthError(err?.message || "Ошибка регистрации");
+      } finally {
+        setAuthLoading(false);
+      }
+    } else if (authStep === "password-existing") {
+      if (!authPassword) {
+        setAuthError("Введите пароль");
+        return;
+      }
+      setAuthLoading(true);
+      try {
+        const res = await authApi.loginByPhone({
+          phone,
+          password: authPassword,
+        });
+        loginWithToken(res.accessToken, res.user);
+        setAuthStep("none");
+        setAuthPassword("");
+        await submitOrder();
+      } catch (err: any) {
+        setAuthError(err?.message || "Неверный пароль");
+      } finally {
+        setAuthLoading(false);
+      }
     }
   };
 
@@ -253,22 +328,6 @@ export function CartDialog() {
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {error}
-        </div>
-      )}
-
-      {!user && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 flex items-center justify-between gap-2">
-          <span>Чтобы оформить заказ, зарегистрируйтесь или войдите.</span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setAuthMode("register");
-              setAuthDialogOpen(true);
-            }}
-          >
-            Зарегистрироваться
-          </Button>
         </div>
       )}
 
@@ -634,27 +693,137 @@ export function CartDialog() {
           >
             {isSubmittingOrder || submitting
               ? "Создаём заказ..."
-              : user
-              ? "Оформить заказ"
-              : "Войти, чтобы оформить"}
+              : "Оформить заказ"}
           </button>
         </form>
 
       </div>
 
-      <AuthDialog
-        open={authDialogOpen}
-        onOpenChange={setAuthDialogOpen}
-        initialMode={authMode}
-        onAuthenticated={() => setAuthDialogOpen(false)}
-        onRegisteredContacts={({ name, phone: registeredPhone, addressLine }) => {
-          if (name && !customerName) setCustomerName(name);
-          if (registeredPhone && !phone) {
-            setPhone(formatRuPhone(registeredPhone));
-          }
-          if (addressLine && !addressLine) setAddressLine(addressLine);
-        }}
-      />
+      {/* Модальное окно — новый клиент (регистрация по телефону) */}
+      {authStep === "password-new" && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.4)" }}
+          onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); setAuthPasswordConfirm(""); }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-14 h-14 rounded-full bg-[#6206c7]/10 flex items-center justify-center">
+                <span className="text-2xl">👋</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Добро пожаловать!</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Вы наш новый клиент! Придумайте пароль для личного кабинета, чтобы отслеживать заказы.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">Пароль</label>
+                <input
+                  type="password"
+                  placeholder="Минимум 6 символов"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7]"
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-gray-700">Подтвердите пароль</label>
+                <input
+                  type="password"
+                  placeholder="Повторите пароль"
+                  value={authPasswordConfirm}
+                  onChange={(e) => setAuthPasswordConfirm(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7]"
+                />
+              </div>
+            </div>
+            {authError && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                {authError}
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); setAuthPasswordConfirm(""); }}
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleAuthSubmit}
+                disabled={authLoading}
+                className="flex-1 h-11 rounded-xl bg-[#6206c7] hover:bg-[#5205A8] text-white text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                {authLoading ? "Создаём..." : "Создать аккаунт"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно — существующий клиент (вход по телефону) */}
+      {authStep === "password-existing" && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.4)" }}
+          onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex flex-col items-center text-center gap-2">
+              <div className="w-14 h-14 rounded-full bg-[#6206c7]/10 flex items-center justify-center">
+                <span className="text-2xl">🔐</span>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">С возвращением!</h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                Мы нашли ваш аккаунт по номеру <span className="font-medium text-gray-700">{phone}</span>. Введите пароль для подтверждения.
+              </p>
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Пароль</label>
+              <input
+                type="password"
+                placeholder="Введите пароль"
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7]"
+                autoFocus
+              />
+            </div>
+            {authError && (
+              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
+                {authError}
+              </div>
+            )}
+            <div className="flex gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); }}
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleAuthSubmit}
+                disabled={authLoading}
+                className="flex-1 h-11 rounded-xl bg-[#6206c7] hover:bg-[#5205A8] text-white text-sm font-semibold transition-colors disabled:opacity-50"
+              >
+                {authLoading ? "Входим..." : "Войти и оформить"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Диалог проблем с остатками */}
       {showValidationDialog && validationIssues.length > 0 && (

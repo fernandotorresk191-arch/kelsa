@@ -46,6 +46,23 @@ export type UpdateProfilePayload = {
   settlement?: string;
 };
 
+export type CheckPhoneResponse = {
+  exists: boolean;
+};
+
+export type LoginByPhonePayload = {
+  phone: string;
+  password: string;
+};
+
+export type RegisterByPhonePayload = {
+  phone: string;
+  password: string;
+  name: string;
+  addressLine: string;
+  settlement: string;
+};
+
 export type UserOrderItem = {
   title: string;
   qty: number;

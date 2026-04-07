@@ -46,6 +46,37 @@ class LoginDto {
   password: string
 }
 
+class CheckPhoneDto {
+  @IsString()
+  phone: string
+}
+
+class LoginByPhoneDto {
+  @IsString()
+  phone: string
+
+  @IsString()
+  password: string
+}
+
+class RegisterByPhoneDto {
+  @IsString()
+  phone: string
+
+  @IsString()
+  @MinLength(6)
+  password: string
+
+  @IsString()
+  name: string
+
+  @IsString()
+  addressLine: string
+
+  @IsString()
+  settlement: string
+}
+
 class FavoriteDto {
   @IsString()
   productId: string
@@ -172,6 +203,90 @@ export class AuthController {
         phone: user.phone,
         addressLine: user.addressLine,
         settlement: user.settlement,
+        settlementTitle: await this.getSettlementTitle(user.settlement),
+      },
+      accessToken,
+    }
+  }
+
+  // Проверка существования пользователя по телефону
+  @Post('auth/check-phone')
+  async checkPhone(@Body() dto: CheckPhoneDto) {
+    const user = await this.prisma.user.findFirst({
+      where: { phone: dto.phone },
+      select: { id: true },
+    })
+    return { exists: !!user }
+  }
+
+  // Логин по телефону + пароль
+  @Post('auth/login-by-phone')
+  async loginByPhone(@Body() dto: LoginByPhoneDto) {
+    const user = await this.prisma.user.findFirst({ where: { phone: dto.phone } });
+    if (!user) throw new UnauthorizedException('Пользователь не найден');
+
+    const ok = await bcrypt.compare(dto.password, user.passwordHash);
+    if (!ok) throw new UnauthorizedException('Неверный пароль');
+
+    const accessToken = this.jwt.sign({ sub: user.id });
+
+    return {
+      user: {
+        id: user.id,
+        login: user.login,
+        name: user.name,
+        phone: user.phone,
+        addressLine: user.addressLine,
+        settlement: user.settlement,
+        settlementTitle: await this.getSettlementTitle(user.settlement),
+      },
+      accessToken,
+    }
+  }
+
+  // Регистрация по телефону (из корзины)
+  @Post('auth/register-by-phone')
+  async registerByPhone(@Body() dto: RegisterByPhoneDto) {
+    const existing = await this.prisma.user.findFirst({
+      where: { phone: dto.phone },
+    })
+    if (existing) {
+      throw new UnauthorizedException('Пользователь с таким телефоном уже существует')
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10)
+
+    // Автогенерация логина и email
+    const phoneDigits = dto.phone.replace(/\D/g, '')
+    const login = `user_${phoneDigits}`
+    const email = `${phoneDigits}@kelsa.local`
+
+    const user = await this.prisma.user.create({
+      data: {
+        login,
+        email,
+        name: dto.name,
+        phone: dto.phone,
+        addressLine: dto.addressLine,
+        passwordHash,
+        settlement: dto.settlement as any,
+      },
+      select: {
+        id: true,
+        login: true,
+        name: true,
+        phone: true,
+        addressLine: true,
+        settlement: true,
+        createdAt: true,
+      },
+    })
+
+    const accessToken = this.jwt.sign({ sub: user.id })
+
+    return {
+      user: {
+        ...user,
         settlementTitle: await this.getSettlementTitle(user.settlement),
       },
       accessToken,
