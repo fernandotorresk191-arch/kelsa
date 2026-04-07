@@ -698,32 +698,33 @@ export function CartDialog() {
           onClick={() => setPendingSettlement(null)}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-5"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center flex-shrink-0">
-                <FiAlertTriangle size={18} className="text-amber-500" />
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center">
+                <FiAlertTriangle size={22} className="text-red-500" />
               </div>
               <div>
-                <h3 className="text-base font-semibold text-gray-900">Сменить район доставки?</h3>
-                <p className="text-sm text-gray-500 mt-0.5">
-                  При переключении на другой район доставки корзина будет очищена.
+                <h3 className="text-lg font-bold text-gray-900">Сменить район доставки?</h3>
+                <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
+                  Вы переключаетесь на другой район. <br />
+                  <span className="text-red-500 font-medium">Корзина будет полностью очищена.</span>
                 </p>
               </div>
             </div>
-            <div className="flex gap-2 pt-1">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => setPendingSettlement(null)}
-                className="flex-1 h-10 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
+                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
               >
                 Отмена
               </button>
               <button
                 type="button"
                 onClick={confirmSettlementChange}
-                className="flex-1 h-10 rounded-xl bg-green-500 hover:bg-green-600 text-white text-sm font-medium transition-colors"
+                className="flex-1 h-11 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
               >
                 Продолжить
               </button>
