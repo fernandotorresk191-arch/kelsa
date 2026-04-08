@@ -138,15 +138,15 @@ export class AuthController {
   ) {}
 
   private getMailTransport() {
-    const port = Number(this.config.get<string>('SMTP_PORT') ?? '465');
+    const host = this.config.get<string>('SMTP_HOST') ?? '127.0.0.1';
+    const port = Number(this.config.get<string>('SMTP_PORT') ?? '25');
+    const user = this.config.get<string>('SMTP_USER');
+    const pass = this.config.get<string>('SMTP_PASS');
     return nodemailer.createTransport({
-      host: this.config.get<string>('SMTP_HOST') ?? '31.31.197.72',
+      host,
       port,
       secure: port === 465,
-      auth: {
-        user: this.config.get<string>('SMTP_USER') ?? 'noreply@kelsa.store',
-        pass: this.config.get<string>('SMTP_PASS') ?? '',
-      },
+      ...(user && pass ? { auth: { user, pass } } : {}),
       tls: { rejectUnauthorized: false },
     });
   }
