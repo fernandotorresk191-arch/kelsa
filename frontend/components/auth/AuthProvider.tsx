@@ -11,8 +11,6 @@ import React, {
 import { authApi } from "features/auth/api";
 import type {
   AuthUser,
-  LoginPayload,
-  RegisterPayload,
 } from "features/auth/types";
 import type { ApiError } from "shared/api/http";
 import {
@@ -27,8 +25,6 @@ type AuthContextValue = {
   isReady: boolean;
   isLoading: boolean;
   error: string | null;
-  register: (payload: RegisterPayload) => Promise<AuthUser>;
-  login: (payload: LoginPayload) => Promise<AuthUser>;
   loginWithToken: (token: string, user: AuthUser) => void;
   logout: () => void;
   refreshProfile: () => Promise<void>;
@@ -108,48 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .finally(() => setIsReady(true));
   }, [applyToken, loadProfile]);
 
-  const register = useCallback(
-    async (payload: RegisterPayload) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await authApi.register(payload);
-        applyToken(res.accessToken);
-        setUser(res.user);
-        setError(null);
-        setIsReady(true);
-        return res.user;
-      } catch (err) {
-        setError(getErrorMessage(err));
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [applyToken],
-  );
-
-  const login = useCallback(
-    async (payload: LoginPayload) => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const res = await authApi.login(payload);
-        applyToken(res.accessToken);
-        setUser(res.user);
-        setError(null);
-        setIsReady(true);
-        return res.user;
-      } catch (err) {
-        setError(getErrorMessage(err));
-        throw err;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [applyToken],
-  );
-
   const logout = useCallback(() => {
     setUser(null);
     applyToken(null);
@@ -179,8 +133,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isReady,
       isLoading,
       error,
-      register,
-      login,
       loginWithToken,
       logout,
       refreshProfile,
@@ -192,11 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       error,
       isLoading,
       isReady,
-      login,
       loginWithToken,
       logout,
       refreshProfile,
-      register,
       user,
     ],
   );

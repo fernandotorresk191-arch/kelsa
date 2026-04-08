@@ -19,6 +19,7 @@ import { KopilkaModule } from './kopilka/kopilka.module';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { JwtGuard } from './auth/jwt.guard';
+import { SmsService } from './auth/sms.service';
 
 @Module({
   imports: [
@@ -52,6 +53,6 @@ import { JwtGuard } from './auth/jwt.guard';
     }),
   ],
   controllers: [AppController, AuthController],
-  providers: [AppService, JwtGuard],
+  providers: [AppService, JwtGuard, SmsService],
 })
 export class AppModule {}

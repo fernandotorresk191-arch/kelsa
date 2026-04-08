@@ -42,7 +42,6 @@ export function CartDialog() {
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
   const [addressLine, setAddressLine] = useState("");
-  const [email, setEmail] = useState("");
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const lastUserIdRef = useRef<string | null>(null);
@@ -50,20 +49,12 @@ export function CartDialog() {
   const [validationIssues, setValidationIssues] = useState<CartValidationIssue[]>([]);
   const [showValidationDialog, setShowValidationDialog] = useState(false);
 
-  // Phone auth flow state
-  const [authStep, setAuthStep] = useState<"none" | "password-new" | "password-existing" | "forgot-sent" | "verify-email" | "email-mismatch">("none");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
-  const [authError, setAuthError] = useState("");
-  const [authLoading, setAuthLoading] = useState(false);
-  const [resetEmailMasked, setResetEmailMasked] = useState("");
-
-  // Email verification state
-  const [emailError, setEmailError] = useState("");
-  const [emailVerified, setEmailVerified] = useState(false);
-  const [verificationCode, setVerificationCode] = useState(["", "", "", ""]);
-  const [storedAccountEmail, setStoredAccountEmail] = useState(""); // masked email from DB for existing user
-  const [storedAccountEmailRaw, setStoredAccountEmailRaw] = useState(""); // raw email from DB
+  // SMS auth flow state
+  const [smsStep, setSmsStep] = useState<"none" | "code" | "profile">("none");
+  const [smsCode, setSmsCode] = useState(["", "", "", ""]);
+  const [smsError, setSmsError] = useState("");
+  const [smsLoading, setSmsLoading] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Settlement dropdown state
@@ -84,34 +75,19 @@ export function CartDialog() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  // Email onBlur — check uniqueness for new users
-  const handleEmailBlur = async () => {
-    if (!email || !email.includes("@")) return;
-    setEmailError("");
-    setEmailVerified(false);
-    try {
-      const { exists } = await authApi.checkEmail(email);
-      if (exists) {
-        setEmailError("Пользователь с таким email уже существует. Используйте другой адрес.");
-      }
-    } catch {
-      // ignore
-    }
-  };
-
   // Handle verification code input
   const handleCodeInput = (index: number, value: string) => {
     if (!/^\d*$/.test(value)) return;
-    const newCode = [...verificationCode];
+    const newCode = [...smsCode];
     newCode[index] = value.slice(-1);
-    setVerificationCode(newCode);
+    setSmsCode(newCode);
     if (value && index < 3) {
       codeInputRefs.current[index + 1]?.focus();
     }
   };
 
   const handleCodeKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
+    if (e.key === "Backspace" && !smsCode[index] && index > 0) {
       codeInputRefs.current[index - 1]?.focus();
     }
   };
@@ -120,51 +96,8 @@ export function CartDialog() {
     const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
     if (pasted.length === 4) {
       e.preventDefault();
-      setVerificationCode(pasted.split(""));
+      setSmsCode(pasted.split(""));
       codeInputRefs.current[3]?.focus();
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    const code = verificationCode.join("");
-    if (code.length !== 4) {
-      setAuthError("Введите 4-значный код");
-      return;
-    }
-    setAuthLoading(true);
-    setAuthError("");
-    try {
-      await authApi.verifyEmailCode(email, code);
-      setEmailVerified(true);
-      // Determine next step
-      if (authStep === "verify-email" && storedAccountEmailRaw) {
-        // Existing user verifying new email → show password modal
-        setAuthStep("password-existing");
-      } else {
-        // New user → show registration modal
-        setAuthStep("password-new");
-      }
-    } catch (err: unknown) {
-      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Неверный код";
-      setAuthError(msg);
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleEmailMismatchVerify = async () => {
-    // Send code to new email
-    setAuthLoading(true);
-    setAuthError("");
-    try {
-      await authApi.sendEmailCode(email);
-      setVerificationCode(["", "", "", ""]);
-      setAuthStep("verify-email");
-    } catch (err: unknown) {
-      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки кода";
-      setAuthError(msg);
-    } finally {
-      setAuthLoading(false);
     }
   };
 
@@ -279,46 +212,20 @@ export function CartDialog() {
       return;
     }
 
-    // Not logged in — check phone
+    // Not logged in — send SMS code
     if (!phone || phone.length < 12) return;
-    if (!email) return;
-    if (emailError) return;
+    if (!customerName.trim()) return;
+
     setSubmitting(true);
+    setSmsError("");
     try {
-      const res = await authApi.checkPhone(phone);
-      if (res.exists) {
-        // Существующий пользователь — сверяем email
-        const storedRaw = res.emailRaw || "";
-        setStoredAccountEmail(res.email || "");
-        setStoredAccountEmailRaw(storedRaw);
-        if (storedRaw.toLowerCase() === email.toLowerCase()) {
-          // Email совпадает — сразу модалка пароля
-          setAuthStep("password-existing");
-        } else {
-          // Email не совпадает — показываем модалку несовпадения
-          setAuthStep("email-mismatch");
-        }
-      } else {
-        // Новый пользователь
-        if (emailVerified) {
-          // Email уже верифицирован — сразу к паролю
-          setAuthStep("password-new");
-        } else {
-          // Нужна верификация email
-          try {
-            await authApi.sendEmailCode(email);
-          } catch (err: unknown) {
-            const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки кода";
-            setAuthError(msg);
-            setSubmitting(false);
-            return;
-          }
-          setVerificationCode(["", "", "", ""]);
-          setAuthStep("verify-email");
-        }
-      }
-    } catch {
-      setAuthError("Ошибка проверки телефона");
+      const res = await authApi.sendSmsCode(phone);
+      setIsNewUser(res.isNewUser);
+      setSmsCode(["", "", "", ""]);
+      setSmsStep("code");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки SMS";
+      setSmsError(msg);
     } finally {
       setSubmitting(false);
     }
@@ -366,62 +273,47 @@ export function CartDialog() {
     }
   };
 
-  const handleAuthSubmit = async () => {
-    setAuthError("");
+  const handleVerifySmsCode = async () => {
+    const code = smsCode.join("");
+    if (code.length !== 4) {
+      setSmsError("Введите 4-значный код");
+      return;
+    }
+    setSmsLoading(true);
+    setSmsError("");
+    try {
+      const res = await authApi.verifySmsCode({
+        phone,
+        code,
+        name: customerName,
+        addressLine,
+        settlement: selectedSettlement?.code || "",
+      });
+      loginWithToken(res.accessToken, res.user);
+      setSmsStep("none");
+      setSmsCode(["", "", "", ""]);
+      // Сразу оформляем заказ после авторизации
+      await submitOrder();
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Неверный код";
+      setSmsError(msg);
+    } finally {
+      setSmsLoading(false);
+    }
+  };
 
-    if (authStep === "password-new") {
-      if (authPassword.length < 6) {
-        setAuthError("Пароль должен содержать минимум 6 символов");
-        return;
-      }
-      if (authPassword !== authPasswordConfirm) {
-        setAuthError("Пароли не совпадают");
-        return;
-      }
-      setAuthLoading(true);
-      try {
-        const res = await authApi.registerByPhone({
-          phone,
-          password: authPassword,
-          name: customerName,
-          addressLine,
-          settlement: selectedSettlement?.code || "",
-          email: email || undefined,
-        });
-        loginWithToken(res.accessToken, res.user);
-        setAuthStep("none");
-        setAuthPassword("");
-        setAuthPasswordConfirm("");
-        await submitOrder();
-      } catch (err: unknown) {
-        const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка регистрации";
-        setAuthError(msg);
-      } finally {
-        setAuthLoading(false);
-      }
-    } else if (authStep === "password-existing") {
-      if (!authPassword) {
-        setAuthError("Введите пароль");
-        return;
-      }
-      setAuthLoading(true);
-      try {
-        const res = await authApi.loginByPhone({
-          phone,
-          password: authPassword,
-          email: email || undefined,
-          ...(emailVerified ? { verifiedEmail: email } : {}),
-        });
-        loginWithToken(res.accessToken, res.user);
-        setAuthStep("none");
-        setAuthPassword("");
-        await submitOrder();
-      } catch (err: unknown) {
-        const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Неверный пароль";
-        setAuthError(msg);
-      } finally {
-        setAuthLoading(false);
-      }
+  const handleResendSms = async () => {
+    setSmsLoading(true);
+    setSmsError("");
+    try {
+      await authApi.sendSmsCode(phone);
+      setSmsCode(["", "", "", ""]);
+      setSmsError("");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки SMS";
+      setSmsError(msg);
+    } finally {
+      setSmsLoading(false);
     }
   };
 
@@ -431,11 +323,6 @@ export function CartDialog() {
         <DialogTitle className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap text-[21px] leading-6 tracking-[-0.3px] xl:text-2xl xl:leading-7 xl:tracking-[-0.4px] font-bold text-[#404040]">
           <FiShoppingBag />
           Корзина
-{/*           {itemCount > 0 && (
-            <span className="text-sm font-normal text-muted-foreground">
-              {itemCount} шт.
-            </span>
-          )} */}
         </DialogTitle>
       </DialogHeader>
 
@@ -617,12 +504,6 @@ export function CartDialog() {
             </div>
           </div>
 
-{/*           {user && (
-            <div className="rounded-md border border-border bg-accent/30 px-3 py-2 text-xs text-muted-foreground">
-              Вошли как <span className="font-semibold text-foreground">{user.login}</span>. Заказ будет привязан к вашему аккаунту.
-            </div>
-          )} */}
-
           {user && !isEditingProfile ? (
             <>
               <div className="space-y-2 rounded-md border border-border bg-accent/20 px-3 py-3">
@@ -683,32 +564,6 @@ export function CartDialog() {
                   onChange={(e) => setPhone(formatRuPhone(e.target.value))}
                   required
                 />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium" htmlFor="cart-email">
-                  Электронный адрес
-                </label>
-                <Input
-                  id="cart-email"
-                  type="email"
-                  inputMode="email"
-                  autoComplete="email"
-                  placeholder="example@mail.ru"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setEmailError(""); setEmailVerified(false); }}
-                  onBlur={handleEmailBlur}
-                  required
-                  className={emailError ? "border-red-400 focus-visible:ring-red-400" : ""}
-                />
-                {emailError && (
-                  <p className="text-xs text-red-600 mt-1">{emailError}</p>
-                )}
-                {emailVerified && (
-                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
-                    Email подтверждён
-                  </p>
-                )}
               </div>
               <div className="space-y-1" ref={settlementDropdownRef}>
                 <label className="text-sm font-medium">Населённый пункт</label>
@@ -818,6 +673,12 @@ export function CartDialog() {
             />
           </div>
 
+          {smsError && smsStep === "none" && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">
+              {smsError}
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={
@@ -833,97 +694,29 @@ export function CartDialog() {
 
       </div>
 
-      {/* Модальное окно — новый клиент (регистрация по телефону) */}
-      {authStep === "password-new" && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.4)" }}
-          onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); setAuthPasswordConfirm(""); }}
-        >
-          <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex flex-col items-center text-center gap-2">
-              <div className="w-14 h-14 rounded-full bg-[#6206c7]/10 flex items-center justify-center">
-                <span className="text-2xl">👋</span>
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">Добро пожаловать!</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Вы наш новый клиент! Придумайте пароль для личного кабинета, чтобы отслеживать заказы.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Пароль</label>
-                <input
-                  type="password"
-                  placeholder="Минимум 6 символов"
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7]"
-                  autoFocus
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-sm font-medium text-gray-700">Подтвердите пароль</label>
-                <input
-                  type="password"
-                  placeholder="Повторите пароль"
-                  value={authPasswordConfirm}
-                  onChange={(e) => setAuthPasswordConfirm(e.target.value)}
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7]"
-                />
-              </div>
-            </div>
-            {authError && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
-                {authError}
-              </div>
-            )}
-            <div className="flex gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); setAuthPasswordConfirm(""); }}
-                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleAuthSubmit}
-                disabled={authLoading}
-                className="flex-1 h-11 rounded-xl bg-[#6206c7] hover:bg-[#5205A8] text-white text-sm font-semibold transition-colors disabled:opacity-50"
-              >
-                {authLoading ? "Создаём..." : "Создать аккаунт"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно — существующий клиент (вход по телефону) */}
-      {authStep === "password-existing" && (
+      {/* Модальное окно: SMS-код подтверждения */}
+      {smsStep === "code" && (
         <div
           className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
           style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); }}
+          onClick={() => { setSmsStep("none"); setSmsError(""); setSmsCode(["", "", "", ""]); }}
         >
           <div
             className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header gradient strip */}
-            <div className="relative overflow-hidden rounded-t-3xl sm:rounded-t-3xl bg-gradient-to-br from-[#6206c7] to-[#8b3ce8] px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
+            <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-[#6206c7] to-[#8b3ce8] px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
               <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
               <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
               <div className="relative flex flex-col items-center text-center gap-3">
                 <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                  <span className="text-3xl sm:text-[34px]">👋</span>
+                  <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                  </svg>
                 </div>
-                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">С возвращением!</h3>
-                <p className="text-sm text-white/75 leading-relaxed max-w-[280px]">
-                  Мы нашли ваш аккаунт по номеру
+                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Подтвердите номер</h3>
+                <p className="text-sm text-white/80 leading-relaxed max-w-[280px]">
+                  Мы отправили SMS с кодом на
                 </p>
                 <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
                   <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
@@ -931,167 +724,9 @@ export function CartDialog() {
                 </div>
               </div>
             </div>
-
-            {/* Body */}
-            <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
-              <div className="space-y-1.5">
-                <label className="text-sm font-medium text-gray-700">Пароль</label>
-                <div className="relative">
-                  <input
-                    type="password"
-                    placeholder="Введите пароль"
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    className="w-full h-12 rounded-xl border border-gray-200 bg-gray-50/50 px-4 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7] focus:bg-white transition-colors"
-                    autoFocus
-                  />
-                </div>
-              </div>
-
-              {authError && (
-                <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 flex items-start gap-2">
-                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
-                  {authError}
-                </div>
-              )}
-
-              <button
-                type="button"
-                onClick={async () => {
-                  setAuthError("");
-                  setAuthLoading(true);
-                  try {
-                    const res = await authApi.requestPasswordReset(phone);
-                    setResetEmailMasked(res.email);
-                    setAuthStep("forgot-sent");
-                  } catch (err: unknown) {
-                    const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки письма";
-                    setAuthError(msg);
-                  } finally {
-                    setAuthLoading(false);
-                  }
-                }}
-                disabled={authLoading}
-                className="text-sm text-[#6206c7] hover:text-[#5205A8] font-medium self-start -mt-1 disabled:opacity-50 transition-colors"
-              >
-                Не помню пароль
-              </button>
-
-              <div className="flex gap-3 pt-1 pb-1 sm:pb-0">
-                <button
-                  type="button"
-                  onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); }}
-                  className="flex-1 h-12 sm:h-[50px] rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAuthSubmit}
-                  disabled={authLoading}
-                  className="flex-[1.4] h-12 sm:h-[50px] rounded-xl bg-[#6206c7] hover:bg-[#5205A8] active:bg-[#4604a0] text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-[#6206c7]/25"
-                >
-                  {authLoading ? "Входим..." : "Войти и оформить"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно: сброс отправлен */}
-      {authStep === "forgot-sent" && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => { setAuthStep("password-existing"); setAuthError(""); }}
-        >
-          <div
-            className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="relative overflow-hidden rounded-t-3xl sm:rounded-t-3xl bg-gradient-to-br from-emerald-500 to-teal-600 px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
-              <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
-              <div className="relative flex flex-col items-center text-center gap-3">
-                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                  <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                  </svg>
-                </div>
-                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Письмо отправлено</h3>
-                <p className="text-sm text-white/80 leading-relaxed max-w-[280px]">
-                  Ссылка для сброса пароля отправлена на
-                </p>
-                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
-                  <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
-                  <span className="text-[15px] sm:text-base font-semibold text-white tracking-wide">{resetEmailMasked}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
-              <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                <div className="text-sm text-amber-800 leading-relaxed">
-                  Перейдите по ссылке из письма, чтобы установить новый пароль. Ссылка действительна <span className="font-semibold">1 час</span>.
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
-                <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-17.5 0V6.75A2.25 2.25 0 014.5 4.5h15a2.25 2.25 0 012.25 2.25v6.75m-19.5 0v4.5A2.25 2.25 0 004.5 19.5h15a2.25 2.25 0 002.25-2.25v-4.5" /></svg>
-                <div className="text-sm text-gray-500 leading-relaxed">
-                  Не нашли письмо? Проверьте папку <span className="font-medium text-gray-700">«Спам»</span>.
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => { setAuthStep("password-existing"); setAuthError(""); }}
-                className="w-full h-12 sm:h-[50px] rounded-xl bg-[#6206c7] hover:bg-[#5205A8] active:bg-[#4604a0] text-white text-sm font-semibold transition-colors shadow-lg shadow-[#6206c7]/25 mb-1 sm:mb-0"
-              >
-                Понятно
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно: верификация email (4-значный код) */}
-      {authStep === "verify-email" && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => { setAuthStep("none"); setAuthError(""); setVerificationCode(["", "", "", ""]); }}
-        >
-          <div
-            className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-blue-500 to-indigo-600 px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
-              <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
-              <div className="relative flex flex-col items-center text-center gap-3">
-                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                  <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
-                  </svg>
-                </div>
-                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Подтвердите email</h3>
-                <p className="text-sm text-white/80 leading-relaxed max-w-[280px]">
-                  Мы отправили 4-значный код на
-                </p>
-                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
-                  <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
-                  <span className="text-[15px] sm:text-base font-semibold text-white tracking-wide">{email}</span>
-                </div>
-              </div>
-            </div>
             <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
               <div className="flex justify-center gap-3" onPaste={handleCodePaste}>
-                {verificationCode.map((digit, i) => (
+                {smsCode.map((digit, i) => (
                   <input
                     key={i}
                     ref={(el) => { codeInputRefs.current[i] = el; }}
@@ -1102,102 +737,39 @@ export function CartDialog() {
                     onChange={(e) => handleCodeInput(i, e.target.value)}
                     onKeyDown={(e) => handleCodeKeyDown(i, e)}
                     autoFocus={i === 0}
-                    className="w-14 h-16 sm:w-16 sm:h-[72px] text-center text-2xl sm:text-3xl font-bold rounded-xl border-2 border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:bg-white transition-colors"
+                    className="w-14 h-16 sm:w-16 sm:h-[72px] text-center text-2xl sm:text-3xl font-bold rounded-xl border-2 border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7] focus:bg-white transition-colors"
                   />
                 ))}
               </div>
-              {authError && (
+              {smsError && (
                 <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 flex items-start gap-2">
                   <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
-                  {authError}
+                  {smsError}
                 </div>
               )}
-              <div className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
-                <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-17.5 0V6.75A2.25 2.25 0 014.5 4.5h15a2.25 2.25 0 012.25 2.25v6.75m-19.5 0v4.5A2.25 2.25 0 004.5 19.5h15a2.25 2.25 0 002.25-2.25v-4.5" /></svg>
-                <div className="text-sm text-gray-500 leading-relaxed">
-                  Не нашли письмо? Проверьте папку <span className="font-medium text-gray-700">«Спам»</span>.
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={handleResendSms}
+                disabled={smsLoading}
+                className="text-sm text-[#6206c7] hover:text-[#5205A8] font-medium self-center disabled:opacity-50 transition-colors"
+              >
+                Отправить код повторно
+              </button>
               <div className="flex gap-3 pt-1 pb-1 sm:pb-0">
                 <button
                   type="button"
-                  onClick={() => { setAuthStep("none"); setAuthError(""); setVerificationCode(["", "", "", ""]); }}
+                  onClick={() => { setSmsStep("none"); setSmsError(""); setSmsCode(["", "", "", ""]); }}
                   className="flex-1 h-12 sm:h-[50px] rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                 >
                   Отмена
                 </button>
                 <button
                   type="button"
-                  onClick={handleVerifyCode}
-                  disabled={authLoading || verificationCode.join("").length !== 4}
-                  className="flex-[1.4] h-12 sm:h-[50px] rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-blue-600/25"
+                  onClick={handleVerifySmsCode}
+                  disabled={smsLoading || smsCode.join("").length !== 4}
+                  className="flex-[1.4] h-12 sm:h-[50px] rounded-xl bg-[#6206c7] hover:bg-[#5205A8] active:bg-[#4604a0] text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-[#6206c7]/25"
                 >
-                  {authLoading ? "Проверяем..." : "Подтвердить"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Модальное окно: email не совпадает (существующий пользователь) */}
-      {authStep === "email-mismatch" && (
-        <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
-          style={{ background: "rgba(0,0,0,0.5)" }}
-          onClick={() => { setAuthStep("none"); setAuthError(""); }}
-        >
-          <div
-            className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-amber-500 to-orange-600 px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
-              <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
-              <div className="relative flex flex-col items-center text-center gap-3">
-                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                  <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Email не совпадает</h3>
-                <p className="text-sm text-white/80 leading-relaxed max-w-[300px]">
-                  В вашем аккаунте указан другой email
-                </p>
-                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
-                  <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
-                  <span className="text-[15px] sm:text-base font-semibold text-white tracking-wide">{storedAccountEmail}</span>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
-              <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
-                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
-                <div className="text-sm text-amber-800 leading-relaxed">
-                  Вы ввели <span className="font-semibold">{email}</span>. Хотите обновить email? Мы отправим код подтверждения на новый адрес.
-                </div>
-              </div>
-              {authError && (
-                <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 flex items-start gap-2">
-                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
-                  {authError}
-                </div>
-              )}
-              <div className="flex gap-3 pt-1 pb-1 sm:pb-0">
-                <button
-                  type="button"
-                  onClick={() => { setAuthStep("none"); setAuthError(""); }}
-                  className="flex-1 h-12 sm:h-[50px] rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="button"
-                  onClick={handleEmailMismatchVerify}
-                  disabled={authLoading}
-                  className="flex-[1.4] h-12 sm:h-[50px] rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-amber-500/25"
-                >
-                  {authLoading ? "Отправляем..." : "Подтвердить новый email"}
+                  {smsLoading ? "Проверяем..." : "Подтвердить"}
                 </button>
               </div>
             </div>

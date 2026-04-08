@@ -24,21 +24,6 @@ export type AuthResponse = {
   accessToken: string;
 };
 
-export type RegisterPayload = {
-  login: string;
-  password: string;
-  settlement: string;
-  email: string;
-  phone: string;
-  name: string;
-  addressLine: string;
-};
-
-export type LoginPayload = {
-  login: string;
-  password: string;
-};
-
 export type UpdateProfilePayload = {
   name?: string;
   phone?: string;
@@ -46,48 +31,18 @@ export type UpdateProfilePayload = {
   settlement?: string;
 };
 
-export type CheckPhoneResponse = {
-  exists: boolean;
-  email?: string;
-  emailRaw?: string;
-};
-
-export type CheckEmailResponse = {
-  exists: boolean;
-};
-
-export type SendEmailCodeResponse = {
+export type SendSmsCodeResponse = {
   sent: boolean;
+  isNewUser: boolean;
+  userName: string | null;
 };
 
-export type VerifyEmailCodeResponse = {
-  valid: boolean;
-};
-
-export type LoginByPhonePayload = {
+export type VerifySmsCodePayload = {
   phone: string;
-  password: string;
-  email?: string;
-  verifiedEmail?: string;
-};
-
-export type RegisterByPhonePayload = {
-  phone: string;
-  password: string;
-  name: string;
-  addressLine: string;
-  settlement: string;
-  email?: string;
-};
-
-export type RequestPasswordResetResponse = {
-  message: string;
-  email: string;
-};
-
-export type ConfirmPasswordResetPayload = {
-  token: string;
-  password: string;
+  code: string;
+  name?: string;
+  addressLine?: string;
+  settlement?: string;
 };
 
 export type UserOrderItem = {

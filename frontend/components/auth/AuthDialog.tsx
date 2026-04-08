@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,68 +11,39 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useAuth } from "./AuthProvider";
-import { useSettlement } from "../settlement/SettlementProvider";
 import { formatRuPhone } from "../../shared/phone/format";
+import { authApi } from "../../features/auth/api";
 
 type AuthDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialMode?: "login" | "register";
   onAuthenticated?: () => void;
-  onRegisteredContacts?: (contacts: {
-    name: string;
-    phone: string;
-    addressLine: string;
-  }) => void;
 };
-
-const passwordHint = "Минимум 6 символов, буквы и цифры.";
 
 export function AuthDialog({
   open,
   onOpenChange,
-  initialMode = "login",
   onAuthenticated,
-  onRegisteredContacts,
 }: AuthDialogProps) {
-  const { settlements, selectedSettlement, selectSettlement } = useSettlement();
-  const { user, register, login, isLoading, error, clearError } = useAuth();
+  const { user, loginWithToken, clearError } = useAuth();
 
-  const [mode, setMode] = useState<"login" | "register">(initialMode);
-  const [registerForm, setRegisterForm] = useState<{
-    login: string;
-    password: string;
-    name: string;
-    phone: string;
-    email: string;
-    addressLine: string;
-    settlement: string;
-  }>({
-    login: "",
-    password: "",
-    name: "",
-    phone: "",
-    email: "",
-    addressLine: "",
-    settlement: selectedSettlement?.code ?? settlements[0]?.code ?? "",
-  });
-  const [loginForm, setLoginForm] = useState({ login: "", password: "" });
+  const [step, setStep] = useState<"phone" | "code">("phone");
+  const [phone, setPhone] = useState("");
+  const [smsCode, setSmsCode] = useState(["", "", "", ""]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    setMode(initialMode);
-    if (open) clearError();
-  }, [clearError, initialMode, open]);
-
-  useEffect(() => {
-    setRegisterForm((prev) => ({
-      ...prev,
-      settlement:
-        selectedSettlement?.code ??
-        prev.settlement ??
-        settlements[0]?.code ??
-        "",
-    }));
-  }, [selectedSettlement, settlements]);
+    if (open) {
+      clearError();
+      setStep("phone");
+      setPhone("");
+      setSmsCode(["", "", "", ""]);
+      setError("");
+    }
+  }, [clearError, open]);
 
   useEffect(() => {
     if (open && user) {
@@ -81,244 +52,164 @@ export function AuthDialog({
     }
   }, [open, onAuthenticated, onOpenChange, user]);
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const settlementCode =
-      registerForm.settlement ||
-      selectedSettlement?.code ||
-      settlements[0]?.code;
-
-    if (!settlementCode) return;
-
-    try {
-      await register({
-        login: registerForm.login.trim(),
-        password: registerForm.password,
-        settlement: settlementCode,
-        email: registerForm.email.trim(),
-        phone: registerForm.phone.trim(),
-        name: registerForm.name.trim(),
-        addressLine: registerForm.addressLine.trim(),
-      });
-
-      onRegisteredContacts?.({
-        name: registerForm.name.trim(),
-        phone: registerForm.phone.trim(),
-        addressLine: registerForm.addressLine.trim(),
-      });
-
-      selectSettlement(settlementCode);
-
-      setLoginForm((prev) => ({ ...prev, login: registerForm.login }));
-      setMode("login");
-    } catch {
-      // Ошибку покажем из состояния авторизации
+  const handleCodeInput = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const newCode = [...smsCode];
+    newCode[index] = value.slice(-1);
+    setSmsCode(newCode);
+    if (value && index < 3) {
+      codeInputRefs.current[index + 1]?.focus();
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleCodeKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !smsCode[index] && index > 0) {
+      codeInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleCodePaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    if (pasted.length === 4) {
+      e.preventDefault();
+      setSmsCode(pasted.split(""));
+      codeInputRefs.current[3]?.focus();
+    }
+  };
+
+  const handleSendCode = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!phone || phone.length < 12) return;
+    setLoading(true);
+    setError("");
     try {
-      await login({
-        login: loginForm.login.trim(),
-        password: loginForm.password,
-      });
+      await authApi.sendSmsCode(phone);
+      setSmsCode(["", "", "", ""]);
+      setStep("code");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки SMS";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const code = smsCode.join("");
+    if (code.length !== 4) {
+      setError("Введите 4-значный код");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const res = await authApi.verifySmsCode({ phone, code });
+      loginWithToken(res.accessToken, res.user);
       onAuthenticated?.();
       onOpenChange(false);
-    } catch {
-      // Ошибку покажем из состояния авторизации
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Неверный код";
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const settlementsOptions = useMemo(
-    () => settlements.map((s) => ({ value: s.code, label: s.title })),
-    [settlements],
-  );
-
-  const showError = error && (
-    <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-      {error}
-    </div>
-  );
+  const handleResendCode = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      await authApi.sendSmsCode(phone);
+      setSmsCode(["", "", "", ""]);
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки SMS";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Личный кабинет</DialogTitle>
+          <DialogTitle>{step === "phone" ? "Вход" : "Код подтверждения"}</DialogTitle>
           <DialogDescription>
-            Зарегистрируйтесь или войдите, чтобы оформлять заказы и сохранять избранное.
+            {step === "phone"
+              ? "Введите номер телефона, и мы отправим SMS с кодом для входа."
+              : `Мы отправили SMS с кодом на ${phone}`}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-2">
-          <Button
-            variant={mode === "register" ? "default" : "outline"}
-            onClick={() => {
-              clearError();
-              setMode("register");
-            }}
-          >
-            Регистрация
-          </Button>
-          <Button
-            variant={mode === "login" ? "default" : "outline"}
-            onClick={() => {
-              clearError();
-              setMode("login");
-            }}
-          >
-            Вход
-          </Button>
-        </div>
+        {error && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+            {error}
+          </div>
+        )}
 
-        {mode === "register" ? (
-          <form className="space-y-3" onSubmit={handleRegister}>
-            {showError}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {step === "phone" ? (
+          <form className="space-y-4" onSubmit={handleSendCode}>
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="auth-phone">Телефон</label>
               <Input
-                required
-                pattern="[A-Za-z0-9_.-]{3,}"
-                title="Только латиница и цифры, минимум 3 символа"
-                placeholder="Логин (латиница)"
-                value={registerForm.login}
-                onChange={(e) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    login: e.target.value,
-                  }))
-                }
-              />
-              <Input
-                required
-                type="password"
-                minLength={6}
-                placeholder="Пароль"
-                value={registerForm.password}
-                onChange={(e) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    password: e.target.value,
-                  }))
-                }
-              />
-              <Input
-                required
-                placeholder="Имя"
-                value={registerForm.name}
-                onChange={(e) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-              />
-              <Input
-                required
+                id="auth-phone"
                 type="tel"
                 inputMode="tel"
                 autoComplete="tel"
                 placeholder="+7 (___) ___-__-__"
-                value={registerForm.phone}
-                onChange={(e) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    phone: formatRuPhone(e.target.value),
-                  }))
-                }
-              />
-              <Input
+                value={phone}
+                onChange={(e) => setPhone(formatRuPhone(e.target.value))}
                 required
-                type="email"
-                placeholder="Email"
-                value={registerForm.email}
-                onChange={(e) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    email: e.target.value,
-                  }))
-                }
-              />
-              <Input
-                required
-                placeholder="Адрес (улица, дом)"
-                value={registerForm.addressLine}
-                onChange={(e) =>
-                  setRegisterForm((prev) => ({
-                    ...prev,
-                    addressLine: e.target.value,
-                  }))
-                }
+                autoFocus
               />
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <label className="text-sm font-medium">
-                <span className="block mb-1 text-muted-foreground">
-                  Село проживания
-                </span>
-                <select
-                  className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                  value={
-                    registerForm.settlement ||
-                    selectedSettlement?.code ||
-                    settlements[0]?.code ||
-                    ""
-                  }
-                  onChange={(e) =>
-                    setRegisterForm((prev) => ({
-                      ...prev,
-                      settlement: e.target.value,
-                    }))
-                  }
-                >
-                  {settlementsOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="text-xs text-muted-foreground flex items-center">
-                {passwordHint}
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Регистрируем..." : "Зарегистрироваться"}
-              </Button>
-            </div>
+            <Button type="submit" className="w-full" disabled={loading || phone.length < 12}>
+              {loading ? "Отправляем..." : "Получить код"}
+            </Button>
           </form>
         ) : (
-          <form className="space-y-3" onSubmit={handleLogin}>
-            {showError}
-            <Input
-              required
-              placeholder="Логин"
-              value={loginForm.login}
-              onChange={(e) =>
-                setLoginForm((prev) => ({ ...prev, login: e.target.value }))
-              }
-            />
-            <Input
-              required
-              type="password"
-              placeholder="Пароль"
-              value={loginForm.password}
-              onChange={(e) =>
-                setLoginForm((prev) => ({ ...prev, password: e.target.value }))
-              }
-            />
-            <div className="flex justify-between items-center">
-              <div className="text-xs text-muted-foreground">
-                Введите логин и пароль, указанные при регистрации.
-              </div>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Входим..." : "Войти"}
-              </Button>
+          <div className="space-y-4">
+            <div className="flex justify-center gap-3" onPaste={handleCodePaste}>
+              {smsCode.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={(el) => { codeInputRefs.current[i] = el; }}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleCodeInput(i, e.target.value)}
+                  onKeyDown={(e) => handleCodeKeyDown(i, e)}
+                  autoFocus={i === 0}
+                  className="w-14 h-16 text-center text-2xl font-bold rounded-xl border-2 border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary focus:bg-white transition-colors"
+                />
+              ))}
             </div>
-          </form>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleVerifyCode}
+                disabled={loading || smsCode.join("").length !== 4}
+                className="w-full"
+              >
+                {loading ? "Проверяем..." : "Подтвердить"}
+              </Button>
+              <button
+                type="button"
+                onClick={handleResendCode}
+                disabled={loading}
+                className="text-sm text-primary hover:underline font-medium self-center disabled:opacity-50"
+              >
+                Отправить код повторно
+              </button>
+              <button
+                type="button"
+                onClick={() => { setStep("phone"); setError(""); setSmsCode(["", "", "", ""]); }}
+                className="text-sm text-muted-foreground hover:underline self-center"
+              >
+                Изменить номер
+              </button>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>

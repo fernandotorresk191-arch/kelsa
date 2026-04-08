@@ -372,6 +372,17 @@ model EmailVerification {
   @@index([email, code])
 }
 
+model SmsVerification {
+  id        String    @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([phone, code])
+}
+
 // ==================== ЧАТ ПО ЗАКАЗАМ ====================
 
 enum ChatSender {

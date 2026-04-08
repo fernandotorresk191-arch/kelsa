@@ -8,120 +8,37 @@ import { Body, Controller, Delete, Get, NotFoundException, Param, Patch, Post, R
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import * as crypto from 'crypto';
-import * as nodemailer from 'nodemailer';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { PrismaService } from 'prisma/prisma.service';
 import { JwtGuard } from './jwt.guard';
+import { SmsService } from './sms.service';
 
 
-// 2) DTO
-class RegisterDto {
-  @IsString()
-  @MinLength(3)
-  login: string
-
-  @IsString()
-  @MinLength(6)
-  password: string
-
-  @IsString()
-  settlement: string
-
-  @IsEmail()
-  email: string
-
-  @IsString()
-  phone: string
-
-  @IsString()
-  name: string
-
-  @IsString()
-  addressLine: string
-}
-
-class LoginDto {
-  @IsString()
-  login: string
-
-  @IsString()
-  password: string
-}
-
-class CheckPhoneDto {
+// DTO
+class SendSmsCodeDto {
   @IsString()
   phone: string
 }
 
-class LoginByPhoneDto {
+class VerifySmsCodeDto {
   @IsString()
   phone: string
-
-  @IsString()
-  password: string
-
-  @IsOptional()
-  @IsEmail()
-  email?: string
-
-  @IsOptional()
-  @IsEmail()
-  verifiedEmail?: string
-}
-
-class RegisterByPhoneDto {
-  @IsString()
-  phone: string
-
-  @IsString()
-  @MinLength(6)
-  password: string
-
-  @IsString()
-  name: string
-
-  @IsString()
-  addressLine: string
-
-  @IsString()
-  settlement: string
-
-  @IsOptional()
-  @IsEmail()
-  email?: string
-}
-
-class RequestPasswordResetDto {
-  @IsString()
-  phone: string
-}
-
-class ConfirmPasswordResetDto {
-  @IsString()
-  token: string
-
-  @IsString()
-  @MinLength(6)
-  password: string
-}
-
-class CheckEmailDto {
-  @IsEmail()
-  email: string
-}
-
-class SendEmailCodeDto {
-  @IsEmail()
-  email: string
-}
-
-class VerifyEmailCodeDto {
-  @IsEmail()
-  email: string
 
   @IsString()
   code: string
+
+  // Для новых пользователей — данные профиля
+  @IsOptional()
+  @IsString()
+  name?: string
+
+  @IsOptional()
+  @IsString()
+  addressLine?: string
+
+  @IsOptional()
+  @IsString()
+  settlement?: string
 }
 
 class FavoriteDto {
@@ -147,8 +64,6 @@ class UpdateProfileDto {
   settlement?: string
 }
 
-// 3) Guard is now in jwt.guard.ts file
-
 
 @Controller('v1')
 export class AuthController {
@@ -157,21 +72,8 @@ export class AuthController {
     private readonly jwt: JwtService,
     private readonly guard: JwtGuard,
     private readonly config: ConfigService,
+    private readonly sms: SmsService,
   ) {}
-
-  private getMailTransport() {
-    const host = this.config.get<string>('SMTP_HOST') ?? '127.0.0.1';
-    const port = Number(this.config.get<string>('SMTP_PORT') ?? '25');
-    const user = this.config.get<string>('SMTP_USER');
-    const pass = this.config.get<string>('SMTP_PASS');
-    return nodemailer.createTransport({
-      host,
-      port,
-      secure: port === 465,
-      ...(user && pass ? { auth: { user, pass } } : {}),
-      tls: { rejectUnauthorized: false },
-    });
-  }
 
   // Справочник сёл для фронта — берётся из активных зон доставки
   @Get('settlements')
@@ -198,65 +100,8 @@ export class AuthController {
     return zone?.settlementTitle || code;
   }
 
-  // Регистрация
-  @Post('auth/register')
-  async register(@Body() dto: RegisterDto) {
-    const existing = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ login: dto.login }, { email: dto.email }],
-      },
-    })
-
-    if (existing) {
-      const field = existing.login === dto.login ? 'Login' : 'Email'
-      throw new UnauthorizedException(`${field} already exists`)
-    }
-
-    const passwordHash = await bcrypt.hash(dto.password, 10)
-
-    const user = await this.prisma.user.create({
-      data: {
-        login: dto.login,
-        email: dto.email,
-        name: dto.name,
-        phone: dto.phone,
-        addressLine: dto.addressLine,
-        passwordHash,
-        settlement: dto.settlement as any, // enum Prisma
-      },
-      select: {
-        id: true,
-        login: true,
-        name: true,
-        phone: true,
-        addressLine: true,
-        settlement: true,
-        createdAt: true,
-      },
-    })
-
-    const accessToken = this.jwt.sign({ sub: user.id })
-
-    return {
-      user: {
-        ...user,
-        settlementTitle: await this.getSettlementTitle(user.settlement),
-      },
-      accessToken,
-    }
-  }
-
-  // Логин
-  @Post('auth/login')
-  async login(@Body() dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { login: dto.login } });
-    if (!user) throw new UnauthorizedException('Invalid credentials');
-
-    const ok = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!ok) throw new UnauthorizedException('Invalid credentials');
-
+  private async buildUserResponse(user: { id: string; login: string; name: string; phone: string; addressLine: string; settlement: string; createdAt?: Date }) {
     const accessToken = this.jwt.sign({ sub: user.id });
-
     return {
       user: {
         id: user.id,
@@ -266,174 +111,76 @@ export class AuthController {
         addressLine: user.addressLine,
         settlement: user.settlement,
         settlementTitle: await this.getSettlementTitle(user.settlement),
+        createdAt: user.createdAt,
       },
       accessToken,
-    }
+    };
   }
 
-  // Проверка существования пользователя по телефону
-  @Post('auth/check-phone')
-  async checkPhone(@Body() dto: CheckPhoneDto) {
-    const user = await this.prisma.user.findFirst({
-      where: { phone: dto.phone },
-      select: { id: true, email: true },
-    })
-    if (!user) return { exists: false }
-    // Маскируем email: sh***@gmail.com
-    const masked = user.email.replace(/^(.{2})(.*)(@.+)$/, (_, a, b, c) => a + '*'.repeat(Math.min(b.length, 5)) + c);
-    return { exists: true, email: masked, emailRaw: user.email }
-  }
-
-  // Логин по телефону + пароль
-  @Post('auth/login-by-phone')
-  async loginByPhone(@Body() dto: LoginByPhoneDto) {
-    const user = await this.prisma.user.findFirst({ where: { phone: dto.phone } });
-    if (!user) throw new UnauthorizedException('Пользователь не найден');
-
-    const ok = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!ok) throw new UnauthorizedException('Неверный пароль');
-
-    // Update email: verified email takes priority, otherwise update if current is placeholder
-    if (dto.verifiedEmail) {
-      const emailTaken = await this.prisma.user.findFirst({ where: { email: dto.verifiedEmail, id: { not: user.id } } });
-      if (!emailTaken) {
-        await this.prisma.user.update({ where: { id: user.id }, data: { email: dto.verifiedEmail } });
-      }
-    } else if (dto.email && user.email.endsWith('@kelsa.local')) {
-      const emailTaken = await this.prisma.user.findUnique({ where: { email: dto.email } });
-      if (!emailTaken) {
-        await this.prisma.user.update({ where: { id: user.id }, data: { email: dto.email } });
-      }
+  // Отправка SMS-кода на телефон
+  @Post('auth/send-sms-code')
+  async sendSmsCode(@Body() dto: SendSmsCodeDto) {
+    const phone = dto.phone?.trim();
+    if (!phone || phone.length < 10) {
+      throw new BadRequestException('Некорректный номер телефона');
     }
 
-    const accessToken = this.jwt.sign({ sub: user.id });
-
-    return {
-      user: {
-        id: user.id,
-        login: user.login,
-        name: user.name,
-        phone: user.phone,
-        addressLine: user.addressLine,
-        settlement: user.settlement,
-        settlementTitle: await this.getSettlementTitle(user.settlement),
-      },
-      accessToken,
-    }
-  }
-
-  // Регистрация по телефону (из корзины)
-  @Post('auth/register-by-phone')
-  async registerByPhone(@Body() dto: RegisterByPhoneDto) {
-    const existing = await this.prisma.user.findFirst({
-      where: { phone: dto.phone },
-    })
-    if (existing) {
-      throw new UnauthorizedException('Пользователь с таким телефоном уже существует')
-    }
-
-    const passwordHash = await bcrypt.hash(dto.password, 10)
-
-    // Автогенерация логина; email из формы или автогенерация
-    const phoneDigits = dto.phone.replace(/\D/g, '')
-    const login = `user_${phoneDigits}`
-    let email = dto.email || `${phoneDigits}@kelsa.local`
-
-    // Check email uniqueness; fall back to autogenerated if taken
-    if (dto.email) {
-      const emailTaken = await this.prisma.user.findUnique({ where: { email: dto.email } });
-      if (emailTaken) email = `${phoneDigits}@kelsa.local`;
-    }
-
-    const user = await this.prisma.user.create({
-      data: {
-        login,
-        email,
-        name: dto.name,
-        phone: dto.phone,
-        addressLine: dto.addressLine,
-        passwordHash,
-        settlement: dto.settlement as any,
-      },
-      select: {
-        id: true,
-        login: true,
-        name: true,
-        phone: true,
-        addressLine: true,
-        settlement: true,
-        createdAt: true,
-      },
-    })
-
-    const accessToken = this.jwt.sign({ sub: user.id })
-
-    return {
-      user: {
-        ...user,
-        settlementTitle: await this.getSettlementTitle(user.settlement),
-      },
-      accessToken,
-    }
-  }
-
-  // Проверка существования email в базе
-  @Post('auth/check-email')
-  async checkEmail(@Body() dto: CheckEmailDto) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-      select: { id: true },
-    })
-    return { exists: !!user }
-  }
-
-  // Отправка 4-значного кода верификации на email
-  @Post('auth/send-email-code')
-  async sendEmailCode(@Body() dto: SendEmailCodeDto) {
-    // Rate limit: не чаще 1 раза в минуту на email
-    const recent = await this.prisma.emailVerification.findFirst({
+    // Rate limit: не чаще 1 раза в 60 секунд на один номер
+    const recent = await this.prisma.smsVerification.findFirst({
       where: {
-        email: dto.email,
+        phone,
         createdAt: { gte: new Date(Date.now() - 60_000) },
       },
     });
-    if (recent) throw new BadRequestException('Подождите минуту перед повторной отправкой');
+    if (recent) {
+      throw new BadRequestException('Подождите минуту перед повторной отправкой');
+    }
 
-    const code = String(Math.floor(1000 + Math.random() * 9000)); // 4 цифры
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 час
+    // Rate limit: не более 5 SMS на один номер в сутки
+    const dailyCount = await this.prisma.smsVerification.count({
+      where: {
+        phone,
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+      },
+    });
+    if (dailyCount >= 5) {
+      throw new BadRequestException('Превышен лимит отправок SMS. Попробуйте завтра.');
+    }
 
-    await this.prisma.emailVerification.create({
-      data: { email: dto.email, code, expiresAt },
+    // Отправляем SMS через TargetSMS API
+    const result = await this.sms.sendCode(phone);
+    if (!result.success || !result.code) {
+      throw new BadRequestException(result.error || 'Не удалось отправить SMS');
+    }
+
+    // Сохраняем код в БД
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 минут
+    await this.prisma.smsVerification.create({
+      data: { phone, code: result.code, expiresAt },
     });
 
-    const transporter = this.getMailTransport();
-    await transporter.sendMail({
-      from: this.config.get<string>('SMTP_FROM') || 'noreply@kelsa.store',
-      to: dto.email,
-      subject: 'Код подтверждения — Kelsa',
-      html: `
-        <div style="font-family:sans-serif;max-width:420px;margin:0 auto;padding:32px 24px;background:#fff;">
-          <div style="text-align:center;margin-bottom:24px;">
-            <h2 style="color:#1a1a1a;margin:0 0 8px;">Код подтверждения</h2>
-            <p style="color:#666;font-size:14px;margin:0;">Для подтверждения вашего email введите код:</p>
-          </div>
-          <div style="text-align:center;background:linear-gradient(135deg,#6206c7,#8b3ce8);border-radius:16px;padding:24px;margin-bottom:20px;">
-            <span style="font-size:36px;font-weight:bold;letter-spacing:12px;color:#fff;">${code}</span>
-          </div>
-          <p style="color:#888;font-size:13px;text-align:center;">Код действителен 1 час. Если вы не запрашивали код — проигнорируйте это письмо.</p>
-        </div>
-      `,
+    // Проверяем, существует ли пользователь
+    const user = await this.prisma.user.findFirst({
+      where: { phone },
+      select: { id: true, name: true },
     });
 
-    return { sent: true }
+    return {
+      sent: true,
+      isNewUser: !user,
+      userName: user?.name || null,
+    };
   }
 
-  // Проверка кода верификации email
-  @Post('auth/verify-email-code')
-  async verifyEmailCode(@Body() dto: VerifyEmailCodeDto) {
-    const record = await this.prisma.emailVerification.findFirst({
+  // Проверка SMS-кода + авто-логин/регистрация
+  @Post('auth/verify-sms-code')
+  async verifySmsCode(@Body() dto: VerifySmsCodeDto) {
+    const phone = dto.phone?.trim();
+    if (!phone) throw new BadRequestException('Укажите номер телефона');
+
+    const record = await this.prisma.smsVerification.findFirst({
       where: {
-        email: dto.email,
+        phone,
         code: dto.code,
         usedAt: null,
         expiresAt: { gte: new Date() },
@@ -441,105 +188,47 @@ export class AuthController {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (!record) throw new BadRequestException('Неверный или истёкший код');
+    if (!record) {
+      throw new BadRequestException('Неверный или истёкший код');
+    }
 
-    await this.prisma.emailVerification.update({
+    // Помечаем код как использованный
+    await this.prisma.smsVerification.update({
       where: { id: record.id },
       data: { usedAt: new Date() },
     });
 
-    return { valid: true }
-  }
+    // Ищем пользователя по телефону
+    let user = await this.prisma.user.findFirst({
+      where: { phone },
+      select: { id: true, login: true, name: true, phone: true, addressLine: true, settlement: true, createdAt: true },
+    });
 
-  // Запрос сброса пароля — отправляет ссылку на email
-  @Post('auth/request-password-reset')
-  async requestPasswordReset(@Body() dto: RequestPasswordResetDto) {
-    const user = await this.prisma.user.findFirst({ where: { phone: dto.phone } });
-    if (!user) throw new BadRequestException('Пользователь с таким телефоном не найден');
-
-    if (!user.email || user.email.endsWith('@kelsa.local')) {
-      throw new BadRequestException('К вашему аккаунту не привязан email. Обратитесь в поддержку.');
+    if (user) {
+      // Существующий пользователь — просто логиним
+      return this.buildUserResponse(user);
     }
 
-    // Delete old reset tokens for this user
-    await this.prisma.passwordReset.deleteMany({ where: { userId: user.id } });
+    // Новый пользователь — регистрируем
+    const phoneDigits = phone.replace(/\D/g, '');
+    const login = `user_${phoneDigits}`;
+    const email = `${phoneDigits}@kelsa.local`;
+    const passwordHash = await bcrypt.hash(phoneDigits, 10); // заглушка
 
-    const token = crypto.randomBytes(32).toString('hex');
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    await this.prisma.passwordReset.create({
-      data: { token, userId: user.id, expiresAt },
-    });
-
-    const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'https://kelsa.store';
-    const resetLink = `${frontendUrl}/reset-password?token=${token}`;
-    const fromEmail = this.config.get<string>('SMTP_FROM') ?? 'noreply@kelsa.store';
-
-    const transporter = this.getMailTransport();
-    await transporter.sendMail({
-      from: `"Kelsa" <${fromEmail}>`,
-      to: user.email,
-      subject: 'Сброс пароля — Kelsa',
-      html: `
-        <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 24px;">
-          <h2 style="color: #333;">Сброс пароля</h2>
-          <p>Здравствуйте, ${user.name}!</p>
-          <p>Вы запросили сброс пароля. Нажмите на кнопку ниже, чтобы установить новый пароль:</p>
-          <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background-color: #6206c7; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">
-            Сбросить пароль
-          </a>
-          <p style="margin-top: 16px; color: #666; font-size: 14px;">Ссылка действительна 1 час.</p>
-          <p style="color: #999; font-size: 12px;">Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.</p>
-        </div>
-      `,
-    });
-
-    // Mask email for the response
-    const [localPart, domain] = user.email.split('@');
-    const masked = localPart.slice(0, 2) + '***@' + domain;
-
-    return { message: 'Ссылка для сброса пароля отправлена', email: masked };
-  }
-
-  // Подтверждение сброса пароля
-  @Post('auth/confirm-password-reset')
-  async confirmPasswordReset(@Body() dto: ConfirmPasswordResetDto) {
-    const reset = await this.prisma.passwordReset.findUnique({
-      where: { token: dto.token },
-      include: { user: true },
-    });
-
-    if (!reset) throw new BadRequestException('Недействительная ссылка сброса пароля');
-    if (reset.usedAt) throw new BadRequestException('Эта ссылка уже была использована');
-    if (reset.expiresAt < new Date()) throw new BadRequestException('Срок действия ссылки истёк');
-
-    const passwordHash = await bcrypt.hash(dto.password, 10);
-
-    await this.prisma.user.update({
-      where: { id: reset.userId },
-      data: { passwordHash },
-    });
-
-    await this.prisma.passwordReset.update({
-      where: { id: reset.id },
-      data: { usedAt: new Date() },
-    });
-
-    // Auto-login
-    const accessToken = this.jwt.sign({ sub: reset.userId });
-
-    return {
-      user: {
-        id: reset.user.id,
-        login: reset.user.login,
-        name: reset.user.name,
-        phone: reset.user.phone,
-        addressLine: reset.user.addressLine,
-        settlement: reset.user.settlement,
-        settlementTitle: await this.getSettlementTitle(reset.user.settlement),
+    const newUser = await this.prisma.user.create({
+      data: {
+        login,
+        email,
+        name: dto.name || '',
+        phone,
+        addressLine: dto.addressLine || '',
+        passwordHash,
+        settlement: dto.settlement || '',
       },
-      accessToken,
-    };
+      select: { id: true, login: true, name: true, phone: true, addressLine: true, settlement: true, createdAt: true },
+    });
+
+    return this.buildUserResponse(newUser);
   }
 
   @UseGuards(JwtGuard)
