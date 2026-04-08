@@ -54,7 +54,6 @@ export function CartDialog() {
   const [smsCode, setSmsCode] = useState(["", "", "", ""]);
   const [smsError, setSmsError] = useState("");
   const [smsLoading, setSmsLoading] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
   const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Settlement dropdown state
@@ -219,8 +218,7 @@ export function CartDialog() {
     setSubmitting(true);
     setSmsError("");
     try {
-      const res = await authApi.sendSmsCode(phone);
-      setIsNewUser(res.isNewUser);
+      await authApi.sendSmsCode(phone);
       setSmsCode(["", "", "", ""]);
       setSmsStep("code");
     } catch (err: unknown) {
