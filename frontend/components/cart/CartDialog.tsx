@@ -51,12 +51,20 @@ export function CartDialog() {
   const [showValidationDialog, setShowValidationDialog] = useState(false);
 
   // Phone auth flow state
-  const [authStep, setAuthStep] = useState<"none" | "password-new" | "password-existing" | "forgot-sent">("none");
+  const [authStep, setAuthStep] = useState<"none" | "password-new" | "password-existing" | "forgot-sent" | "verify-email" | "email-mismatch">("none");
   const [authPassword, setAuthPassword] = useState("");
   const [authPasswordConfirm, setAuthPasswordConfirm] = useState("");
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
   const [resetEmailMasked, setResetEmailMasked] = useState("");
+
+  // Email verification state
+  const [emailError, setEmailError] = useState("");
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [verificationCode, setVerificationCode] = useState(["", "", "", ""]);
+  const [storedAccountEmail, setStoredAccountEmail] = useState(""); // masked email from DB for existing user
+  const [storedAccountEmailRaw, setStoredAccountEmailRaw] = useState(""); // raw email from DB
+  const codeInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   // Settlement dropdown state
   const [settlementDropdownOpen, setSettlementDropdownOpen] = useState(false);
@@ -75,6 +83,90 @@ export function CartDialog() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  // Email onBlur — check uniqueness for new users
+  const handleEmailBlur = async () => {
+    if (!email || !email.includes("@")) return;
+    setEmailError("");
+    setEmailVerified(false);
+    try {
+      const { exists } = await authApi.checkEmail(email);
+      if (exists) {
+        setEmailError("Пользователь с таким email уже существует. Используйте другой адрес.");
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  // Handle verification code input
+  const handleCodeInput = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    const newCode = [...verificationCode];
+    newCode[index] = value.slice(-1);
+    setVerificationCode(newCode);
+    if (value && index < 3) {
+      codeInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleCodeKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !verificationCode[index] && index > 0) {
+      codeInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleCodePaste = (e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
+    if (pasted.length === 4) {
+      e.preventDefault();
+      setVerificationCode(pasted.split(""));
+      codeInputRefs.current[3]?.focus();
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    const code = verificationCode.join("");
+    if (code.length !== 4) {
+      setAuthError("Введите 4-значный код");
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await authApi.verifyEmailCode(email, code);
+      setEmailVerified(true);
+      // Determine next step
+      if (authStep === "verify-email" && storedAccountEmailRaw) {
+        // Existing user verifying new email → show password modal
+        setAuthStep("password-existing");
+      } else {
+        // New user → show registration modal
+        setAuthStep("password-new");
+      }
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Неверный код";
+      setAuthError(msg);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleEmailMismatchVerify = async () => {
+    // Send code to new email
+    setAuthLoading(true);
+    setAuthError("");
+    try {
+      await authApi.sendEmailCode(email);
+      setVerificationCode(["", "", "", ""]);
+      setAuthStep("verify-email");
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки кода";
+      setAuthError(msg);
+    } finally {
+      setAuthLoading(false);
+    }
+  };
 
   const filteredSettlements = useMemo(() => {
     if (!settlementSearch.trim()) return settlements;
@@ -189,13 +281,41 @@ export function CartDialog() {
 
     // Not logged in — check phone
     if (!phone || phone.length < 12) return;
+    if (!email) return;
+    if (emailError) return;
     setSubmitting(true);
     try {
-      const { exists } = await authApi.checkPhone(phone);
-      if (exists) {
-        setAuthStep("password-existing");
+      const res = await authApi.checkPhone(phone);
+      if (res.exists) {
+        // Существующий пользователь — сверяем email
+        const storedRaw = res.emailRaw || "";
+        setStoredAccountEmail(res.email || "");
+        setStoredAccountEmailRaw(storedRaw);
+        if (storedRaw.toLowerCase() === email.toLowerCase()) {
+          // Email совпадает — сразу модалка пароля
+          setAuthStep("password-existing");
+        } else {
+          // Email не совпадает — показываем модалку несовпадения
+          setAuthStep("email-mismatch");
+        }
       } else {
-        setAuthStep("password-new");
+        // Новый пользователь
+        if (emailVerified) {
+          // Email уже верифицирован — сразу к паролю
+          setAuthStep("password-new");
+        } else {
+          // Нужна верификация email
+          try {
+            await authApi.sendEmailCode(email);
+          } catch (err: unknown) {
+            const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки кода";
+            setAuthError(msg);
+            setSubmitting(false);
+            return;
+          }
+          setVerificationCode(["", "", "", ""]);
+          setAuthStep("verify-email");
+        }
       }
     } catch {
       setAuthError("Ошибка проверки телефона");
@@ -290,6 +410,7 @@ export function CartDialog() {
           phone,
           password: authPassword,
           email: email || undefined,
+          ...(emailVerified ? { verifiedEmail: email } : {}),
         });
         loginWithToken(res.accessToken, res.user);
         setAuthStep("none");
@@ -574,9 +695,20 @@ export function CartDialog() {
                   autoComplete="email"
                   placeholder="example@mail.ru"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setEmailError(""); setEmailVerified(false); }}
+                  onBlur={handleEmailBlur}
                   required
+                  className={emailError ? "border-red-400 focus-visible:ring-red-400" : ""}
                 />
+                {emailError && (
+                  <p className="text-xs text-red-600 mt-1">{emailError}</p>
+                )}
+                {emailVerified && (
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg>
+                    Email подтверждён
+                  </p>
+                )}
               </div>
               <div className="space-y-1" ref={settlementDropdownRef}>
                 <label className="text-sm font-medium">Населённый пункт</label>
@@ -922,6 +1054,152 @@ export function CartDialog() {
               >
                 Понятно
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно: верификация email (4-значный код) */}
+      {authStep === "verify-email" && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => { setAuthStep("none"); setAuthError(""); setVerificationCode(["", "", "", ""]); }}
+        >
+          <div
+            className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-blue-500 to-indigo-600 px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
+              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
+              <div className="relative flex flex-col items-center text-center gap-3">
+                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                  <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                  </svg>
+                </div>
+                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Подтвердите email</h3>
+                <p className="text-sm text-white/80 leading-relaxed max-w-[280px]">
+                  Мы отправили 4-значный код на
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
+                  <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                  <span className="text-[15px] sm:text-base font-semibold text-white tracking-wide">{email}</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
+              <div className="flex justify-center gap-3" onPaste={handleCodePaste}>
+                {verificationCode.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { codeInputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleCodeInput(i, e.target.value)}
+                    onKeyDown={(e) => handleCodeKeyDown(i, e)}
+                    autoFocus={i === 0}
+                    className="w-14 h-16 sm:w-16 sm:h-[72px] text-center text-2xl sm:text-3xl font-bold rounded-xl border-2 border-gray-200 bg-gray-50/50 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 focus:bg-white transition-colors"
+                  />
+                ))}
+              </div>
+              {authError && (
+                <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                  {authError}
+                </div>
+              )}
+              <div className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-17.5 0V6.75A2.25 2.25 0 014.5 4.5h15a2.25 2.25 0 012.25 2.25v6.75m-19.5 0v4.5A2.25 2.25 0 004.5 19.5h15a2.25 2.25 0 002.25-2.25v-4.5" /></svg>
+                <div className="text-sm text-gray-500 leading-relaxed">
+                  Не нашли письмо? Проверьте папку <span className="font-medium text-gray-700">«Спам»</span>.
+                </div>
+              </div>
+              <div className="flex gap-3 pt-1 pb-1 sm:pb-0">
+                <button
+                  type="button"
+                  onClick={() => { setAuthStep("none"); setAuthError(""); setVerificationCode(["", "", "", ""]); }}
+                  className="flex-1 h-12 sm:h-[50px] rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyCode}
+                  disabled={authLoading || verificationCode.join("").length !== 4}
+                  className="flex-[1.4] h-12 sm:h-[50px] rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-blue-600/25"
+                >
+                  {authLoading ? "Проверяем..." : "Подтвердить"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно: email не совпадает (существующий пользователь) */}
+      {authStep === "email-mismatch" && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
+          onClick={() => { setAuthStep("none"); setAuthError(""); }}
+        >
+          <div
+            className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="relative overflow-hidden rounded-t-3xl bg-gradient-to-br from-amber-500 to-orange-600 px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
+              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
+              <div className="relative flex flex-col items-center text-center gap-3">
+                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                  <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Email не совпадает</h3>
+                <p className="text-sm text-white/80 leading-relaxed max-w-[300px]">
+                  В вашем аккаунте указан другой email
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
+                  <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                  <span className="text-[15px] sm:text-base font-semibold text-white tracking-wide">{storedAccountEmail}</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
+              <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>
+                <div className="text-sm text-amber-800 leading-relaxed">
+                  Вы ввели <span className="font-semibold">{email}</span>. Хотите обновить email? Мы отправим код подтверждения на новый адрес.
+                </div>
+              </div>
+              {authError && (
+                <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                  {authError}
+                </div>
+              )}
+              <div className="flex gap-3 pt-1 pb-1 sm:pb-0">
+                <button
+                  type="button"
+                  onClick={() => { setAuthStep("none"); setAuthError(""); }}
+                  className="flex-1 h-12 sm:h-[50px] rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleEmailMismatchVerify}
+                  disabled={authLoading}
+                  className="flex-[1.4] h-12 sm:h-[50px] rounded-xl bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-amber-500/25"
+                >
+                  {authLoading ? "Отправляем..." : "Подтвердить новый email"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

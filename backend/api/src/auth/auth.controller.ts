@@ -64,6 +64,10 @@ class LoginByPhoneDto {
   @IsOptional()
   @IsEmail()
   email?: string
+
+  @IsOptional()
+  @IsEmail()
+  verifiedEmail?: string
 }
 
 class RegisterByPhoneDto {
@@ -100,6 +104,24 @@ class ConfirmPasswordResetDto {
   @IsString()
   @MinLength(6)
   password: string
+}
+
+class CheckEmailDto {
+  @IsEmail()
+  email: string
+}
+
+class SendEmailCodeDto {
+  @IsEmail()
+  email: string
+}
+
+class VerifyEmailCodeDto {
+  @IsEmail()
+  email: string
+
+  @IsString()
+  code: string
 }
 
 class FavoriteDto {
@@ -254,9 +276,12 @@ export class AuthController {
   async checkPhone(@Body() dto: CheckPhoneDto) {
     const user = await this.prisma.user.findFirst({
       where: { phone: dto.phone },
-      select: { id: true },
+      select: { id: true, email: true },
     })
-    return { exists: !!user }
+    if (!user) return { exists: false }
+    // Маскируем email: sh***@gmail.com
+    const masked = user.email.replace(/^(.{2})(.*)(@.+)$/, (_, a, b, c) => a + '*'.repeat(Math.min(b.length, 5)) + c);
+    return { exists: true, email: masked, emailRaw: user.email }
   }
 
   // Логин по телефону + пароль
@@ -268,8 +293,13 @@ export class AuthController {
     const ok = await bcrypt.compare(dto.password, user.passwordHash);
     if (!ok) throw new UnauthorizedException('Неверный пароль');
 
-    // Update email if provided and current is placeholder
-    if (dto.email && user.email.endsWith('@kelsa.local')) {
+    // Update email: verified email takes priority, otherwise update if current is placeholder
+    if (dto.verifiedEmail) {
+      const emailTaken = await this.prisma.user.findFirst({ where: { email: dto.verifiedEmail, id: { not: user.id } } });
+      if (!emailTaken) {
+        await this.prisma.user.update({ where: { id: user.id }, data: { email: dto.verifiedEmail } });
+      }
+    } else if (dto.email && user.email.endsWith('@kelsa.local')) {
       const emailTaken = await this.prisma.user.findUnique({ where: { email: dto.email } });
       if (!emailTaken) {
         await this.prisma.user.update({ where: { id: user.id }, data: { email: dto.email } });
@@ -345,6 +375,80 @@ export class AuthController {
       },
       accessToken,
     }
+  }
+
+  // Проверка существования email в базе
+  @Post('auth/check-email')
+  async checkEmail(@Body() dto: CheckEmailDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+      select: { id: true },
+    })
+    return { exists: !!user }
+  }
+
+  // Отправка 4-значного кода верификации на email
+  @Post('auth/send-email-code')
+  async sendEmailCode(@Body() dto: SendEmailCodeDto) {
+    // Rate limit: не чаще 1 раза в минуту на email
+    const recent = await this.prisma.emailVerification.findFirst({
+      where: {
+        email: dto.email,
+        createdAt: { gte: new Date(Date.now() - 60_000) },
+      },
+    });
+    if (recent) throw new BadRequestException('Подождите минуту перед повторной отправкой');
+
+    const code = String(Math.floor(1000 + Math.random() * 9000)); // 4 цифры
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 час
+
+    await this.prisma.emailVerification.create({
+      data: { email: dto.email, code, expiresAt },
+    });
+
+    const transporter = this.getMailTransport();
+    await transporter.sendMail({
+      from: this.config.get<string>('SMTP_FROM') || 'noreply@kelsa.store',
+      to: dto.email,
+      subject: 'Код подтверждения — Kelsa',
+      html: `
+        <div style="font-family:sans-serif;max-width:420px;margin:0 auto;padding:32px 24px;background:#fff;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <h2 style="color:#1a1a1a;margin:0 0 8px;">Код подтверждения</h2>
+            <p style="color:#666;font-size:14px;margin:0;">Для подтверждения вашего email введите код:</p>
+          </div>
+          <div style="text-align:center;background:linear-gradient(135deg,#6206c7,#8b3ce8);border-radius:16px;padding:24px;margin-bottom:20px;">
+            <span style="font-size:36px;font-weight:bold;letter-spacing:12px;color:#fff;">${code}</span>
+          </div>
+          <p style="color:#888;font-size:13px;text-align:center;">Код действителен 1 час. Если вы не запрашивали код — проигнорируйте это письмо.</p>
+        </div>
+      `,
+    });
+
+    return { sent: true }
+  }
+
+  // Проверка кода верификации email
+  @Post('auth/verify-email-code')
+  async verifyEmailCode(@Body() dto: VerifyEmailCodeDto) {
+    const record = await this.prisma.emailVerification.findFirst({
+      where: {
+        email: dto.email,
+        code: dto.code,
+        usedAt: null,
+        expiresAt: { gte: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!record) throw new BadRequestException('Неверный или истёкший код');
+
+    await this.prisma.emailVerification.update({
+      where: { id: record.id },
+      data: { usedAt: new Date() },
+    });
+
+    return { valid: true }
   }
 
   // Запрос сброса пароля — отправляет ссылку на email

@@ -361,6 +361,17 @@ model PasswordReset {
   @@index([token])
 }
 
+model EmailVerification {
+  id        String    @id @default(cuid())
+  email     String
+  code      String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([email, code])
+}
+
 // ==================== ЧАТ ПО ЗАКАЗАМ ====================
 
 enum ChatSender {

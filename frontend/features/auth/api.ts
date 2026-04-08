@@ -2,6 +2,7 @@ import { apiGet, apiPatch, apiPost } from "shared/api/http";
 import type {
   AuthResponse,
   AuthUser,
+  CheckEmailResponse,
   CheckPhoneResponse,
   ConfirmPasswordResetPayload,
   LoginByPhonePayload,
@@ -9,9 +10,11 @@ import type {
   RegisterByPhonePayload,
   RegisterPayload,
   RequestPasswordResetResponse,
+  SendEmailCodeResponse,
   SettlementDto,
   UpdateProfilePayload,
   UserOrder,
+  VerifyEmailCodeResponse,
 } from "./types";
 
 export const authApi = {
@@ -26,6 +29,12 @@ export const authApi = {
     apiPost<AuthResponse, LoginByPhonePayload>("/v1/auth/login-by-phone", payload),
   registerByPhone: (payload: RegisterByPhonePayload) =>
     apiPost<AuthResponse, RegisterByPhonePayload>("/v1/auth/register-by-phone", payload),
+  checkEmail: (email: string) =>
+    apiPost<CheckEmailResponse, { email: string }>("/v1/auth/check-email", { email }),
+  sendEmailCode: (email: string) =>
+    apiPost<SendEmailCodeResponse, { email: string }>("/v1/auth/send-email-code", { email }),
+  verifyEmailCode: (email: string, code: string) =>
+    apiPost<VerifyEmailCodeResponse, { email: string; code: string }>("/v1/auth/verify-email-code", { email, code }),
   requestPasswordReset: (phone: string) =>
     apiPost<RequestPasswordResetResponse, { phone: string }>("/v1/auth/request-password-reset", { phone }),
   confirmPasswordReset: (payload: ConfirmPasswordResetPayload) =>

@@ -48,12 +48,27 @@ export type UpdateProfilePayload = {
 
 export type CheckPhoneResponse = {
   exists: boolean;
+  email?: string;
+  emailRaw?: string;
+};
+
+export type CheckEmailResponse = {
+  exists: boolean;
+};
+
+export type SendEmailCodeResponse = {
+  sent: boolean;
+};
+
+export type VerifyEmailCodeResponse = {
+  valid: boolean;
 };
 
 export type LoginByPhonePayload = {
   phone: string;
   password: string;
   email?: string;
+  verifiedEmail?: string;
 };
 
 export type RegisterByPhonePayload = {
