@@ -870,32 +870,59 @@ export function CartDialog() {
       {/* Модальное окно: сброс отправлен */}
       {authStep === "forgot-sent" && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
           onClick={() => { setAuthStep("password-existing"); setAuthError(""); }}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col items-center text-center gap-2">
-              <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
-                <span className="text-2xl">📧</span>
+            {/* Header */}
+            <div className="relative overflow-hidden rounded-t-3xl sm:rounded-t-3xl bg-gradient-to-br from-emerald-500 to-teal-600 px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
+              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
+              <div className="relative flex flex-col items-center text-center gap-3">
+                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                  <svg className="w-8 h-8 sm:w-9 sm:h-9 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                  </svg>
+                </div>
+                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">Письмо отправлено</h3>
+                <p className="text-sm text-white/80 leading-relaxed max-w-[280px]">
+                  Ссылка для сброса пароля отправлена на
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
+                  <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207" /></svg>
+                  <span className="text-[15px] sm:text-base font-semibold text-white tracking-wide">{resetEmailMasked}</span>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Письмо отправлено</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Мы отправили ссылку для сброса пароля на <span className="font-medium text-gray-700">{resetEmailMasked}</span>.
-              </p>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Перейдите по ссылке из письма, чтобы установить новый пароль. Ссылка действительна 1 час.
-              </p>
             </div>
-            <button
-              type="button"
-              onClick={() => { setAuthStep("password-existing"); setAuthError(""); }}
-              className="w-full h-11 rounded-xl bg-[#6206c7] hover:bg-[#5205A8] text-white text-sm font-semibold transition-colors"
-            >
-              Понятно
-            </button>
+
+            {/* Body */}
+            <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
+              <div className="flex items-start gap-3 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+                <svg className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <div className="text-sm text-amber-800 leading-relaxed">
+                  Перейдите по ссылке из письма, чтобы установить новый пароль. Ссылка действительна <span className="font-semibold">1 час</span>.
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3">
+                <svg className="w-5 h-5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859m-17.5 0V6.75A2.25 2.25 0 014.5 4.5h15a2.25 2.25 0 012.25 2.25v6.75m-19.5 0v4.5A2.25 2.25 0 004.5 19.5h15a2.25 2.25 0 002.25-2.25v-4.5" /></svg>
+                <div className="text-sm text-gray-500 leading-relaxed">
+                  Не нашли письмо? Проверьте папку <span className="font-medium text-gray-700">«Спам»</span>.
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => { setAuthStep("password-existing"); setAuthError(""); }}
+                className="w-full h-12 sm:h-[50px] rounded-xl bg-[#6206c7] hover:bg-[#5205A8] active:bg-[#4604a0] text-white text-sm font-semibold transition-colors shadow-lg shadow-[#6206c7]/25 mb-1 sm:mb-0"
+              >
+                Понятно
+              </button>
+            </div>
           </div>
         </div>
       )}
