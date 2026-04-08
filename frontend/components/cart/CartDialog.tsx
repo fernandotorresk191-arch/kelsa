@@ -773,76 +773,95 @@ export function CartDialog() {
       {/* Модальное окно — существующий клиент (вход по телефону) */}
       {authStep === "password-existing" && (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.4)" }}
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center"
+          style={{ background: "rgba(0,0,0,0.5)" }}
           onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); }}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 flex flex-col gap-4"
+            className="bg-white w-full sm:w-auto sm:min-w-[400px] sm:max-w-[440px] rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex flex-col items-center text-center gap-2">
-              <div className="w-14 h-14 rounded-full bg-[#6206c7]/10 flex items-center justify-center">
-                <span className="text-2xl">🔐</span>
+            {/* Header gradient strip */}
+            <div className="relative overflow-hidden rounded-t-3xl sm:rounded-t-3xl bg-gradient-to-br from-[#6206c7] to-[#8b3ce8] px-6 pt-8 pb-6 sm:px-8 sm:pt-10 sm:pb-8">
+              <div className="absolute -top-8 -right-8 w-32 h-32 bg-white/5 rounded-full" />
+              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-white/5 rounded-full" />
+              <div className="relative flex flex-col items-center text-center gap-3">
+                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                  <span className="text-3xl sm:text-[34px]">👋</span>
+                </div>
+                <h3 className="text-xl sm:text-[22px] font-bold text-white tracking-tight">С возвращением!</h3>
+                <p className="text-sm text-white/75 leading-relaxed max-w-[280px]">
+                  Мы нашли ваш аккаунт по номеру
+                </p>
+                <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 mt-0.5">
+                  <svg className="w-4 h-4 text-white/80 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                  <span className="text-[15px] sm:text-base font-semibold text-white tracking-wide">{phone}</span>
+                </div>
               </div>
-              <h3 className="text-lg font-bold text-gray-900">С возвращением!</h3>
-              <p className="text-sm text-gray-500 leading-relaxed">
-                Мы нашли ваш аккаунт по номеру <span className="font-medium text-gray-700">{phone}</span>. Введите пароль для подтверждения.
-              </p>
             </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-700">Пароль</label>
-              <input
-                type="password"
-                placeholder="Введите пароль"
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7]"
-                autoFocus
-              />
-            </div>
-            {authError && (
-              <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-600">
-                {authError}
+
+            {/* Body */}
+            <div className="px-6 py-5 sm:px-8 sm:py-6 flex flex-col gap-4">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-gray-700">Пароль</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="Введите пароль"
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    className="w-full h-12 rounded-xl border border-gray-200 bg-gray-50/50 px-4 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#6206c7]/30 focus:border-[#6206c7] focus:bg-white transition-colors"
+                    autoFocus
+                  />
+                </div>
               </div>
-            )}
-            <button
-              type="button"
-              onClick={async () => {
-                setAuthError("");
-                setAuthLoading(true);
-                try {
-                  const res = await authApi.requestPasswordReset(phone);
-                  setResetEmailMasked(res.email);
-                  setAuthStep("forgot-sent");
-                } catch (err: unknown) {
-                  const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки письма";
-                  setAuthError(msg);
-                } finally {
-                  setAuthLoading(false);
-                }
-              }}
-              disabled={authLoading}
-              className="text-sm text-[#6206c7] hover:underline self-start disabled:opacity-50"
-            >
-              Не помню пароль
-            </button>
-            <div className="flex gap-2 pt-1">
+
+              {authError && (
+                <div className="rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-sm text-red-600 flex items-start gap-2">
+                  <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
+                  {authError}
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); }}
-                className="flex-1 h-11 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Отмена
-              </button>
-              <button
-                type="button"
-                onClick={handleAuthSubmit}
+                onClick={async () => {
+                  setAuthError("");
+                  setAuthLoading(true);
+                  try {
+                    const res = await authApi.requestPasswordReset(phone);
+                    setResetEmailMasked(res.email);
+                    setAuthStep("forgot-sent");
+                  } catch (err: unknown) {
+                    const msg = err && typeof err === "object" && "message" in err ? (err as { message: string }).message : "Ошибка отправки письма";
+                    setAuthError(msg);
+                  } finally {
+                    setAuthLoading(false);
+                  }
+                }}
                 disabled={authLoading}
-                className="flex-1 h-11 rounded-xl bg-[#6206c7] hover:bg-[#5205A8] text-white text-sm font-semibold transition-colors disabled:opacity-50"
+                className="text-sm text-[#6206c7] hover:text-[#5205A8] font-medium self-start -mt-1 disabled:opacity-50 transition-colors"
               >
-                {authLoading ? "Входим..." : "Войти и оформить"}
+                Не помню пароль
               </button>
+
+              <div className="flex gap-3 pt-1 pb-1 sm:pb-0">
+                <button
+                  type="button"
+                  onClick={() => { setAuthStep("none"); setAuthError(""); setAuthPassword(""); }}
+                  className="flex-1 h-12 sm:h-[50px] rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAuthSubmit}
+                  disabled={authLoading}
+                  className="flex-[1.4] h-12 sm:h-[50px] rounded-xl bg-[#6206c7] hover:bg-[#5205A8] active:bg-[#4604a0] text-white text-sm font-semibold transition-colors disabled:opacity-50 shadow-lg shadow-[#6206c7]/25"
+                >
+                  {authLoading ? "Входим..." : "Войти и оформить"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
